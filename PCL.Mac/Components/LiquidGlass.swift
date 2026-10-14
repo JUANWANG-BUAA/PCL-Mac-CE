@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 /// Liquid Glass 辅助：macOS 26+ 使用官方玻璃效果，低版本回退为系统材质。
 ///
@@ -53,23 +54,38 @@ extension View {
 
 // MARK: - 页面级玻璃背景
 
+/// AppKit 官方玻璃视图的 SwiftUI 包装。
+///
+/// 相比 SwiftUI 的 `glassEffect`，`NSGlassEffectView` 是真正的 NSView，参与窗口生命周期，
+/// 更适合作为整窗/侧栏这类大面积背景层。
+@available(macOS 26.0, *)
+private struct NativeGlassEffectView: NSViewRepresentable {
+    let style: NSGlassEffectView.Style
+    let tint: NSColor?
+
+    func makeNSView(context: Context) -> NSGlassEffectView {
+        let view = NSGlassEffectView()
+        view.cornerRadius = 0
+        view.style = style
+        view.tintColor = tint
+        return view
+    }
+
+    func updateNSView(_ view: NSGlassEffectView, context: Context) {
+        view.style = style
+        view.tintColor = tint
+    }
+}
+
 /// 页面级玻璃背景：承载整个窗口的材质层。
 ///
-/// macOS 26+ 使用官方 `glassEffect(.clear)`——相比普通材质，clear 玻璃的白色雾面极轻、
+/// macOS 26+ 使用官方 clear 玻璃——相比普通材质，clear 玻璃的白色雾面极轻、
 /// 透光性高，能让桌面壁纸以强模糊的形式透出（而非一层白色高斯模糊）；
 /// 低版本回退为轻材质。
 struct GlassPageBackground: View {
     var body: some View {
         if #available(macOS 26.0, *) {
-            Rectangle()
-                .fill(.clear)
-                .glassEffect(.clear, in: Rectangle())
-                .overlay {
-                    // 轻微提亮：clear 玻璃在暗色壁纸上对比偏低，5% 白色保证前景文字可读
-                    Rectangle()
-                        .fill(.white.opacity(0.05))
-                        .allowsHitTesting(false)
-                }
+            NativeGlassEffectView(style: .clear, tint: NSColor.white.withAlphaComponent(0.05))
         } else {
             Rectangle()
                 .fill(AppTheme.liquidGlass.pageBackground)
@@ -85,9 +101,7 @@ struct GlassPageBackground: View {
 struct GlassSidebarBackground: View {
     var body: some View {
         if #available(macOS 26.0, *) {
-            Rectangle()
-                .fill(.clear)
-                .glassEffect(.clear, in: Rectangle())
+            NativeGlassEffectView(style: .clear, tint: nil)
                 .blur(radius: 5, opaque: true)
         } else {
             Rectangle()

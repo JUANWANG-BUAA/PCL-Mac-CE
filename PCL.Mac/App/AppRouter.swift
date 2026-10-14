@@ -238,8 +238,14 @@ struct AppSidebarView: View {
             }
         }
         .onChange(of: sidebar.width) { newWidth in
-            withAnimation(.spring(response: 0.16, dampingFraction: 1.0)) {
+            // 原生玻璃层不做尺寸动画：glass 在连续重绘时会短暂不渲染（闪黑/透底），
+            // 侧栏内容本身也是瞬时切换的，直接对齐即可保持观感一致。
+            if ThemeManager.shared.theme.isNativeStyle {
                 width = newWidth
+            } else {
+                withAnimation(.spring(response: 0.16, dampingFraction: 1.0)) {
+                    width = newWidth
+                }
             }
             switch router.last {
             case .launch, .tasks:
