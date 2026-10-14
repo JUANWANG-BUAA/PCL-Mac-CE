@@ -81,3 +81,27 @@
 
 本轮重构的所有新函数均带文档注释，并标注设计意图（如字节序核对、任务表性质、
 换源判定理由、主题重建机制），累计新增/改写注释约 40 处。
+
+## 六、补充：Liquid Glass 升级为完整原生视觉
+
+首版主题仅替换色板，整体仍是 PCL 自绘风格。补充改造将 `liquidGlass`
+升级为完整的原生 macOS 视觉（`classic` 主题不受影响）：
+
+| 元素 | 改造前（PCL 风格） | 改造后（原生风格） |
+|---|---|---|
+| 字体 | PCLEnglish 品牌字体 | **SF Pro 系统字体**（`Font.app()` 随主题分派） |
+| 顶栏 | 纯蓝色条 | **`.bar` 工具栏材质** + 深色文字/选中态 |
+| 页面背景 | PCL 浅蓝 | **系统窗口背景色**（`windowBackgroundColor`） |
+| 侧栏 | 白色矩形 | **`.thinMaterial` 材质** |
+| 卡片 | 灰底 + 重阴影 | 材质底 + **细边框** + 极轻阴影（1.5pt） |
+| 按钮 | 描边式 | **填充式**（强调=蓝底白字 / 常规=浅灰填充 / 圆角 6） |
+| 侧栏导航 | 左侧竖条高亮 | **圆角填充高亮** |
+| 列表项 hover | 蓝色淡底 + 缩放 | 淡灰填充、不缩放 |
+| 输入框/下拉/搜索 | 描边式 | 填充式 + 聚焦环（accent 2pt） |
+| 弹窗 | 23pt 品牌标题 + 重阴影 | **17pt semibold 系统标题** + 半透明分隔线 + 轻阴影 |
+| 提示浮层 | 固定色 | 系统语义色（蓝/绿/红） |
+
+实现方式：`AppTheme.isNativeStyle` 在组件内部做双风格分支渲染
+（`MyButton`/`MyListItem`/`MyNavigationList`/`MyTip`/`MyTextField`/`MySelect`/
+`TitleBarView`/`WindowButton`/`MessageBoxView`/`HintView`），
+主题切换经根视图重建即时生效。
