@@ -36,19 +36,47 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
     /// 卡片背景是否使用系统材质（毛玻璃）。
     var usesMaterialCards: Bool { self == .liquidGlass }
 
+    /// 是否为原生 macOS 视觉风格：系统字体、填充控件、白底细边卡片。
+    var isNativeStyle: Bool { self == .liquidGlass }
+
+    /// 界面字体（原生风格使用系统字体 SF Pro，经典主题使用 PCL 品牌字体）。
+    func font(size: CGFloat) -> Font {
+        isNativeStyle ? .system(size: size, weight: .regular) : .custom("PCLEnglish", size: size)
+    }
+
+    /// 卡片与区块标题字体。
+    var titleFont: Font {
+        isNativeStyle ? .system(size: 13, weight: .semibold) : .custom("PingFangSC-Semibold", size: 14)
+    }
+
+    /// 卡片背景。
+    var cardBackground: AnyShapeStyle {
+        isNativeStyle ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(Color.colorGray8)
+    }
+
+    /// 卡片描边（原生风格为细边框，经典主题无描边）。
+    var cardBorder: Color? {
+        isNativeStyle ? Color.black.opacity(0.07) : nil
+    }
+
+    /// 卡片阴影半径。
+    var cardShadowRadius: CGFloat {
+        isNativeStyle ? 1.5 : 6
+    }
+
+    /// 卡片悬停时的阴影半径。
+    var cardHoverShadowRadius: CGFloat {
+        isNativeStyle ? 4 : 8
+    }
+
     /// 页面背景。
     var pageBackground: AnyShapeStyle {
         switch self {
         case .classic:
             AnyShapeStyle(Color(0xC0DEF5))
         case .liquidGlass:
-            AnyShapeStyle(
-                LinearGradient(
-                    colors: [Color(0xE9F1FA), Color(0xF6F9FC)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            // 原生风格：系统窗口背景（浅灰）
+            AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
         }
     }
 
@@ -56,7 +84,7 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
     var sidebarBackground: AnyShapeStyle {
         switch self {
         case .classic: AnyShapeStyle(.white)
-        case .liquidGlass: AnyShapeStyle(.ultraThinMaterial)
+        case .liquidGlass: AnyShapeStyle(.thinMaterial)
         }
     }
 

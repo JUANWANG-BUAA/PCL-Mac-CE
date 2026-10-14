@@ -169,20 +169,21 @@ struct MyCard<Content: View, Action: View>: View {
             self.showHovered = hovered
         }
         .background {
-            if ThemeManager.shared.theme.usesMaterialCards {
-                // Liquid Glass：系统材质卡片 + 高光描边
-                RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(.regularMaterial)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Radius.lg)
-                            .strokeBorder(.white.opacity(0.55), lineWidth: 0.5)
+            let theme = ThemeManager.shared.theme
+            let shape = RoundedRectangle(cornerRadius: Radius.lg)
+            shape
+                .fill(theme.cardBackground)
+                .overlay {
+                    if let border = theme.cardBorder {
+                        shape.strokeBorder(border, lineWidth: 0.8)
+                    } else if theme.usesMaterialCards {
+                        shape.strokeBorder(.white.opacity(0.55), lineWidth: 0.5)
                     }
-                    .shadow(color: showHovered ? ShadowToken.cardHover : ShadowToken.card, radius: 8)
-            } else {
-                RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(Color.colorGray8)
-                    .shadow(color: showHovered ? ShadowToken.cardHover : ShadowToken.card, radius: 6)
-            }
+                }
+                .shadow(
+                    color: showHovered ? ShadowToken.cardHover : ShadowToken.card,
+                    radius: showHovered ? theme.cardHoverShadowRadius : theme.cardShadowRadius
+                )
         }
         .offset(y: appeared ? 0 : -25)
         .opacity(appeared ? 1 : 0)

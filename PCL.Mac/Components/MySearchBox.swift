@@ -34,10 +34,10 @@ struct MySearchBox: View {
                     if !focused && query.isEmpty {
                         Text(placeholder)
                             .allowsHitTesting(false)
-                            .foregroundStyle(Color.colorGray3)
+                            .foregroundStyle(ThemeManager.shared.theme.isNativeStyle ? Color.primary.opacity(0.35) : Color.colorGray3)
                     }
                 }
-                .font(.pcl(16))
+                .font(.app(16))
                 .focused($focused)
                 .onChange(of: query) { _ in
                     if query.count > 50 {

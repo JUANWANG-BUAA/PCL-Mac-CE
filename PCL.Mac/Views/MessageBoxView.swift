@@ -17,18 +17,22 @@ struct MessageBoxView: View {
     }
 
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack {
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: isNative ? 10 : 7)
                 .fill(.white)
-                .shadow(color: .color1.opacity(0.8), radius: 20)
+                .shadow(color: .black.opacity(isNative ? 0.25 : 0.5), radius: isNative ? 24 : 20)
             VStack(alignment: .leading, spacing: 0) {
-                MyText(model.title, size: 23, color: foregroundColor)
+                Text(model.title)
+                    .font(isNative ? .system(size: 17, weight: .semibold) : .custom("PCLEnglish", size: 23))
+                    .foregroundStyle(foregroundColor)
                     .padding(.leading, 7)
                 Rectangle()
                     .fill(foregroundColor)
-                    .frame(height: 2)
+                    .frame(height: isNative ? 1 : 2)
+                    .opacity(isNative ? 0.2 : 1)
                     .padding(.top, 9)
-                    .padding(.bottom, 13)
+                    .padding(.bottom, isNative ? 10 : 13)
                 content
                     .frame(minHeight: 1)
                     .padding(.horizontal, 7)

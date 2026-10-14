@@ -13,25 +13,32 @@ struct TitleBarView: View {
     @ObservedObject private var flagsManager: FlagsManager = .shared
 
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack(alignment: .leading) {
-            Rectangle()
-                .fill(.blue)
+            if !isNative {
+                Rectangle()
+                    .fill(.blue)
+            } else {
+                // 原生风格：工具栏材质（与系统 toolbar 一致）
+                Rectangle()
+                    .fill(.bar)
+            }
             Group {
                 if router.isSubPage {
                     HStack {
                         WindowButton(.btnBack) {
                             router.removeLast()
                         }
-                        MyText(router.title, size: 16, color: .white)
+                        MyText(router.title, size: 16, color: isNative ? .primary : .white)
                     }
                 } else {
                     HStack {
                         Image(.iconTitleLogo)
                             .resizable()
                             .scaledToFit()
-                            .foregroundStyle(.white)
+                            .foregroundStyle(isNative ? Color.primary : .white)
                             .frame(height: 19)
-                        MyTag("Mac", labelColor: .color2)
+                        MyTag("Mac", labelColor: isNative ? .primary : .color2, backgroundColor: isNative ? Color.primary.opacity(0.08) : .white)
 
                         if Metadata.debugMode {
                             MyTag("Debug", backgroundColor: Color(0x9BF00B))
@@ -101,10 +108,16 @@ private struct PageButton: View {
     }
 
     private var foregroundColor: Color {
-        isRoot ? .color2 : .white
+        if ThemeManager.shared.theme.isNativeStyle {
+            return isRoot ? .primary : Color.primary.opacity(0.75)
+        }
+        return isRoot ? .color2 : .white
     }
 
     private var backgroundColor: Color {
-        .white.opacity(isRoot ? 1 : hovered ? 0.25 : 0)
+        if ThemeManager.shared.theme.isNativeStyle {
+            return isRoot ? Color.primary.opacity(0.1) : (hovered ? Color.primary.opacity(0.05) : .clear)
+        }
+        return .white.opacity(isRoot ? 1 : hovered ? 0.25 : 0)
     }
 }

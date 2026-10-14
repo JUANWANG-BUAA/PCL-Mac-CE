@@ -91,10 +91,18 @@ private struct HintView: View {
     }
 
     private var color: Color {
-        switch model.type {
-        case .info: Color(0x0A8EFC)
-        case .finish: Color(0x1DA01D)
-        case .critical: Color(0xFF2B00)
+        if ThemeManager.shared.theme.isNativeStyle {
+            switch model.type {
+            case .info: .init(0x0071e3)
+            case .finish: .init(0x28a745)
+            case .critical: .init(0xd70015)
+            }
+        } else {
+            switch model.type {
+            case .info: Color(0x0A8EFC)
+            case .finish: Color(0x1DA01D)
+            case .critical: Color(0xFF2B00)
+            }
         }
     }
 }

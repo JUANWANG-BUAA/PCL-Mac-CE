@@ -37,10 +37,16 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
                     }
             }
 
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(foregroundColor, lineWidth: 1.5, antialiased: false)
-                .background(backgroundColor)
-                .allowsHitTesting(false)
+            if ThemeManager.shared.theme.isNativeStyle {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(hovered ? 0.1 : 0.06))
+                    .allowsHitTesting(false)
+            } else {
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(foregroundColor, lineWidth: 1.5, antialiased: false)
+                    .background(backgroundColor)
+                    .allowsHitTesting(false)
+            }
 
             HStack {
                 MyText(selected.description)

@@ -20,7 +20,7 @@ struct MyText: View {
 
     var body: some View {
         Text(text)
-            .font(.pcl(size))
+            .font(.app(size))
             .foregroundStyle(color)
     }
 }

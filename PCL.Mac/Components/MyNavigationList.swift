@@ -67,10 +67,13 @@ private struct RouteView: View {
     }
 
     var body: some View {
-        HStack(spacing: 11) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(selected ? Color.color3 : .clear)
-                .frame(width: 4, height: selected ? 24 : 10)
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        HStack(spacing: isNative ? 8 : 11) {
+            if !isNative {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(selected ? Color.color3 : .clear)
+                    .frame(width: 4, height: selected ? 24 : 10)
+            }
             if let image {
                 Image(image)
                     .resizable()
@@ -78,7 +81,7 @@ private struct RouteView: View {
                     .frame(width: 20, height: 20)
             }
             Text(label)
-                .font(.pcl(14))
+                .font(.app(14))
             if selected, hovered, let refresh {
                 Spacer(minLength: 0)
                 Image(.iconRefresh)
@@ -95,10 +98,20 @@ private struct RouteView: View {
                     .padding(.trailing, 6)
             }
         }
+        .padding(.horizontal, isNative ? 8 : 0)
         .frame(height: 32)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(hovered ? Color.color2.opacity(0.1) : .clear)
-        .foregroundStyle(selected ? Color.color3 : .color1)
+        .background(
+            isNative
+                ? (selected ? Color.primary.opacity(0.1) : (hovered ? Color.primary.opacity(0.05) : .clear))
+                : (hovered ? Color.color2.opacity(0.1) : .clear)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: isNative ? 6 : 0))
+        .foregroundStyle(
+            isNative
+                ? (selected ? Color.primary : Color.primary.opacity(0.8))
+                : (selected ? Color.color3 : .color1)
+        )
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
         .animation(.easeInOut(duration: 0.2), value: hovered)

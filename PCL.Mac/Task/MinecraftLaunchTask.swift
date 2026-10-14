@@ -182,25 +182,25 @@ public enum MinecraftLaunchTask {
         if result == 0 { try task.cancel() }
         return result == 1 ? bestMatch : nil
     }
-    
+
     /// Java 切换弹窗的提示文案配置。
     private struct SwitchPrompt {
         let title: String
         let reason: String
         let force: Bool
-        
+
         /// 未配置任何 Java。
         static let noJava: SwitchPrompt = .init(
             title: "没有配置 Java",
             reason: "你还没有为这个实例设置 Java！",
             force: true
         )
-        
+
         /// 当前 Java 不满足实例要求。
         static func unsatisfied(_ reason: String) -> SwitchPrompt {
             .init(title: "当前 Java 不满足要求", reason: reason, force: true)
         }
-        
+
         /// 当前 Java 需要 Rosetta 转译（性能问题，非强制切换）。
         static func performance(runtime: JavaRuntime) -> SwitchPrompt {
             .init(

@@ -32,7 +32,9 @@ struct MyExtraTextButton: View {
                     .scaledToFit()
                     .foregroundStyle(.white)
                     .frame(width: imageSize, height: imageSize)
-                MyText(text, size: 16, color: .white)
+                Text(text)
+                    .font(.app(15))
+                    .foregroundStyle(.white)
             }
             .padding()
         }

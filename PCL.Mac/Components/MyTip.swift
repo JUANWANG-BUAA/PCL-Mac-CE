@@ -21,10 +21,13 @@ struct MyTip: View {
     }
 
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         HStack(spacing: 0) {
-            Rectangle()
-                .fill(theme.borderColor)
-                .frame(width: 3)
+            if !isNative {
+                Rectangle()
+                    .fill(theme.borderColor)
+                    .frame(width: 3)
+            }
             MyText(text, color: theme.foregroundColor)
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, 9)
@@ -38,7 +41,7 @@ struct MyTip: View {
             }
         }
         .background(theme.backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.xs))
+        .clipShape(RoundedRectangle(cornerRadius: isNative ? 6 : Radius.xs))
         .fixedSize(horizontal: false, vertical: true)
     }
 

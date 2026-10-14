@@ -61,8 +61,15 @@ extension Font {
         .custom("PCLEnglish", size: size)
     }
 
-    /// 卡片标题字体。
-    static let cardTitle: Font = .custom("PingFangSC-Semibold", size: 14)
+    /// 界面字体（随主题切换：系统字体 / PCL 品牌字体）。
+    static func app(_ size: CGFloat) -> Font {
+        ThemeManager.shared.theme.font(size: size)
+    }
+
+    /// 卡片标题字体（随主题切换）。
+    static var cardTitle: Font {
+        ThemeManager.shared.theme.titleFont
+    }
 }
 
 // MARK: - 语义色

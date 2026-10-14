@@ -44,9 +44,16 @@ struct MyTextField: View {
                     .allowsHitTesting(false)
             }
 
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(foregroundColor, lineWidth: 1.5, antialiased: false)
-                .allowsHitTesting(false)
+            if ThemeManager.shared.theme.isNativeStyle {
+                // 原生风格聚焦环
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color.accentColor.opacity(focused ? 0.7 : 0), lineWidth: 2)
+                    .allowsHitTesting(false)
+            } else {
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(foregroundColor, lineWidth: 1.5, antialiased: false)
+                    .allowsHitTesting(false)
+            }
         }
         .onHover { hovered = $0 }
         .animation(.linear(duration: 0.1), value: hovered)
@@ -56,7 +63,12 @@ struct MyTextField: View {
                 self.text = newValue.replacingOccurrences(of: "\n", with: "")
             }
         }
-        .background(backgroundColor)
+        .background(
+            ThemeManager.shared.theme.isNativeStyle
+                ? Color.primary.opacity(focused ? 0.08 : 0.05)
+                : backgroundColor,
+            in: RoundedRectangle(cornerRadius: ThemeManager.shared.theme.isNativeStyle ? 6 : 4)
+        )
         .frame(height: 26)
     }
 

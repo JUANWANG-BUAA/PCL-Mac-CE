@@ -58,15 +58,16 @@ struct MyListItem<Content: View>: View {
             .padding(4)
             .contentShape(Rectangle())
             .background {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(hovered ? Color.color2.opacity(0.1) : .clear)
+                let isNative = ThemeManager.shared.theme.isNativeStyle
+                RoundedRectangle(cornerRadius: isNative ? 6 : 4)
+                    .fill(hovered ? (isNative ? Color.primary.opacity(0.06) : Color.color2.opacity(0.1)) : .clear)
                     .scaleEffect(backgroundScale)
                     .allowsHitTesting(false)
             }
             .onHover { hovered in
                 withAnimation(.spring(response: 0.2)) {
                     self.hovered = hovered
-                    if hovered {
+                    if hovered || ThemeManager.shared.theme.isNativeStyle {
                         backgroundScale = 1
                     } else {
                         backgroundScale = 0.92
