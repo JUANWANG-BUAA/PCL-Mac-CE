@@ -1,0 +1,22 @@
+[book]
+title = "PCL.Mac 现状架构手册"
+authors = ["JUANWANG"]
+description = "PCL.Mac v1.1.1（dev 基线）的 as-is 文档：分层架构、全部外部接口契约、鉴权与 Token 链路、持久化模型、风险与死依赖清单"
+language = "zh"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+preferred-dark-theme = "navy"
+default-theme = "light"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[output.html.fold]
+enable = true
+level = 1
