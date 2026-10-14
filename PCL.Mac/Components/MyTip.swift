@@ -11,10 +11,14 @@ import SwiftUI
 struct MyTip: View {
     private let text: String
     private let theme: Theme
+    private let actionLabel: String?
+    private let action: (() -> Void)?
     
-    init(text: String, theme: Theme) {
+    init(text: String, theme: Theme, actionLabel: String? = nil, action: (() -> Void)? = nil) {
         self.text = text
         self.theme = theme
+        self.actionLabel = actionLabel
+        self.action = action
     }
     
     var body: some View {
@@ -23,12 +27,19 @@ struct MyTip: View {
                 .fill(theme.borderColor)
                 .frame(width: 3)
             MyText(text, color: theme.foregroundColor)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, Spacing.md)
                 .padding(.vertical, 9)
             Spacer(minLength: 0)
+            if let actionLabel, let action {
+                MyButton(actionLabel, textPadding: .init(top: -1, leading: 6, bottom: -1, trailing: 6)) {
+                    action()
+                }
+                .frame(height: 22)
+                .padding(.trailing, 10)
+            }
         }
         .background(theme.backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 2))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.xs))
         .fixedSize(horizontal: false, vertical: true)
     }
     

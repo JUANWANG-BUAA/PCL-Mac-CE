@@ -10,18 +10,28 @@ import Core
 
 struct ResourcesSearchPage: View {
     @StateObject private var viewModel: ResourcesSearchViewModel
+    @EnvironmentObject private var instanceManager: InstanceManager
     @State private var currentPage: Int = 0
+    private let context: InstallContext
     
-    init(type: ResourceType) {
+    init(type: ResourceType, context: InstallContext = .general) {
         self._viewModel = StateObject(wrappedValue: .init(type: type))
+        self.context = context
+    }
+    
+    /// 实例定向模式下的目标实例。
+    private var targetInstance: MinecraftInstance? {
+        guard case .instance(let id) = context else { return nil }
+        return instanceManager.repositories.values.lazy.compactMap { $0.instance(named: id) }.first
     }
     
     var body: some View {
         CardContainer {
+            modeTip
             if viewModel.type == .shader {
-                MyTip(text: "光影包需要搭配光影加载器使用。\n详细教程：https://cylorine.studio/helps/shader", theme: .blue)
+                MyTip(text: "光影包需要搭配光影加载器使用。\n详细教程：\(WebLinks.CylorineSite.shaderHelp.absoluteString)", theme: .blue)
                     .onTapGesture {
-                        NSWorkspace.shared.open(URL(string: "https://cylorine.studio/helps/shader")!)
+                        NSWorkspace.shared.open(WebLinks.CylorineSite.shaderHelp)
                     }
             }
             MySearchBox(placeholder: "搜索\(viewModel.type.localizedName)") { query in
@@ -46,7 +56,7 @@ struct ResourcesSearchPage: View {
                             ForEach(searchResults) { project in
                                 ProjectListItemView(project: project)
                                     .onTapGesture {
-                                        AppRouter.shared.append(.projectInstall(project: project))
+                                        AppRouter.shared.append(.projectInstall(project: project, context: context))
                                     }
                             }
                         }
@@ -80,6 +90,33 @@ struct ResourcesSearchPage: View {
                 }
             }
         }
+    }
+    
+    /// 下载模式提示条：实例定向模式显示目标实例与退出入口；普通模式不显示。
+    @ViewBuilder
+    private var modeTip: some View {
+        switch context {
+        case .instance:
+            if let instance = targetInstance {
+                MyTip(
+                    text: "实例定向下载：正在为「\(instance.name)」（\(instance.version.id)\(instance.modLoader.map { " · \($0)" } ?? "")）挑选\(viewModel.type.localizedName)，列表仅显示兼容版本",
+                    theme: .blue,
+                    actionLabel: "退出实例模式"
+                ) {
+                    exitInstanceMode()
+                }
+            } else {
+                MyTip(text: "目标实例不存在，已按普通下载模式浏览。", theme: .yellow)
+            }
+        case .general:
+            EmptyView()
+        }
+    }
+    
+    /// 退出实例定向模式，回到普通下载（同一页面就地切换上下文）。
+    private func exitInstanceMode() {
+        AppRouter.shared.removeLast()
+        AppRouter.shared.append(.resourceDownload(type: viewModel.type, context: .general))
     }
 }
 

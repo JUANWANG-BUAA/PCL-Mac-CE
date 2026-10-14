@@ -11,6 +11,8 @@ import Core
 struct MinecraftInstallOptionsPage: View {
     @StateObject private var viewModel: MinecraftInstallOptionsViewModel
     @StateObject private var instanceVM: InstanceViewModel
+    /// 防止快速连点“开始下载”导致创建两个同名实例的任务。
+    @State private var isDownloading: Bool = false
     
     init(instanceManager: InstanceManager, version: VersionManifest.Version) {
         self._viewModel = .init(wrappedValue: .init(instanceManager: instanceManager, version: version))
@@ -54,10 +56,12 @@ struct MinecraftInstallOptionsPage: View {
         }
         .overlay(alignment: .bottom) {
             MyExtraTextButton(icon: .iconDownloadPage, imageSize: 20, text: "开始下载") {
+                guard !isDownloading else { return }
                 if let errorMessage = viewModel.errorMessage {
                     hint(errorMessage, type: .critical)
                     return
                 }
+                isDownloading = true
                 let repository = instanceVM.currentRepository
                 let version: MinecraftVersion = .init(viewModel.version.id)
                 TaskManager.shared.execute(task: MinecraftInstallTask.create(name: viewModel.name, version: version, repository: repository, modLoader: viewModel.loader) { instance in
@@ -103,13 +107,7 @@ private struct ModLoaderCard: View {
             ZStack(alignment: .topLeading) {
                 MyCard(type.description, foldable: loadState == .finished, folded: true) {
                     if let versions {
-                        MyList(items: versions.map { ListItem(image: type.icon, name: $0.id, description: $0.beta ? "测试版" : "稳定版") }) { index in
-                            if let index {
-                                currentLoader = MinecraftInstallTask.Loader(type: type, version: versions[index].id)
-                            } else {
-                                currentLoader = nil
-                            }
-                        }
+                        MyList(items: versions.map { ListItem(image: type.icon, name: $0.id, description: $0.beta ? "测试版" : "稳定版") }, selection: listSelection(versions))
                     }
                 }
                 .disableCardAppearAnimation()
@@ -132,6 +130,27 @@ private struct ModLoaderCard: View {
         .task(id: type) {
             await loadVersions()
         }
+    }
+    
+    /// 受控选择：由共享的 `currentLoader` 派生本卡的高亮状态，
+    /// 保证 Fabric / Forge / NeoForge 三张卡片的选择视觉互斥。
+    private func listSelection(_ versions: [Version]) -> Binding<Int?> {
+        .init(
+            get: {
+                guard let currentLoader, currentLoader.type == type,
+                      let index: Int = versions.firstIndex(where: { $0.id == currentLoader.version }) else {
+                    return nil
+                }
+                return index
+            },
+            set: { newIndex in
+                if let newIndex {
+                    currentLoader = MinecraftInstallTask.Loader(type: type, version: versions[newIndex].id)
+                } else if currentLoader?.type == type {
+                    currentLoader = nil
+                }
+            }
+        )
     }
     
     private func loadVersions() async {

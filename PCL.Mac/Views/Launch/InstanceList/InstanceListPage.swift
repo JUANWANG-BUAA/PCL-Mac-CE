@@ -97,9 +97,10 @@ struct InstanceListPage: View {
     private func instanceList(_ instances: [MinecraftInstance]) -> some View {
         VStack(spacing: 0) {
             ForEach(instances, id: \.name) { instance in
-                InstanceView(instance: instance)
+                InstanceView(instance: instance, isCurrent: instance.id == instanceVM.currentInstance?.id)
                     .onTapGesture {
                         instanceVM.switchInstance(to: instance, in: viewModel.repository)
+                        hint("已选择实例「\(instance.name)」", type: .finish)
                         AppRouter.shared.removeLast()
                     }
             }
@@ -126,10 +127,12 @@ private struct InstanceView: View {
     private let name: String
     private let version: MinecraftVersion
     private let icon: ImageResource
+    private let isCurrent: Bool
     
-    init(instance: MinecraftInstance) {
+    init(instance: MinecraftInstance, isCurrent: Bool) {
         self.name = instance.name
         self.version = instance.version
+        self.isCurrent = isCurrent
         if let modLoader = instance.modLoader {
             self.icon = modLoader.icon
         } else {
@@ -138,6 +141,6 @@ private struct InstanceView: View {
     }
     
     var body: some View {
-        MyListItem(.init(image: icon, name: name, description: version.id))
+        MyListItem(.init(image: icon, name: name, description: isCurrent ? "\(version.id) · 当前选择" : version.id), selected: isCurrent)
     }
 }

@@ -8,6 +8,21 @@
 import SwiftUI
 import Core
 
+/// 资源下载的上下文，区分「普通下载」与「实例定向下载」两种模式。
+enum InstallContext: Hashable, Equatable, CustomStringConvertible {
+    /// 普通下载：不预设目标实例，可选择下载到缓存或安装时再选实例。
+    case general
+    /// 实例定向下载：已锁定目标实例（`id` 为实例目录名）。
+    case instance(id: String)
+    
+    var description: String {
+        switch self {
+        case .general: "general"
+        case .instance(let id): "instance:\(id)"
+        }
+    }
+}
+
 enum AppRoute: Identifiable, Hashable, Equatable {
     // 根页面
     case launch, download, multiplayer, settings, more, tasks
@@ -19,8 +34,10 @@ enum AppRoute: Identifiable, Hashable, Equatable {
     case instanceConfig(id: String), installedResources(id: String, type: ResourceType)
     
     // 下载页面的子页面
-    case minecraftDownload, minecraftInstallOptions(version: VersionManifest.Version), modDownload, resourcepackDownload, shaderpackDownload, modpackDownload
-    case projectInstall(project: ProjectListItemModel)
+    case minecraftDownload, minecraftInstallOptions(version: VersionManifest.Version)
+    /// 资源搜索页（Mod / 资源包 / 光影包 / 整合包），`context` 区分普通下载与实例定向下载。
+    case resourceDownload(type: ResourceType, context: InstallContext)
+    case projectInstall(project: ProjectListItemModel, context: InstallContext)
     
     // 联机页面的子页面
     case multiplayerSub, multiplayerSettings
@@ -54,7 +71,7 @@ class AppRouter: ObservableObject {
         case .instanceList: "实例列表"
         case .instanceSettings(let id), .instanceConfig(let id), .installedResources(let id, _): "实例设置 - \(id)"
         case .minecraftInstallOptions(let version): "游戏安装 - \(version.id)"
-        case .projectInstall(let project): "资源下载 - \(project.title)"
+        case .projectInstall(let project, _): "资源下载 - \(project.title)"
         default: "错误：当前页面（\(last)）没有标题，请报告此问题！"
         }
     }
@@ -110,17 +127,12 @@ struct AppRouterView: View {
             MinecraftDownloadPage()
         case .minecraftInstallOptions(let version):
             MinecraftInstallOptionsPage(instanceManager: instanceManager, version: version)
-        case .modDownload:
-            ResourcesSearchPage(type: .mod)
-        case .resourcepackDownload:
-            ResourcesSearchPage(type: .resourcepack)
-        case .shaderpackDownload:
-            ResourcesSearchPage(type: .shader)
-        case .modpackDownload:
-            ResourcesSearchPage(type: .modpack)
-        case .projectInstall(let project):
-            ResourceInstallPage(instanceManager: instanceManager, project: project)
-                .id(project)
+        case .resourceDownload(let type, let context):
+            ResourcesSearchPage(type: type, context: context)
+                .id("\(type.rawValue)@\(context)")
+        case .projectInstall(let project, let context):
+            ResourceInstallPage(instanceManager: instanceManager, project: project, context: context)
+                .id("\(project.id)@\(context)")
         case .tasks:
             TasksPage()
         case .instanceList(let repositoryId):
@@ -164,7 +176,7 @@ struct AppSidebarView: View {
         case .launch: LaunchSidebar(instanceManager: instanceManager)
         case .instanceList: InstanceListSidebar(instanceManager: instanceManager)
         case .instanceSettings(let id), .instanceConfig(let id), .installedResources(let id, _): InstanceSettingsSidebar(id: id)
-        case .minecraftDownload, .modDownload, .resourcepackDownload, .shaderpackDownload, .modpackDownload: DownloadSidebar()
+        case .minecraftDownload, .resourceDownload: DownloadSidebar()
         case .multiplayer, .multiplayerSub, .multiplayerSettings: MultiplayerSidebar()
         case .settings, .launcherSettings, .javaSettings, .otherSettings: SettingsSidebar()
         case .more, .about, .toolbox: MoreSidebar()

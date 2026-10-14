@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AppKit
 import Core
 import Combine
 
@@ -24,7 +25,7 @@ class InstalledResourcesViewModel: ObservableObject {
     private var convertTask: Task<Void, Never>?
     private var searchKeyword: String = ""
     private let instance: MinecraftInstance?
-    private let id: String
+    let id: String
     private let entriesPerPage: Int = 20
     
     private let service: ResourceLoadService
@@ -116,6 +117,7 @@ class InstalledResourcesViewModel: ObservableObject {
     }
     
     func toggleDisabled(_ resource: ResourceDisplayModel) throws {
+        let oldURL: URL = resource.url
         let newURL: URL
         if resource.disabled {
             newURL = resource.url.deletingPathExtension()
@@ -127,6 +129,18 @@ class InstalledResourcesViewModel: ObservableObject {
         try FileManager.default.moveItem(at: resource.url, to: newURL)
         resource.disabled.toggle()
         resource.url = newURL
+        // 同步缓存中的 URL，否则删除/搜索会引用旧路径
+        if let index = loadResult?.firstIndex(where: { $0.0 == oldURL }) {
+            loadResult?[index].0 = newURL
+        }
+    }
+    
+    /// 删除一个已安装的资源文件（移到废纸篓），并同步刷新列表。
+    func deleteResource(_ resource: ResourceDisplayModel) async throws {
+        try await NSWorkspace.shared.recycle([resource.url])
+        log("已删除资源 \(resource.fileName)")
+        loadResult?.removeAll { $0.0 == resource.url }
+        updateResources()
     }
     
     func loadInfo(for resource: ResourceDisplayModel) async throws -> ProjectListItemModel? {

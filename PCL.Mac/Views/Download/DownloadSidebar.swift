@@ -10,8 +10,15 @@ import Core
 
 struct DownloadSidebar: Sidebar {
     @EnvironmentObject private var minecraftDownloadPageViewModel: MinecraftDownloadPageViewModel
+    @ObservedObject private var router: AppRouter = .shared
     
     let width: CGFloat = 150
+    
+    /// 当前下载上下文：在实例定向模式下切换资源类型时保留目标实例。
+    private var context: InstallContext {
+        if case .resourceDownload(_, let context) = router.last { return context }
+        return .general
+    }
     
     var body: some View {
         VStack(spacing: 4) {
@@ -34,10 +41,10 @@ struct DownloadSidebar: Sidebar {
                 .padding(.leading, 13)
                 .padding(.top, 20)
             MyNavigationList(
-                .init(.modDownload, .iconMod, "Mod"),
-                .init(.resourcepackDownload, .iconPicture, "资源包"),
-                .init(.shaderpackDownload, .iconSun, "光影包"),
-                .init(.modpackDownload, .iconBox, "整合包")
+                .init(.resourceDownload(type: .mod, context: context), .iconMod, "Mod"),
+                .init(.resourceDownload(type: .resourcepack, context: context), .iconPicture, "资源包"),
+                .init(.resourceDownload(type: .shader, context: context), .iconSun, "光影包"),
+                .init(.resourceDownload(type: .modpack, context: context), .iconBox, "整合包")
             )
             Spacer()
         }

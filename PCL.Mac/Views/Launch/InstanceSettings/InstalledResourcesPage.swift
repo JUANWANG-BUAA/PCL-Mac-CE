@@ -50,9 +50,9 @@ struct InstalledResourcesPage: View {
             } else {
                 CardContainer {
                     if viewModel.type == .shader {
-                        MyTip(text: "光影包需要搭配光影加载器使用。\n详细教程：https://cylorine.studio/helps/shader", theme: .blue)
+                        MyTip(text: "光影包需要搭配光影加载器使用。\n详细教程：\(WebLinks.CylorineSite.shaderHelp.absoluteString)", theme: .blue)
                             .onTapGesture {
-                                NSWorkspace.shared.open(URL(string: "https://cylorine.studio/helps/shader")!)
+                                NSWorkspace.shared.open(WebLinks.CylorineSite.shaderHelp)
                             }
                     }
                     
@@ -62,6 +62,10 @@ struct InstalledResourcesPage: View {
                     
                     MyCard(nil) {
                         HStack {
+                            MyButton("下载\(viewModel.type.localizedName)", type: .highlight) {
+                                downloadMore()
+                            }
+                            .frame(width: 150)
                             MyButton("打开文件夹") {
                                 if let directory = viewModel.directory() {
                                     NSWorkspace.shared.open(directory)
@@ -114,6 +118,12 @@ struct InstalledResourcesPage: View {
         .onDisappear {
             viewModel.resources = nil
         }
+    }
+    
+    /// 跳转到下载页对应类型的搜索页，并带上本实例的定向上下文。
+    private func downloadMore() {
+        AppRouter.shared.setRoot(.download)
+        AppRouter.shared.append(.resourceDownload(type: viewModel.type, context: .instance(id: viewModel.id)))
     }
 }
 
@@ -176,6 +186,7 @@ private struct ResourceListItem: View {
                     }
                     ListItemButton(.resource(resource.disabled ? .btnEnable : .btnDisable), clickPerform: toggleDisabled)
                         .animation(.easeInOut(duration: 0.1), value: resource.disabled)
+                    ListItemButton(.system("trash"), clickPerform: deleteResource)
                 }
                 .padding(.horizontal, 4)
                 .allowsHitTesting(hovered)
@@ -191,7 +202,7 @@ private struct ResourceListItem: View {
                     hint("未找到 \(resource.fileName) 对应的远端资源信息！", type: .critical)
                     return
                 }
-                AppRouter.shared.append(.projectInstall(project: info))
+                AppRouter.shared.append(.projectInstall(project: info, context: .instance(id: viewModel.id)))
             } catch {
                 err("获取资源信息失败：\(error.localizedDescription)")
                 hint("获取资源信息失败：\(error.localizedDescription)", type: .critical)
@@ -206,6 +217,26 @@ private struct ResourceListItem: View {
             let type = resource.disabled ? "启用" : "禁用"
             err("\(type)资源失败：\(error.localizedDescription)")
             hint("\(type)资源失败：\(error.localizedDescription)", type: .critical)
+        }
+    }
+    
+    private func deleteResource() {
+        Task {
+            let result = await MessageBoxManager.shared.showTextAsync(
+                title: "删除资源",
+                content: "确定要删除 \(resource.fileName) 吗？\n此操作会将文件移动到废纸篓，不可撤销。",
+                level: .info,
+                .no(),
+                .yes(label: "删除", type: .red)
+            )
+            guard result == 1 else { return }
+            do {
+                try await viewModel.deleteResource(resource)
+                hint("删除 \(resource.fileName) 成功！", type: .finish)
+            } catch {
+                err("删除资源失败：\(error.localizedDescription)")
+                hint("删除资源失败：\(error.localizedDescription)", type: .critical)
+            }
         }
     }
 }

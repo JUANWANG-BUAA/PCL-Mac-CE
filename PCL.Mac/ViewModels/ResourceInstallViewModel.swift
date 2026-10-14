@@ -6,9 +6,10 @@
 //
 
 import Foundation
-import Core
+@preconcurrency import Core
 import ZIPFoundation
 
+@MainActor
 class ResourceInstallViewModel: ObservableObject {
     public typealias VersionGroup = (VersionMapKey, [ProjectVersionModel])
     public typealias VersionList = [VersionGroup]
@@ -134,6 +135,29 @@ class ResourceInstallViewModel: ObservableObject {
                 )
             }
         )
+    }
+    
+    /// 创建普通下载任务：把资源下载到下载缓存目录（不绑定任何实例）。
+    public func createCacheDownloadTask(forVersion version: ProjectVersionModel) throws -> (task: MyTask<EmptyModel>, destination: URL) {
+        guard let primaryFile = version.primaryFile else {
+            throw SimpleError("这个版本中没有主要文件！")
+        }
+        
+        let destination: URL = URLConstants.downloadCacheURL
+            .appending(path: project.type.saveDirectory ?? "")
+            .appending(path: primaryFile.name)
+        let task: MyTask<EmptyModel> = .init(
+            name: "下载 - \(project.title) \(version.version)",
+            .init(0, "下载文件") { task, _ in
+                try await FileDownloader.shared.download(
+                    url: primaryFile.url,
+                    destination: destination,
+                    sha1: primaryFile.sha1,
+                    progressHandler: task.setProgress(_:)
+                )
+            }
+        )
+        return (task, destination)
     }
     
     public struct VersionMapKey: Hashable, Equatable, Comparable, Identifiable, CustomStringConvertible {
