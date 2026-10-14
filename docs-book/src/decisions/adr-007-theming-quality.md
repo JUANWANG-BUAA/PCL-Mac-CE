@@ -228,3 +228,25 @@
 亦然）。本方案（失焦期全窗自绘遮罩 + 激活后自动揭幕）是该观感取向下的唯一完整解。
 
 验证：构建 ✅ · SwiftLint 修改文件 0 违规 · 全量测试 ✅。
+
+## 十一、补充六：Architecture 重构的回归修复（thin 二进制解析）
+
+**上文的 `Architecture.architecture(of:)` 重构（复杂度治理表）遗漏了一处语义**：
+原实现读 magic 判定 fat 后，会**再读紧随其后的 4 字节作为 cputype**；重构后写成
+`architecture(forCPUType: magic)`——magic（0xFEEDFACF 等）与 CPU_TYPE
+（0x01000007 / 0x0100000C）永不可能相等，**所有 thin（非 Universal）二进制被判为
+`.unknown`**。字节序处理确实逐一保留了，但"magic ≠ cputype"没被核对到。
+
+后果：本机全部 arm64 JDK（thin）无法被 Java 搜索识别 → 启动预检失败
+"没有可用的 Java"；`FileUtils.isExecutable`（EasyTier 校验）同受影响。
+Universal（fat）二进制路径无恙，这也是它未被早日发现的原因。
+
+修复与护栏：恢复"magic 之后再读 cputype"语义；新增 `ArchitectureTests`
+（合成 Mach-O 头，thin arm64/x64 两例对旧代码必然失败）；
+`JavaSearchTests` 增加架构解析一致性断言。详见 `82a1562`。
+
+排查教训（勿重走）：**架构解析这类"跨过一关再读下一关"的解析器，重构时除了
+字节序，还要核对"每个字段被当作什么语义使用"**；静默的 `.unknown` 兜底会把
+解析错误掩盖成"空列表"类业务现象（Java 没了、可执行判断失败），日志里的
+`加载 Java 失败：missingExecutableFile` 是本次的第一线索。上表"字节序处理
+逐一核对保留"的说法应修正为：**字节序保留，但语义使用点曾整体错位，已修复并加测试**。
