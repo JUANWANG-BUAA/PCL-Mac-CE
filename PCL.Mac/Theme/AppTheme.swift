@@ -40,8 +40,9 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
     var isNativeStyle: Bool { self == .liquidGlass }
 
     /// 界面字体（原生风格使用系统字体 SF Pro，经典主题使用 PCL 品牌字体）。
+    /// 原生风格字号整体 -1：SF Pro 相比 PCLEnglish 视觉更大，13pt 接近 macOS 正文标准。
     func font(size: CGFloat) -> Font {
-        isNativeStyle ? .system(size: size, weight: .regular) : .custom("PCLEnglish", size: size)
+        isNativeStyle ? .system(size: max(size - 1, 9), weight: .regular) : .custom("PCLEnglish", size: size)
     }
 
     /// 卡片与区块标题字体。
@@ -52,6 +53,11 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
     /// 卡片背景。
     var cardBackground: AnyShapeStyle {
         isNativeStyle ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(Color.colorGray8)
+    }
+
+    /// 卡片圆角半径（原生风格使用 macOS 卡片标准的 10pt）。
+    var cardCornerRadius: CGFloat {
+        isNativeStyle ? 10 : Radius.lg
     }
 
     /// 卡片描边（原生风格为细边框，经典主题无描边）。

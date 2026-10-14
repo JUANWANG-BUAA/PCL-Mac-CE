@@ -50,6 +50,6 @@ struct MySearchBox: View {
                 }
             }
         }
-        .frame(height: 40)
+        .frame(height: ThemeManager.shared.theme.isNativeStyle ? 34 : 40)
     }
 }

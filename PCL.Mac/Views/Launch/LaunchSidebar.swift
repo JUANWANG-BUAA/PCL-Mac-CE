@@ -323,7 +323,7 @@ struct LaunchSidebar: Sidebar {
                     MyText("你知道吗", size: 12.5)
                         .opacity(0.5)
                         .padding(.horizontal, 10)
-                        .background(.white)
+                        .background(ThemeManager.shared.theme.isNativeStyle ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.white))
                         .offset(y: -8)
                 }
                 MyText("这是一段测试用的小提示文本，它应该足够长以让它有两行。", size: 12.5)

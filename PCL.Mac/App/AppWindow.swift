@@ -7,12 +7,15 @@
 
 import SwiftUI
 import Core
+import Combine
 
 private let osMajorVersion = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
 
 class AppWindow: NSWindow, NSWindowDelegate {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    private var cancellables: Set<AnyCancellable> = []
 
     init(instanceManager: InstanceManager) {
         super.init(
@@ -22,8 +25,17 @@ class AppWindow: NSWindow, NSWindowDelegate {
         )
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
+        // 允许在自绘顶栏的空白区域拖动窗口（原生体验）
+        self.isMovableByWindowBackground = true
 
-        self.standardWindowButton(.zoomButton)?.isHidden = true
+        // 缩放按钮：原生风格显示（可最大化/全屏），经典主题保持隐藏；主题切换时实时更新
+        self.standardWindowButton(.zoomButton)?.isHidden = !ThemeManager.shared.theme.isNativeStyle
+        ThemeManager.shared.$theme
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] theme in
+                self?.standardWindowButton(.zoomButton)?.isHidden = !theme.isNativeStyle
+            }
+            .store(in: &cancellables)
 
         self.contentView = NSHostingView(rootView: RootView(instanceManager: instanceManager))
         self.delegate = self

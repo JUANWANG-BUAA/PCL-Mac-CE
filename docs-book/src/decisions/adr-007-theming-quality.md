@@ -105,3 +105,25 @@
 （`MyButton`/`MyListItem`/`MyNavigationList`/`MyTip`/`MyTextField`/`MySelect`/
 `TitleBarView`/`WindowButton`/`MessageBoxView`/`HintView`），
 主题切换经根视图重建即时生效。
+
+## 七、HIG 对齐二轮（差距审计）
+
+对照 macOS HIG 的二轮审计与修正：
+
+| 差距 | 修正 |
+|---|---|
+| **AccentColor 资产为空**（聚焦环/强调色无定义，且空资产会覆盖系统偏好） | 填充品牌蓝（含深色外观变体 `0.176,0.569,1.0`） |
+| **正文 14pt 偏大**（macOS 正文为 13pt） | 原生风格字号整体 -1（`font(size:)` 内 `max(size-1, 9)`） |
+| 卡片圆角 5pt（偏小） | 原生风格 10pt（`cardCornerRadius` 主题化） |
+| 搜索框 40pt 偏大 | 原生 34pt |
+| **自绘顶栏无法拖动窗口**（fullSizeContentView 下仅标准 titlebar 区可拖） | `isMovableByWindowBackground = true` |
+| 缩放（绿灯）按钮被隐藏 | 原生主题显示（含全屏能力）；经典主题保持隐藏；**主题切换经 Combine 实时同步** |
+| 侧栏材质带 2pt 阴影（系统侧栏无阴影） | 原生风格阴影为 0 |
+| 卡片折叠箭头固定色 | 随主题前景色（原生为深色半透明） |
+| 提示气泡纯白底 | 原生材质底 |
+
+## 八、同步修复的 Bug（主题轮发现）
+
+- **RootView 每次求值新建 VM**：`environmentObject(MinecraftDownloadPageViewModel())`
+  等三处在 body 求值时构造新实例，配合 `.id(theme)` 重建会导致
+  下载页/联机状态、卡片交互状态被意外重置——已提升为 `@StateObject`（生命周期稳定）。

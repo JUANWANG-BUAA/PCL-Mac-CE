@@ -190,7 +190,7 @@ struct AppSidebarView: View {
             Rectangle()
                 .fill(ThemeManager.shared.theme.sidebarBackground)
                 .frame(width: width)
-                .shadow(radius: 2)
+                .shadow(radius: ThemeManager.shared.theme.isNativeStyle ? 0 : 2)
                 .zIndex(10)
 
             AnyView(sidebar)

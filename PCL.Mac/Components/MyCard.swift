@@ -83,6 +83,11 @@ struct MyCard<Content: View, Action: View>: View {
                             .resizable()
                             .frame(width: 10, height: 6)
                             .rotationEffect(.degrees(folded ? 0 : -180), anchor: .center)
+                            .foregroundStyle(
+                                appearFinished && !disableHoverAnimation && showHovered
+                                    ? Color.color2
+                                    : (ThemeManager.shared.theme.isNativeStyle ? Color.primary.opacity(0.55) : Color.color1)
+                            )
                     } else {
                         action()
                     }
@@ -170,7 +175,7 @@ struct MyCard<Content: View, Action: View>: View {
         }
         .background {
             let theme = ThemeManager.shared.theme
-            let shape = RoundedRectangle(cornerRadius: Radius.lg)
+            let shape = RoundedRectangle(cornerRadius: theme.cardCornerRadius)
             shape
                 .fill(theme.cardBackground)
                 .overlay {
