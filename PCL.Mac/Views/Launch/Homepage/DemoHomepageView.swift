@@ -11,7 +11,7 @@ struct DemoHomepageView: View {
     @StateObject private var loadingModel: MyLoadingViewModel = .init(text: "MyLoading 测试")
     @State private var selectedEntry: String = "下拉选择框"
     @State private var input: String = ""
-    
+
     private let listItems: [ListItem] = [
         .init(name: "name1", description: "desc1"),
         .init(name: "name2", description: "desc2"),
@@ -27,7 +27,7 @@ struct DemoHomepageView: View {
         .init(name: "name3", description: "desc3")
     ]
     private let entries = ["下拉选择框"] + Array(0..<10).map { "entry\($0)" }
-    
+
     var body: some View {
         CardContainer {
             MyTip(text: "这是一个用于预览与测试控件的主页！", theme: .blue)
@@ -57,19 +57,19 @@ struct DemoHomepageView: View {
                 MyText("该卡片默认展开")
             }
             .cardIndex(1)
-            
+
             MyCard(nil) {
                 MyText("不可折叠也没有标题的卡片")
             }
             .cardIndex(2)
-            
+
             MyCard(nil) {
                 HStack {
                     MyButton(".tasks") {
                         AppRouter.shared.append(.tasks)
                     }
                     .frame(width: 120)
-                    
+
                     MyButton("弹窗") {
                         Task {
                             _ = await MessageBoxManager.shared.showTextAsync(
@@ -80,7 +80,7 @@ struct DemoHomepageView: View {
                                 },
                                 .yes(type: .highlight),
                             )
-                            
+
                             let index: Int? = await MessageBoxManager.shared.showListAsync(title: "列表选择", items: listItems)
                             let text: String? = await MessageBoxManager.shared.showInputAsync(title: "文本输入", initialContent: "111", placeholder: "请输入文本")
                             if let index {
@@ -92,7 +92,7 @@ struct DemoHomepageView: View {
                         }
                     }
                     .frame(width: 120)
-                    
+
                     MyButton("错误弹窗", type: .red) {
                         MessageBoxManager.shared.showText(
                             title: "Minecraft 发生崩溃",
@@ -105,10 +105,10 @@ struct DemoHomepageView: View {
                 .frame(height: 40)
             }
             .cardIndex(3)
-            
+
             MyLoading(viewModel: loadingModel)
                 .cardIndex(4)
-            
+
             MyCard("修改 MyLoading 状态", foldable: false) {
                 HStack(spacing: 22) {
                     MyButton("fail()", type: .red) { loadingModel.fail(with: "加载失败") }
@@ -120,7 +120,7 @@ struct DemoHomepageView: View {
                 .frame(height: 35)
             }
             .cardIndex(5)
-            
+
             MyCard("弹出 hint", foldable: false) {
                 HStack(spacing: 22) {
                     MyButton("info") { hint("这是一条 info 类型的 hint！", type: .info) }
@@ -134,7 +134,7 @@ struct DemoHomepageView: View {
                 .frame(height: 36)
             }
             .cardIndex(6)
-            
+
             MyCard("其它控件", folded: false) {
                 MySelect($selectedEntry, entries: entries)
                 MyTextField(text: $input, placeholder: "文本输入框")

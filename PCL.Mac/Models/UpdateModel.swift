@@ -12,7 +12,7 @@ struct UpdateModel: Codable {
         public let name: String
         public let url: URL
     }
-    
+
     public struct Version: Codable {
         public struct Downloads: Codable {
             public let github: URL
@@ -20,13 +20,13 @@ struct UpdateModel: Codable {
             public let size: Int
             public let sha1: String
         }
-        
+
         public let name: String
         public let bundleVersion: Int
         public let summary: String
         public let updateLogLinks: [Link]
         public let downloads: Downloads
     }
-    
+
     public let latestVersion: Version
 }

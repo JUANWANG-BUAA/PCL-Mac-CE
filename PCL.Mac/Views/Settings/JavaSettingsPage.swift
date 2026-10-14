@@ -10,7 +10,7 @@ import Core
 
 struct JavaSettingsPage: View {
     @StateObject private var viewModel: JavaSettingsViewModel = .init()
-    
+
     var body: some View {
         CardContainer {
             MyCard(nil) {
@@ -25,7 +25,7 @@ struct JavaSettingsPage: View {
                         }
                     }
                     .frame(width: 120)
-                    
+
                     MyButton("安装 Java") {
                         Task {
                             do {
@@ -44,14 +44,14 @@ struct JavaSettingsPage: View {
                         }
                     }
                     .frame(width: 120)
-                    
+
                     MyButton("手动添加 Java") {
                         let panel = NSOpenPanel()
                         panel.canChooseFiles = true
                         panel.canChooseDirectories = false
                         panel.allowsMultipleSelection = false
                         panel.title = "选择 java 可执行文件"
-                        
+
                         panel.begin { result in
                             guard result == .OK, let url = panel.url else { return }
                             do {
@@ -63,12 +63,12 @@ struct JavaSettingsPage: View {
                         }
                     }
                     .frame(width: 120)
-                    
+
                     Spacer()
                 }
                 .frame(height: 40)
             }
-            
+
             MyCard("Java 列表", folded: false) {
                 VStack(spacing: 0) {
                     ForEach(0..<viewModel.javaList.count, id: \.self) { idx in

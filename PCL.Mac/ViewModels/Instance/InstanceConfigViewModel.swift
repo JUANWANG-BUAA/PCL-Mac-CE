@@ -14,24 +14,24 @@ class InstanceConfigViewModel: ObservableObject {
     @Published public var jvmHeapSize: String = ""
     @Published public var jvmArguments: String = ""
     @Published public var javaDescription: String = "无"
-    
+
     public var description: String {
         if let modLoader: ModLoader = instance.modLoader {
             return "\(instance.version.description)，\(modLoader)"
         }
         return instance.version.description
     }
-    
+
     public var icon: ImageResource {
         if let modLoader: ModLoader = instance.modLoader {
             return modLoader.icon
         }
         return .iconGrassBlock
     }
-    
+
     public let id: String
     private let instanceManager: InstanceManager
-    
+
     public init(instanceManager: InstanceManager, id: String) {
         self.instanceManager = instanceManager
         self.id = id
@@ -42,13 +42,13 @@ class InstanceConfigViewModel: ObservableObject {
             self.javaDescription = try instance.config.javaURL.map({ try JavaSearcher.load(from: $0) })?.description ?? "无"
         } catch {}
     }
-    
+
     public func javaList() -> [JavaRuntime] {
         return JavaManager.shared.javaRuntimes
             .filter { $0.executableURL != instance.config.javaURL }
             .sorted { $0.version > $1.version }
     }
-    
+
     @MainActor
     public func setHeapSize(_ heapSize: UInt64) {
         // 限制在合理范围内：过小无法启动，过大超过物理内存
@@ -61,7 +61,7 @@ class InstanceConfigViewModel: ObservableObject {
         instance.config.jvmHeapSize = clamped
         instance.markDirty()
     }
-    
+
     /// 内存分配下限（MB）。
     private static let minHeapSizeMB: UInt64 = 512
 
@@ -80,7 +80,7 @@ class InstanceConfigViewModel: ObservableObject {
         instance.markDirty()
         javaDescription = runtime.description
     }
-    
+
     public enum Error: Swift.Error {
         case invalidJavaVersion(min: Int)
     }

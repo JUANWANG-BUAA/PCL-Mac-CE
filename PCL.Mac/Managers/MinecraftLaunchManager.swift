@@ -14,15 +14,15 @@ import AppKit
 @MainActor
 class MinecraftLaunchManager: ObservableObject {
     public static let shared: MinecraftLaunchManager = .init()
-    
+
     @Published public var isLaunching: Bool = false
     @Published public var progress: Double = 0
-    @Published public var currentStage: String? = nil
+    @Published public var currentStage: String?
     @Published public var instanceName: String?
     @Published public var gameProcess: Process?
     public var isRunning: Bool { gameProcess != nil }
     public let loadingViewModel: MyLoadingViewModel = .init(text: "正在启动游戏")
-    
+
     private var task: MyTask<MinecraftLaunchTask.Model>? {
         didSet {
             isLaunching = task != nil
@@ -30,7 +30,7 @@ class MinecraftLaunchManager: ObservableObject {
         }
     }
     private var cancellables: [AnyCancellable] = []
-    
+
     /// 开始启动游戏。
     /// - Parameters:
     ///   - instance: 目标游戏实例。
@@ -75,7 +75,7 @@ class MinecraftLaunchManager: ObservableObject {
         self.instanceName = instance.name
         self.task = task
     }
-    
+
     /// 取消当前启动任务。
     @MainActor
     public func cancel() {
@@ -83,14 +83,14 @@ class MinecraftLaunchManager: ObservableObject {
             TaskManager.shared.cancel(task.id)
         }
     }
-    
+
     public func stop() {
         if let gameProcess {
             gameProcess.terminate()
             self.gameProcess = nil
         }
     }
-    
+
     private func onGameCrash(instance: MinecraftInstance, options: LaunchOptions, logURL: URL) {
         hint("检测到 Minecraft 发生崩溃，崩溃分析已开始……", type: .critical)
         MessageBoxManager.shared.showText(
@@ -109,7 +109,7 @@ class MinecraftLaunchManager: ObservableObject {
                 panel.allowedContentTypes = [.zip]
                 panel.canCreateDirectories = true
                 panel.nameFieldStringValue = fileName
-                panel.beginSheetModal(for: NSApplication.shared.windows.first!) { result in
+                panel.beginSheetModal(for: NSApplication.shared.windows.first!) { _ in
                     guard let url: URL = panel.url else { return }
                     do {
                         try self.exportCrashReport(for: instance, to: url, with: fileName, options: options, logURL: logURL)
@@ -122,12 +122,12 @@ class MinecraftLaunchManager: ObservableObject {
             }
         }
     }
-    
+
     private func exportCrashReport(for instance: MinecraftInstance, to destination: URL, with fileName: String, options: LaunchOptions, logURL: URL) throws {
         let reportURL: URL = URLConstants.tempURL.appending(path: fileName)
         try FileManager.default.createDirectory(at: reportURL, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: reportURL) }
-        
+
         let launcherInfo: LauncherInfo = .init(
             launcher: "PCL.Mac.Refactor",
             launcherVersion: Metadata.appVersion,
@@ -136,13 +136,13 @@ class MinecraftLaunchManager: ObservableObject {
             javaArchitecture: options.javaRuntime.architecture.rawValue,
             instanceName: instance.name
         )
-        
+
         try JSONEncoder.shared.encode(launcherInfo).write(to: reportURL.appending(path: "launcher-info.json"))
-        
+
         if FileManager.default.fileExists(atPath: logURL.path) {
             try FileManager.default.moveItem(at: logURL, to: reportURL.appending(path: "game-log.log"))
         }
-        
+
         let crashReportDirectory: URL = instance.url.appending(path: "crash-reports")
         if FileManager.default.fileExists(atPath: crashReportDirectory.path) {
             let crashReports: [URL] = try FileManager.default.contentsOfDirectory(at: crashReportDirectory, includingPropertiesForKeys: [.contentModificationDateKey])
@@ -158,7 +158,7 @@ class MinecraftLaunchManager: ObservableObject {
         }
         try FileManager.default.zipItem(at: reportURL, to: destination, shouldKeepParent: false)
     }
-    
+
     private func subscribeToTask() {
         cancellables.removeAll()
         guard let task else { return }
@@ -172,13 +172,13 @@ class MinecraftLaunchManager: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.currentStage, on: self)
             .store(in: &cancellables)
-        
+
         task.$progress
             .receive(on: DispatchQueue.main)
             .assign(to: \.progress, on: self)
             .store(in: &cancellables)
     }
-    
+
     private func stageString(for ordinal: Int) -> String {
         switch ordinal {
         case 0: "检查 Java"
@@ -191,9 +191,9 @@ class MinecraftLaunchManager: ObservableObject {
         default: "\(ordinal)"
         }
     }
-    
+
     private init() {}
-    
+
     private struct LauncherInfo: Codable {
         public let launcher: String
         public let launcherVersion: String

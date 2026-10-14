@@ -12,13 +12,13 @@ import Combine
 public class AnyMyTask: ObservableObject, Identifiable {
     public typealias ModelType = any TaskModel
     public typealias SubTask = (name: String, progress: Double, state: SubTaskState)
-    
+
     public let id: UUID
     public let name: String
     public let display: Bool
     private let _subTasks: () -> [SubTask]
     private var cancellable: AnyCancellable?
-    
+
     public init<Model>(_ task: MyTask<Model>, display: Bool) where Model: TaskModel {
         self.id = task.id
         self.name = task.name
@@ -30,6 +30,6 @@ public class AnyMyTask: ObservableObject, Identifiable {
             self?.objectWillChange.send()
         }
     }
-    
+
     public var subTasks: [SubTask] { _subTasks() }
 }

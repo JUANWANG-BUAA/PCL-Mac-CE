@@ -13,11 +13,11 @@ public struct ModrinthModpackIndex: Codable {
         public let hashes: [String: String]
         public let env: [Side: ModrinthCompatibility]?
         public let downloads: [URL]
-        
+
         private enum CodingKeys: CodingKey {
             case path, hashes, env, downloads
         }
-        
+
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.path = try container.decode(String.self, forKey: .path)
@@ -35,19 +35,19 @@ public struct ModrinthModpackIndex: Codable {
             self.downloads = try container.decode([URL].self, forKey: .downloads)
         }
     }
-    
+
     public struct Dependencies: Codable, CustomStringConvertible {
         public let minecraft: String
         public let forge: String?
         public let neoforge: String?
         public let fabricLoader: String?
         public let quiltLoader: String?
-        
+
         private enum CodingKeys: String, CodingKey {
             case minecraft, forge, neoforge
             case fabricLoader = "fabric-loader", quiltLoader = "quilt-loader"
         }
-        
+
         public var description: String {
             var description: String = "Minecraft \(minecraft)"
             if let forge {
@@ -61,7 +61,7 @@ public struct ModrinthModpackIndex: Codable {
             }
             return description
         }
-        
+
         public func modLoader() -> (String, String)? {
             if let forge { return (ModLoader.forge.rawValue, forge) }
             if let neoforge { return (ModLoader.neoforge.rawValue, neoforge) }
@@ -70,7 +70,7 @@ public struct ModrinthModpackIndex: Codable {
             return nil
         }
     }
-    
+
     public let formatVersion: Int
     public let name: String
     public let summary: String?

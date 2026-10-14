@@ -19,7 +19,7 @@ struct MyList: View {
     private let items: [ListItem]
     private let selectable: Bool
     private let onSelect: ((Int?) -> Void)?
-    
+
     /// 当前的选中状态绑定：受控模式转发外部状态，非受控模式使用内部状态。
     private var selection: Binding<Int?> {
         externalSelection ?? Binding(
@@ -27,14 +27,14 @@ struct MyList: View {
             set: { internalSelection = $0 }
         )
     }
-    
+
     init(items: [ListItem], selectable: Bool = false, onSelect: ((Int?) -> Void)? = nil) {
         self.items = items
         self.externalSelection = nil
         self.selectable = selectable || onSelect != nil
         self.onSelect = onSelect
     }
-    
+
     /// 受控模式：选中状态完全由外部持有。
     init(items: [ListItem], selection: Binding<Int?>, onSelect: ((Int?) -> Void)? = nil) {
         self.items = items
@@ -42,11 +42,11 @@ struct MyList: View {
         self.selectable = true
         self.onSelect = onSelect
     }
-    
+
     init(_ items: ListItem..., selectable: Bool = false, onSelect: ((Int?) -> Void)? = nil) {
         self.init(items: items, selectable: selectable, onSelect: onSelect)
     }
-    
+
     var body: some View {
         LazyVStack(spacing: 0) {
             ForEach(0..<items.count, id: \.self) { index in

@@ -22,10 +22,10 @@ public struct JavaRuntime: CustomStringConvertible, Equatable {
     public let executableURL: URL
     /// 是否为手动添加的 Java。
     public let isCustom: Bool
-    
+
     public enum JavaType: CustomStringConvertible {
         case jdk, jre
-        
+
         public var description: String {
             switch self {
             case .jdk: "JDK"
@@ -33,13 +33,13 @@ public struct JavaRuntime: CustomStringConvertible, Equatable {
             }
         }
     }
-    
+
     public var description: String {
         if let implementor {
             return "\(type) \(version) \(architecture) (\(implementor))"
         }
         return "\(type) \(version) \(architecture)"
     }
-    
+
     public static func == (lhs: Self, rhs: Self) -> Bool { lhs.executableURL == rhs.executableURL }
 }

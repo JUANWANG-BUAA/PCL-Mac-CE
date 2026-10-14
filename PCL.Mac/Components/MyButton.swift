@@ -16,12 +16,12 @@ struct MyButton: View {
     private let type: Style
     private let disabled: Bool
     private let action: () -> Void
-    
+
     private var color: Color {
         disabled ? .colorGray4 :
         hovered ? type.hoverColor : type.color
     }
-    
+
     init(
         _ label: String,
         subLabel: String? = nil,
@@ -37,7 +37,7 @@ struct MyButton: View {
         self.disabled = disabled
         self.action = action
     }
-    
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: Radius.md)
@@ -76,10 +76,10 @@ struct MyButton: View {
                 }
         )
     }
-    
+
     enum Style {
         case normal, highlight, red
-        
+
         var color: Color {
             switch self {
             case .normal: .color1
@@ -87,7 +87,7 @@ struct MyButton: View {
             case .red: .danger
             }
         }
-        
+
         var hoverColor: Color {
             switch self {
             case .normal: .color3

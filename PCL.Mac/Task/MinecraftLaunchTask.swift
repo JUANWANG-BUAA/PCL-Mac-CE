@@ -12,13 +12,13 @@ import AppKit
 /// Minecraft 启动任务生成器。
 public enum MinecraftLaunchTask {
     private typealias SubTask = MyTask<Model>.SubTask
-    
+
     /// 弹出错误提示框后取消任务。
     private static func fail(task: SubTask, title: String, content: String) async throws {
         _ = await MessageBoxManager.shared.showTextAsync(title: title, content: content, level: .error)
         try task.cancel()
     }
-    
+
     /// 弹出“出错但可选择继续启动”确认框；用户选择取消时中止任务。
     /// - Returns: 用户是否选择继续。
     @discardableResult
@@ -33,7 +33,7 @@ public enum MinecraftLaunchTask {
         if result == 0 { try task.cancel() }
         return result == 1
     }
-    
+
     /// 创建 Minecraft 启动任务。
     /// - Parameters:
     ///   - instance: 启动的 Minecraft 实例。
@@ -57,18 +57,18 @@ public enum MinecraftLaunchTask {
             .init(6, "等待游戏窗口出现", display: false, waitForWindow(task:model:))
         )
     }
-    
+
     private static func checkJava(task: SubTask, model: Model) async throws {
         var javaRuntime: JavaRuntime? = model.instance.config.javaURL.flatMap { try? JavaSearcher.load(from: $0) }
         let minMajorVersion = model.instance.manifest.javaVersion.majorVersion
-        
+
         let systemArch = Architecture.systemArchitecture()
         let requiredArch: Architecture? = model.instance.version < .init("1.7.2") ? .x64 : (systemArch == .x64 ? .x64 : nil)
         let recommendedArch = requiredArch ?? systemArch
-        
+
         log("当前 Java 信息：\(javaRuntime?.description ?? "未配置")")
         log("当前实例需要 Java \(minMajorVersion) \(requiredArch?.description ?? "任意架构")，推荐架构：\(recommendedArch)")
-        
+
         guard let bestMatch = JavaSearcher.pick(for: model.instance) else {
             warn("未找到符合要求的 Java")
             if await MessageBoxManager.shared.showTextAsync(
@@ -85,68 +85,44 @@ public enum MinecraftLaunchTask {
             return
         }
         log("最佳 Java 搜索结果：\(bestMatch)")
-        
-        var bestMatchIssues: [String] = []
-        
-        if bestMatch.architecture != recommendedArch {
-            warn("最佳结果架构与推荐架构不一致")
-            bestMatchIssues.append("它需要通过 Rosetta 2 转译运行，这会导致性能下降，并大幅降低游戏体验。")
-        }
-        
-        func showSwitchMessageBox(_ title: String, _ reason: String, force: Bool) async throws {
-            var buttons: [MessageBoxModel.Button] = [.no(), .yes(label: "切换", type: .highlight)]
-            buttons.insert(.init(id: 2, label: "继续启动", type: .red), at: 1)
-            
-            let issueText: String
-            if bestMatchIssues.isEmpty { issueText = "" }
-            else if bestMatchIssues.count == 1 {
-                issueText = "但是\(bestMatchIssues[0])\n"
-            } else {
-                issueText = "但是：\n" + bestMatchIssues.map { " · " + $0 }.joined(separator: "\n") + "\n\n"
-            }
-            
-            let result = await MessageBoxManager.shared.showTextAsync(
-                title: title,
-                content: "\(reason)\n\nPCL.Mac 找到了一个可用的 Java：\(bestMatch)，\(issueText)是否切换并继续启动？",
-                level: force ? .error : .info,
-                buttons: buttons
-            )
-            if result == 0 { try task.cancel() }
-            
-            if result == 1 {
-                javaRuntime = bestMatch
-            }
-        }
-        
+
+        let bestMatchIssues: [String] = issuesForBestMatch(bestMatch, recommendedArch: recommendedArch)
+
         if javaRuntime == nil {
             if bestMatchIssues.isEmpty {
                 log("已将当前 Java 设为最佳结果")
                 javaRuntime = bestMatch
             } else {
-                try await showSwitchMessageBox("没有配置 Java", "你还没有为这个实例设置 Java！", force: true)
+                javaRuntime = try await confirmSwitch(
+                    to: bestMatch,
+                    issues: bestMatchIssues,
+                    prompt: .noJava,
+                    task: task
+                )
             }
         } else if javaRuntime != bestMatch {
-            var runtime: JavaRuntime! = javaRuntime
             log("正在检查当前 Java")
-            // 只显示一个问题，避免信息过多
-            var currentJavaIssue: String?
-            
-            if runtime.majorVersion < minMajorVersion {
-                currentJavaIssue = "这个实例需要 Java \(minMajorVersion) 才能启动，但你当前选择的是 Java \(runtime.majorVersion)。"
-            } else if let requiredArch, runtime.architecture != requiredArch {
-                currentJavaIssue = "这个实例需要 \(requiredArch) 架构的 Java \(minMajorVersion) 才能启动，但你当前选择的 Java 是 \(runtime.architecture) 架构的。"
+            if let issue = currentJavaIssue(for: javaRuntime, minMajorVersion: minMajorVersion, requiredArch: requiredArch) {
+                javaRuntime = try await confirmSwitch(
+                    to: bestMatch,
+                    issues: bestMatchIssues,
+                    prompt: .unsatisfied(issue),
+                    task: task
+                ) ?? javaRuntime
             }
-            
-            if let currentJavaIssue {
-                try await showSwitchMessageBox("当前 Java 不满足要求", currentJavaIssue, force: true)
-                runtime = javaRuntime
-            }
-            
-            if runtime.architecture != recommendedArch && bestMatch.architecture == recommendedArch {
-                try await showSwitchMessageBox("当前 Java 会导致性能下降", "当前实例设置的 Java（\(runtime!)）需要通过 Rosetta 2 转译运行，这会导致性能下降，并大幅降低游戏体验。", force: false)
+
+            if let runtime = javaRuntime,
+               runtime.architecture != recommendedArch,
+               bestMatch.architecture == recommendedArch {
+                javaRuntime = try await confirmSwitch(
+                    to: bestMatch,
+                    issues: bestMatchIssues,
+                    prompt: .performance(runtime: runtime),
+                    task: task
+                ) ?? javaRuntime
             }
         }
-        
+
         if let javaRuntime {
             model.instance.config.javaURL = javaRuntime.executableURL
             model.instance.markDirty()
@@ -157,7 +133,84 @@ public enum MinecraftLaunchTask {
             try task.cancel()
         }
     }
+
+    /// 检查最佳匹配 Java 存在的问题（如需要 Rosetta 转译）。
+    private static func issuesForBestMatch(_ bestMatch: JavaRuntime, recommendedArch: Architecture) -> [String] {
+        guard bestMatch.architecture != recommendedArch else { return [] }
+        warn("最佳结果架构与推荐架构不一致")
+        return ["它需要通过 Rosetta 2 转译运行，这会导致性能下降，并大幅降低游戏体验。"]
+    }
+
+    /// 检查当前选中的 Java 存在的问题；无问题时返回 `nil`（只报一个问题，避免信息过多）。
+    private static func currentJavaIssue(for javaRuntime: JavaRuntime?, minMajorVersion: Int, requiredArch: Architecture?) -> String? {
+        guard let runtime = javaRuntime else { return nil }
+        if runtime.majorVersion < minMajorVersion {
+            return "这个实例需要 Java \(minMajorVersion) 才能启动，但你当前选择的是 Java \(runtime.majorVersion)。"
+        }
+        if let requiredArch, runtime.architecture != requiredArch {
+            return "这个实例需要 \(requiredArch) 架构的 Java \(minMajorVersion) 才能启动，但你当前选择的 Java 是 \(runtime.architecture) 架构的。"
+        }
+        return nil
+    }
+
+    /// 弹出 Java 切换确认框（三按钮：切换 / 继续启动 / 取消）。
+    /// - Returns: 用户选择"切换"时返回最佳匹配；选择"继续启动"返回 `nil`；选择"取消"会抛错中止任务。
+    private static func confirmSwitch(
+        to bestMatch: JavaRuntime,
+        issues: [String],
+        prompt: SwitchPrompt,
+        task: SubTask
+    ) async throws -> JavaRuntime? {
+        var buttons: [MessageBoxModel.Button] = [.no(), .yes(label: "切换", type: .highlight)]
+        buttons.insert(.init(id: 2, label: "继续启动", type: .red), at: 1)
+
+        let issueText: String
+        if issues.isEmpty {
+            issueText = ""
+        } else if issues.count == 1 {
+            issueText = "但是\(issues[0])\n"
+        } else {
+            issueText = "但是：\n" + issues.map { " · " + $0 }.joined(separator: "\n") + "\n\n"
+        }
+
+        let result = await MessageBoxManager.shared.showTextAsync(
+            title: prompt.title,
+            content: "\(prompt.reason)\n\nPCL.Mac 找到了一个可用的 Java：\(bestMatch)，\(issueText)是否切换并继续启动？",
+            level: prompt.force ? .error : .info,
+            buttons: buttons
+        )
+        if result == 0 { try task.cancel() }
+        return result == 1 ? bestMatch : nil
+    }
     
+    /// Java 切换弹窗的提示文案配置。
+    private struct SwitchPrompt {
+        let title: String
+        let reason: String
+        let force: Bool
+        
+        /// 未配置任何 Java。
+        static let noJava: SwitchPrompt = .init(
+            title: "没有配置 Java",
+            reason: "你还没有为这个实例设置 Java！",
+            force: true
+        )
+        
+        /// 当前 Java 不满足实例要求。
+        static func unsatisfied(_ reason: String) -> SwitchPrompt {
+            .init(title: "当前 Java 不满足要求", reason: reason, force: true)
+        }
+        
+        /// 当前 Java 需要 Rosetta 转译（性能问题，非强制切换）。
+        static func performance(runtime: JavaRuntime) -> SwitchPrompt {
+            .init(
+                title: "当前 Java 会导致性能下降",
+                reason: "当前实例设置的 Java（\(runtime)）需要通过 Rosetta 2 转译运行，这会导致性能下降，并大幅降低游戏体验。",
+                force: false
+            )
+        }
+    }
+
     private static func refreshAccount(task: SubTask, model: Model) async throws {
         let shouldRefresh: Bool
         do {
@@ -197,7 +250,7 @@ public enum MinecraftLaunchTask {
         }
         model.options.accessToken = model.account.accessToken
     }
-    
+
     private static func precheck(task: SubTask, model: Model) async throws {
         model.options.manifest = model.manifest
         model.options.mainClass = model.manifest.mainClass
@@ -254,7 +307,7 @@ public enum MinecraftLaunchTask {
             }
         }
     }
-    
+
     private static func checkResources(task: SubTask, model: Model) async throws {
         // 防止本地库架构与 Java 架构不同，先清除本地库
         let nativesDirectory: URL = model.instance.url.appending(path: "natives")
@@ -266,7 +319,7 @@ public enum MinecraftLaunchTask {
                 err("删除本地库目录失败：\(error.localizedDescription)")
             }
         }
-        
+
         try await MinecraftInstallTask.completeResources(
             runningDirectory: model.instance.url,
             manifest: model.manifest,
@@ -274,13 +327,13 @@ public enum MinecraftLaunchTask {
             progressHandler: task.setProgress(_:)
         )
     }
-    
+
     private static func checkAuthlibInjector(task: SubTask, model: Model) async throws {
         guard let yggdrasilAccount = model.account as? YggdrasilAccount else {
             return
         }
         let authlibInjectorURL = URLConstants.authlibInjectorURL
-        
+
         model.options.authlibInjectorPath = authlibInjectorURL.path
         model.options.authServerURL = yggdrasilAccount.authServerURL
         do {
@@ -293,7 +346,7 @@ public enum MinecraftLaunchTask {
             log("正在使用本地缓存")
             model.options.prefetchedMeta = cachedMetadata
         }
-        
+
         do {
             log("正在获取 Authlib Injector 版本列表")
             let artifacts: AuthlibInjectorArtifacts = try await HTTPClient.shared.get(APIEndpoints.AuthlibInjector.artifacts).decode(AuthlibInjectorArtifacts.self)
@@ -329,7 +382,7 @@ public enum MinecraftLaunchTask {
             }
         }
     }
-    
+
     private static func launch(task: SubTask, model: Model) async throws {
         LauncherConfig.shared.launchCount += 1
         let launcher: MinecraftLauncher = .init(options: model.options)
@@ -350,7 +403,7 @@ public enum MinecraftLaunchTask {
             )
         }
     }
-    
+
     private static func waitForWindow(task: SubTask, model: Model) async throws {
         guard let process = model.process else {
             err("model.process 为 nil")
@@ -372,7 +425,7 @@ public enum MinecraftLaunchTask {
             process.terminate()
         }
     }
-    
+
     private static func checkWindows(for process: Process) -> Bool {
         let option: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
         guard let infoList = CGWindowListCopyWindowInfo(option, kCGNullWindowID) as? [[String: Any]] else {
@@ -386,7 +439,7 @@ public enum MinecraftLaunchTask {
         }
         return false
     }
-    
+
     /// 启动任务的共享可变载体：由 MyTask 的多个子任务并发读写（MyTask 设计如此），
     /// 在 Swift 6 完全迁移前以 @unchecked 担保跨隔离传递（见 ADR-003）。
     public class Model: TaskModel, @unchecked Sendable {
@@ -398,7 +451,7 @@ public enum MinecraftLaunchTask {
         public var launcher: MinecraftLauncher?
         public var options: LaunchOptions
         public var process: Process?
-        
+
         init(instance: MinecraftInstance, account: Account, repository: MinecraftRepository, onProcessStarted: @escaping (MinecraftLauncher, Process) -> Void) {
             self.instance = instance
             self.account = account
@@ -406,7 +459,7 @@ public enum MinecraftLaunchTask {
             self.onProcessStarted = onProcessStarted
             self.manifest = instance.manifest
             self.options = .init()
-            
+
             self.options.profile = account.profile
             self.options.runningDirectory = instance.url
             self.options.repository = repository

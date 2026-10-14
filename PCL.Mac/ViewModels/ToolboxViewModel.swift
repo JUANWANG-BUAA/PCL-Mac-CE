@@ -17,7 +17,7 @@ class ToolboxViewModel: ObservableObject {
         formatter.dateFormat = "yyyy/MM/dd"
         return formatter.string(from: .now)
     }()
-    
+
     public lazy var todayLucky: Int = {
         let key: String = "\(NSUserName())\(todayDate))"
         var seed: UInt64 = 0
@@ -29,13 +29,13 @@ class ToolboxViewModel: ObservableObject {
     }()
     public var caveMessages: [String] = []
     public var lastRefresh: Date = .distantPast
-    
+
     /// 刷新回声洞消息列表。
     public func fetchCaveMessages() async throws {
         caveMessages = ["正在加载消息列表……"]
         caveMessages = try await CLAPIClient.shared.getCaveMessages()
     }
-    
+
     /// 将当前消息改为 `caveMessages` 里的随机一条消息。
     /// - Returns: `caveMessages` 中是否有元素可供显示。
     public func refreshCaveMessage() -> Bool {
@@ -45,14 +45,14 @@ class ToolboxViewModel: ObservableObject {
             return false
         }
         currentCaveMessage = newMessage
-        
+
         revealProgress = 0.1
         withAnimation(.linear(duration: Double(newMessage.count) * 0.02)) {
             revealProgress = 1.0
         }
         return true
     }
-    
+
     /// 将今日人品值转换为在 UI 上显示的文本。
     /// - Parameter value: 今日人品值。
     /// - Returns: 处理后的文本。
@@ -76,7 +76,7 @@ class ToolboxViewModel: ObservableObject {
             return "\(value)…（是百分制哦）"
         }
     }
-    
+
     /// 执行“千万别点”彩蛋。
     @MainActor
     public func executeEasterEgg() {

@@ -11,11 +11,11 @@ struct MessageBoxView: View {
     private let model: MessageBoxModel
     @State private var selectedItemIndex: Int?
     @State private var inputText: String = ""
-    
+
     init(model: MessageBoxModel) {
         self.model = model
     }
-    
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 7)
@@ -59,7 +59,7 @@ struct MessageBoxView: View {
             cancelWithKeyboard()
         }
     }
-    
+
     /// 回车：触发主按钮（优先 highlight，其次 id 为 1 的按钮，再次最后一个按钮）。
     private func confirmWithKeyboard() {
         let button = model.buttons.first(where: { $0.type == .highlight })
@@ -68,20 +68,20 @@ struct MessageBoxView: View {
         guard let button else { return }
         onButtonTap(button)
     }
-    
+
     /// ESC：触发取消按钮（id 为 0 或 cancelButtonID）；没有取消按钮时不响应。
     private func cancelWithKeyboard() {
         guard let button = model.buttons.first(where: { $0.id == 0 || $0.id == MessageBoxManager.cancelButtonID }) else { return }
         onButtonTap(button)
     }
-    
+
     private var foregroundColor: Color {
         switch model.level {
         case .info: .color2
         case .error: .red
         }
     }
-    
+
     private var content: some View {
         Group {
             switch model.content {
@@ -98,12 +98,12 @@ struct MessageBoxView: View {
             }
         }
     }
-    
+
     private func onButtonTap(_ button: MessageBoxModel.Button) {
         switch model.content {
-        case .text(_):
+        case .text:
             MessageBoxManager.shared.onButtonTap(button)
-        case .list(_):
+        case .list:
             if button.id == MessageBoxManager.cancelButtonID { // 取消
                 MessageBoxManager.shared.onListSelect(index: nil)
             } else if button.id == MessageBoxManager.okButtonID { // 确定
@@ -111,7 +111,7 @@ struct MessageBoxView: View {
             } else {
                 MessageBoxManager.shared.onButtonTap(button)
             }
-        case .input(_, _):
+        case .input:
             if button.id == MessageBoxManager.cancelButtonID { // 取消
                 MessageBoxManager.shared.onInputFinished(text: nil)
             } else if button.id == MessageBoxManager.okButtonID { // 确定

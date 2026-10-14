@@ -50,7 +50,7 @@ public struct OfficialDownloadSource: DownloadSource {
     }
 
     public func candidate(for url: URL) -> DownloadCandidate? {
-        var headers: [String: String]? = nil
+        var headers: [String: String]?
         if url.matches(hosts: "edge.forgecdn.net"), let key = curseforgeApiKey {
             headers = ["x-api-key": key]
         }
@@ -84,25 +84,24 @@ public struct MirrorDownloadSource: DownloadSource {
     public func candidate(for url: URL) -> DownloadCandidate? {
         return mirrorURL(for: url).map { DownloadCandidate(url: $0) }
     }
-    
 
     private func mirrorURL(for url: URL) -> URL? {
         if url.matches(hosts: "piston-meta.mojang.com", "piston-data.mojang.com",
                        "launchermeta.mojang.com", "launcher.mojang.com") {
             return bmclapiBaseURL.appending(path: url.path)
         }
-        
+
         if url.matches(hosts: "resources.download.minecraft.net") {
             return bmclapiBaseURL.appending(path: "assets").appending(path: url.path)
         }
-        
+
         if url.matches(
             prefixes: "files.minecraftforge.net/maven", "maven.neoforged.net/releases",
             hosts: "libraries.minecraft.net", "maven.fabricmc.net", "maven.minecraftforge.net"
         ) {
             return bmclapiBaseURL.appending(path: "maven").appending(path: resolveMavenPath(url))
         }
-        
+
         if url.matches(hosts: "meta.fabricmc.net") {
             return bmclapiBaseURL.appending(path: "fabric-meta").appending(path: url.path)
         }
@@ -118,7 +117,7 @@ public struct MirrorDownloadSource: DownloadSource {
         if url.pathComponents.count == 0 { return "" }
         var pathComponents = url.pathComponents
         if pathComponents[0] == "/" { pathComponents.removeFirst() }
-        
+
         let prefix = pathComponents.first
         if prefix == "maven" || prefix == "releases" {
             return pathComponents.dropFirst().joined(separator: "/")
@@ -126,7 +125,6 @@ public struct MirrorDownloadSource: DownloadSource {
         return url.path
     }
 }
-
 
 private extension URL {
     func matches(prefixes: String..., hosts: String...) -> Bool {

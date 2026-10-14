@@ -15,16 +15,16 @@ class ResourcesSearchViewModel: ObservableObject {
     public let type: ResourceType
     public let loadingVM: MyLoadingViewModel = .init(text: "加载中")
     private var lastSearchResponse: ModrinthAPIClient.SearchResponse?
-    
+
     public var totalPages: Int {
         guard let lastSearchResponse else { return 0 }
         return Int(ceil(Double(lastSearchResponse.totalHits) / Double(lastSearchResponse.limit)))
     }
-    
+
     public init(type: ResourceType) {
         self.type = type
     }
-    
+
     public func search(_ query: String, pageIndex: Int = 0) async throws {
         self.query = query
         loadingVM.reset()
@@ -33,7 +33,7 @@ class ResourcesSearchViewModel: ObservableObject {
         lastSearchResponse = response
         searchResults = response.hits.filter { $0.clientCompatibility != .unsupported }.map(ProjectListItemModel.init(_:))
     }
-    
+
     public func changePage(_ page: Int) async throws {
         try await search(query, pageIndex: page)
     }

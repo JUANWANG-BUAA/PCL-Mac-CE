@@ -11,7 +11,7 @@ import Core
 class LauncherConfig: Codable {
     public static let shared: LauncherConfig = {
         let url = URLConstants.configURL
-        
+
         if !FileManager.default.fileExists(atPath: url.path) {
             let config: LauncherConfig = .init()
             log("配置文件不存在，正在创建")
@@ -42,10 +42,10 @@ class LauncherConfig: Codable {
             return config
         }
     }()
-    
+
     public static let backupURL: URL = URLConstants.applicationSupportURL.appending(path: "config.bak.json")
     public private(set) static var loadError: Error?
-    
+
     public var minecraftRepositories: [MinecraftRepository] = []
     public var currentRepositoryId: UUID?
     public var currentInstance: String?
@@ -61,14 +61,15 @@ class LauncherConfig: Codable {
     public var homepageType: HomepageType = .empty
     public var enabledFlags: Set<FeatureFlag>?
     public var customJavaRuntimes: [URL] = []
-    
+    public var theme: AppTheme = .classic
+
     public init() {}
-    
+
     public required init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.minecraftRepositories = try container.decodeIfPresent([MinecraftRepository].self, forKey: .minecraftRepositories) ?? []
         self.currentRepositoryId = try container.decodeIfPresent(UUID.self, forKey: .currentRepositoryId)
-        
+
         self.currentInstance = try container.decodeIfPresent(String.self, forKey: .currentInstance)
         self.accounts = (try container.decodeIfPresent([AccountWrapper].self, forKey: .accounts) ?? []).map(\.account)
         if !accounts.isEmpty {
@@ -89,8 +90,9 @@ class LauncherConfig: Codable {
         self.homepageType = try container.decodeIfPresent(HomepageType.self, forKey: .homepageType) ?? .empty
         self.enabledFlags = try container.decodeIfPresent(Set<FeatureFlag>.self, forKey: .enabledFlags)
         self.customJavaRuntimes = try container.decodeIfPresent([URL].self, forKey: .customJavaRuntimes) ?? []
+        self.theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? .classic
     }
-    
+
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(minecraftRepositories, forKey: .minecraftRepositories)
@@ -108,13 +110,14 @@ class LauncherConfig: Codable {
         try container.encode(homepageType, forKey: .homepageType)
         try container.encodeIfPresent(enabledFlags, forKey: .enabledFlags)
         try container.encode(customJavaRuntimes, forKey: .customJavaRuntimes)
+        try container.encode(theme, forKey: .theme)
     }
-    
+
     public static func save(_ config: LauncherConfig = .shared, to url: URL = URLConstants.configURL) throws {
         let data = try JSONEncoder.shared.encode(config)
         try data.write(to: url)
     }
-    
+
     private enum CodingKeys: String, CodingKey {
         case minecraftRepositories
         case currentRepositoryId
@@ -131,11 +134,12 @@ class LauncherConfig: Codable {
         case homepageType
         case enabledFlags
         case customJavaRuntimes
+        case theme
     }
-    
+
     enum HomepageType: String, Codable, CustomStringConvertible {
         case empty, demo
-        
+
         var description: String {
             switch self {
             case .empty: "空白"

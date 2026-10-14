@@ -10,11 +10,11 @@ import SwiftyJSON
 
 public class YggdrasilService {
     private var authServerURL: URL
-    
+
     public init(authServerURL: URL) {
         self.authServerURL = authServerURL
     }
-    
+
     /// 尝试将用户输入的地址解析为真正的 API 地址。
     ///
     /// 参见 [Yggdrasil 启动器技术规范#处理 API 地址指示（ALI）](https://github.com/yushijinhun/authlib-injector/wiki/启动器技术规范#处理-api-地址指示ali)
@@ -33,7 +33,7 @@ public class YggdrasilService {
         }
         return authServerURL
     }
-    
+
     /// 使用密码进行身份验证，并分配一个新的令牌。
     ///
     /// 参见 [Yggdrasil 服务端技术规范#登录](https://github.com/yushijinhun/authlib-injector/wiki/Yggdrasil-服务端技术规范#登录)
@@ -54,7 +54,7 @@ public class YggdrasilService {
                 ]
             ]
         )
-        
+
         do {
             return try response.decode(AuthResponse.self)
         } catch let error as DecodingError {
@@ -62,7 +62,7 @@ public class YggdrasilService {
             throw Error.invalidResponseFormat(underlying: error)
         }
     }
-    
+
     /// 检验令牌是否有效。
     ///
     /// 参见 [Yggdrasil 服务端技术规范#验证令牌](https://github.com/yushijinhun/authlib-injector/wiki/Yggdrasil-服务端技术规范#验证令牌)
@@ -87,7 +87,7 @@ public class YggdrasilService {
             throw error
         }
     }
-    
+
     /// 吊销原令牌，并颁发一个新的令牌。
     ///
     /// 参见 [Yggdrasil 服务端技术规范#刷新](https://github.com/yushijinhun/authlib-injector/wiki/Yggdrasil-服务端技术规范#刷新)
@@ -110,7 +110,7 @@ public class YggdrasilService {
                 "selectedProfile": try profile?.toDictionary()
             ]
         )
-        
+
         do {
             let refreshResponse = try response.decode(RefreshResponse.self)
             if let clientToken {
@@ -124,7 +124,7 @@ public class YggdrasilService {
             throw Error.invalidResponseFormat(underlying: error)
         }
     }
-    
+
     /// 获取 API 元数据。
     ///
     /// 参见：
@@ -148,7 +148,7 @@ public class YggdrasilService {
             throw Error.invalidResponseFormat(underlying: error)
         }
     }
-    
+
     /// 查询某个角色的完整 `PlayerProfile`（包括角色属性）。
     /// - Parameter uuid: 角色的 `UUID`。
     /// - Returns: 完整 `PlayerProfile`。
@@ -167,12 +167,12 @@ public class YggdrasilService {
             throw Error.invalidResponseFormat(underlying: error)
         }
     }
-    
+
     public enum Error: LocalizedError {
         case apiError(error: String, errorMessage: String, cause: String?)
         case internalError(description: String)
         case invalidResponseFormat(underlying: Swift.Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .apiError(let error, let errorMessage, let cause):
@@ -184,29 +184,29 @@ public class YggdrasilService {
             }
         }
     }
-    
+
     public struct AuthResponse: Codable {
         public let accessToken: String
         public let clientToken: String
         public let availableProfiles: [PlayerProfile]
         public let selectedProfile: PlayerProfile?
     }
-    
+
     public struct RefreshResponse: Codable {
         public let accessToken: String
         public let clientToken: String
         public let selectedProfile: PlayerProfile?
     }
-    
+
     public struct ServerMetadata {
         public let serverName: String?
         public let implementationName: String?
         public let implementationVersion: String?
-        
+
         /// 经过 Base64 编码后的字符串。
         public let encoded: String
     }
-    
+
     private func request(
         _ method: String,
         _ path: String,
@@ -221,7 +221,7 @@ public class YggdrasilService {
                 let cause: String? = json["cause"].string
                 throw Error.apiError(error: error, errorMessage: errorMessage, cause: cause)
             }
-            
+
             guard let string = String(data: response.data, encoding: .utf8) else {
                 throw Error.internalError(description: "解码响应体失败。")
             }

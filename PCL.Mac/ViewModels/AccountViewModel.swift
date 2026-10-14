@@ -28,18 +28,18 @@ class AccountViewModel: ObservableObject {
         }
         return nil
     }
-    
+
     @Published public var currentPanel: PanelType = .normal
     @Published public var yggdrasilServer: String = ""
     @Published public var yggdrasilUsername: String = ""
     @Published public var yggdrasilPassword: String = ""
-    
+
     public init() {
         self.accounts = LauncherConfig.shared.accounts
         self.currentAccountId = LauncherConfig.shared.currentAccountId
         self.currentPanel = self.currentAccount == nil ? .accountList : .normal
     }
-    
+
     /// 请求用户添加账号。
     public func requestAddAccount() {
         Task { @MainActor in
@@ -63,14 +63,14 @@ class AccountViewModel: ObservableObject {
             }
         }
     }
-    
+
     /// 切换当前账号。
     public func switchAccount(to account: Account) {
         currentAccountId = account.id
         // 立即落盘：账号与选中状态属于关键数据，不应等到退出才保存
         try? LauncherConfig.save()
     }
-    
+
     /// 移除账号。
     /// - Parameter account: 要移除的账号。
     public func remove(account: Account) {
@@ -84,7 +84,7 @@ class AccountViewModel: ObservableObject {
         }
         try? LauncherConfig.save()
     }
-    
+
     /// 获取账号皮肤数据。
     public func skinData(for account: Account) async -> Data {
         let defaultSkin: Data = .init(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAdVBMVEUAAAAKvLwAzMwmGgokGAgrHg0zJBE/KhW3g2uzeV5SPYn///+qclmbY0mQWT8Af38AaGhVVVWUYD52SzOBUzmPXj5JJRBCHQp3QjVqQDA0JRIoKCg3Nzc/Pz9KSko6MYlBNZtGOqUDenoFiIgElZUApKQAr6/wvakZAAAAAXRSTlMAQObYZgAAAolJREFUeNrt1l1rHucZReFrj/whu5hSCCQtlOTE/f+/Jz4q9Cu0YIhLcFVpVg+FsOCVehi8jmZgWOzZz33DM4CXlum3gH95GgeAzQZVeL4gTm6Cbp4vqFkD8HwBazPY8wWbMq9utu3mNZ5fotVezbzOE3kBEFbaZuc8kb00NTMUbWJp678Xf2GV7RRtx1TDQQ6XBNvsmL2+2vHq1TftmMPIyAWujtN2cl274ua2jpVpZneXEjjo7XW1q53V9ds4ODO5xIuhvGHvfLI3aixauig415uuO2+vl9+cncfsFw25zL650fXn687jqnXuP68/X3+eV3zE7y6u9eB73MlfAcfbTf3yR8CfAX+if8S/H5/EAbAxj5LN48tULvEBOh8V1AageMTXe2YHAOwHbZxrzPkSR3+ffr8TR2JDzE/4Fj8CDgEwDsW+q+9GsR07hhg2CsALBgMo2v5wNxXnQXMeGQVW7gUAyKI2m6KDsJ8Au3++F5RZO+kKNQjQcLLWgjwUjBXLltFgWWMUUlviocBgNoxNGgMjSxiYAA7zgLFo2hgIENiDU8gQCzDOmViGFAsEuBcQSDCothhpJaDRA8E5fHqH2nTbYm5fHLo1V0u3B7DAuheoeScRYabjjjuzs17cHVaTrTXmK78m9swP34d9oK/dfeXSIH2PW/MXwPvxN/bJlxw8zlYAcEyeI6gNgA/O8P8neN8xe1IHP2gTzegjvhUDfuRygmwEs2GE4mkCDIAzm2R4yAuPsIdR9k8AvMc+3L9+2UEjo4WP0FpgP19O0MzCsqxIoMsdDBvYcQyGmO0ZJRoYCKjLJWY0BAhYwGUBCgkh8MRdOKt+ruqMwAB2OcEX94U1TPbYJP0PkyyAI1S6cSIAAAAASUVORK5CYII=")!
@@ -104,7 +104,7 @@ class AccountViewModel: ObservableObject {
             return defaultSkin
         }
     }
-    
+
     private func requestAddMicrosoftAccount() async {
         let service: MicrosoftAuthService = .init()
         let code: MicrosoftAuthService.AuthorizationCode
@@ -117,34 +117,10 @@ class AccountViewModel: ObservableObject {
             hint("添加正版账号失败：获取设备码失败：\(error.localizedDescription)", type: .critical)
             return
         }
-        
+
         let authTask = Task {
             do {
-                guard let pollCount = service.pollCount,
-                      let pollInterval = service.pollInterval else {
-                    err("pollCount 或 pollInterval 未被设置")
-                    throw MicrosoftAuthService.Error.internalError
-                }
-                do {
-                    defer {
-                        DispatchQueue.main.async {
-                            NSApplication.shared.activate(ignoringOtherApps: true)
-                            MessageBoxManager.shared.complete(with: .button(id: 1))
-                        }
-                    }
-                    for i in 0..<pollCount {
-                        try Task.checkCancellation()
-                        log("第 \(i + 1)/\(pollCount) 次轮询")
-                        try await Task.sleep(seconds: Double(pollInterval))
-                        if try await service.poll() {
-                            log("用户完成了授权")
-                            break
-                        }
-                        if i == pollCount - 1 {
-                            throw SimpleError("授权超时。")
-                        }
-                    }
-                }
+                try await pollAuthorization(service: service)
                 hint("授权成功！正在完成后续登录步骤……")
                 let response = try await service.authenticate()
                 let account: MicrosoftAccount = .init(profile: response.profile, accessToken: response.accessToken, refreshToken: response.refreshToken)
@@ -153,64 +129,11 @@ class AccountViewModel: ObservableObject {
                 LauncherConfig.shared.hasMicrosoftAccount = true
                 addAccount(account)
             } catch let error where error.isCancellationError {
-            } catch let error as MicrosoftAuthService.Error {
-                switch error {
-                case .xboxAuthenticationFailed(let code):
-                    switch code {
-                    case 2148916238:
-                        showErrorMessageBox(
-                            "Xbox 验证失败",
-                            "当前账户为未成年账户，无法通过 Xbox Live 认证。\n请点击下方的“确定”按钮，更改账户年龄后再次尝试登录。",
-                            WebLinks.microsoftRename.absoluteString
-                        )
-                    case 2148916233:
-                        showErrorMessageBox(
-                            "Xbox 验证失败",
-                            "该微软账户没有关联 Xbox 账户。\n请点击下方的“确定”按钮，关联 Xbox 账户后再次尝试登录。",
-                            WebLinks.minecraftProfileEdit.absoluteString
-                        )
-                    default:
-                        MessageBoxManager.shared.showText(
-                            title: "Xbox 验证失败",
-                            content: "发生未知错误。错误代码：\(code)",
-                            level: .error
-                        )
-                    }
-                case .apiError(let description):
-                    MessageBoxManager.shared.showText(
-                        title: "添加正版账号失败",
-                        content: "响应体：\(description)",
-                        level: .error
-                    )
-                case .internalError:
-                    MessageBoxManager.shared.showText(
-                        title: "添加正版账号失败",
-                        content: "发生内部错误。\n若要寻求帮助，请将完整日志发送给他人，而不是发送此页面相关的图片。",
-                        level: .error
-                    )
-                case .notPurchased:
-                    showErrorMessageBox(
-                        "添加正版账号失败",
-                        "看起来你还没有购买 Minecraft。\n如果你已购买 Minecraft，请点击下方的“确定”按钮，创建档案后再次尝试登录。",
-                        WebLinks.minecraftProfileEdit.absoluteString
-                    )
-                case .grantExpired:
-                    // 设备授权流中不会出现刷新令牌，仅为穷举完备
-                    MessageBoxManager.shared.showText(
-                        title: "添加正版账号失败",
-                        content: error.localizedDescription,
-                        level: .error
-                    )
-                }
             } catch {
-                MessageBoxManager.shared.showText(
-                    title: "添加正版账号失败",
-                    content: "\(error.localizedDescription)\n若要寻求帮助，请将完整日志发送给他人，而不是发送此页面相关的图片。"
-                )
-                hint("登录失败：\(error.localizedDescription)", type: .critical)
+                handleMicrosoftAuthError(error)
             }
         }
-        
+
         if await MessageBoxManager.shared.showTextAsync(
             title: "添加正版账号",
             content: "请打开 \(code.verificationURL)，然后输入 \(code.code)，随后根据提示完成后续授权步骤。\n点击下方按钮可以一键复制并跳转！",
@@ -225,7 +148,95 @@ class AccountViewModel: ObservableObject {
             authTask.cancel()
         }
     }
-    
+
+    /// 轮询用户完成设备码授权；超时或内部错误时抛出。
+    /// 无论成功/失败/取消，退出时都会关闭设备码弹窗并激活本应用。
+    private func pollAuthorization(service: MicrosoftAuthService) async throws {
+        guard let pollCount = service.pollCount,
+              let pollInterval = service.pollInterval else {
+            err("pollCount 或 pollInterval 未被设置")
+            throw MicrosoftAuthService.Error.internalError
+        }
+        defer {
+            DispatchQueue.main.async {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                MessageBoxManager.shared.complete(with: .button(id: 1))
+            }
+        }
+        for attempt in 0..<pollCount {
+            try Task.checkCancellation()
+            log("第 \(attempt + 1)/\(pollCount) 次轮询")
+            try await Task.sleep(seconds: Double(pollInterval))
+            if try await service.poll() {
+                log("用户完成了授权")
+                return
+            }
+            if attempt == pollCount - 1 {
+                throw SimpleError("授权超时。")
+            }
+        }
+    }
+
+    /// 展示微软登录失败的分类错误弹窗。
+    private func handleMicrosoftAuthError(_ error: Error) {
+        guard let authError = error as? MicrosoftAuthService.Error else {
+            MessageBoxManager.shared.showText(
+                title: "添加正版账号失败",
+                content: "\(error.localizedDescription)\n若要寻求帮助，请将完整日志发送给他人，而不是发送此页面相关的图片。"
+            )
+            hint("登录失败：\(error.localizedDescription)", type: .critical)
+            return
+        }
+        switch authError {
+        case .xboxAuthenticationFailed(let code):
+            switch code {
+            case 2148916238:
+                showErrorMessageBox(
+                    "Xbox 验证失败",
+                    "当前账户为未成年账户，无法通过 Xbox Live 认证。\n请点击下方的“确定”按钮，更改账户年龄后再次尝试登录。",
+                    WebLinks.microsoftRename.absoluteString
+                )
+            case 2148916233:
+                showErrorMessageBox(
+                    "Xbox 验证失败",
+                    "该微软账户没有关联 Xbox 账户。\n请点击下方的“确定”按钮，关联 Xbox 账户后再次尝试登录。",
+                    WebLinks.minecraftProfileEdit.absoluteString
+                )
+            default:
+                MessageBoxManager.shared.showText(
+                    title: "Xbox 验证失败",
+                    content: "发生未知错误。错误代码：\(code)",
+                    level: .error
+                )
+            }
+        case .apiError(let description):
+            MessageBoxManager.shared.showText(
+                title: "添加正版账号失败",
+                content: "响应体：\(description)",
+                level: .error
+            )
+        case .internalError:
+            MessageBoxManager.shared.showText(
+                title: "添加正版账号失败",
+                content: "发生内部错误。\n若要寻求帮助，请将完整日志发送给他人，而不是发送此页面相关的图片。",
+                level: .error
+            )
+        case .notPurchased:
+            showErrorMessageBox(
+                "添加正版账号失败",
+                "看起来你还没有购买 Minecraft。\n如果你已购买 Minecraft，请点击下方的“确定”按钮，创建档案后再次尝试登录。",
+                WebLinks.minecraftProfileEdit.absoluteString
+            )
+        case .grantExpired:
+            // 设备授权流中不会出现刷新令牌，仅为穷举完备
+            MessageBoxManager.shared.showText(
+                title: "添加正版账号失败",
+                content: error.localizedDescription,
+                level: .error
+            )
+        }
+    }
+
     private func showErrorMessageBox(_ title: String, _ content: String, _ link: String) {
         MessageBoxManager.shared.showText(
             title: title,
@@ -239,7 +250,7 @@ class AccountViewModel: ObservableObject {
             }
         }
     }
-    
+
     public func addYggdrasilAccount() async {
         let trimmedServerLocation = yggdrasilServer.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var authServerURL = URL(string: trimmedServerLocation) else {
@@ -274,7 +285,7 @@ class AccountViewModel: ObservableObject {
             log("正在验证，服务器地址：\(authServerURL)")
             let authResponse = try await service.authenticate(username, password: password)
             log("验证成功")
-            
+
             let profile: PlayerProfile
             if let selectedProfile = authResponse.selectedProfile {
                 profile = selectedProfile
@@ -315,7 +326,7 @@ class AccountViewModel: ObservableObject {
             )
         }
     }
-    
+
     private func requestAddOfflineAccount() async {
         guard let playerName: String = await MessageBoxManager.shared.showInputAsync(title: "输入玩家名（只能包含字母、数字和下划线）") else {
             log("用户取消了添加")
@@ -323,13 +334,13 @@ class AccountViewModel: ObservableObject {
         }
         addAccount(OfflineAccount(name: playerName, uuid: UUIDUtils.uuid(ofOfflinePlayer: playerName)))
     }
-    
+
     private func addAccount(_ account: Account) {
         accounts.append(account)
         switchAccount(to: account)
         try? LauncherConfig.save()
     }
-    
+
     enum PanelType {
         case normal, accountList, addYggdrasil
     }

@@ -25,7 +25,7 @@ public class ForgeInstallService {
         self.tempDirectory = URLConstants.tempURL.appending(path: "forge-install-\(UUID().uuidString.lowercased())")
         try? FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
     }
-    
+
     deinit {
         if FileManager.default.fileExists(atPath: tempDirectory.path) {
             do {
@@ -35,7 +35,7 @@ public class ForgeInstallService {
             }
         }
     }
-    
+
     internal let minecraftVersion: MinecraftVersion
     internal let version: String
     private let repository: MinecraftRepository
@@ -44,10 +44,10 @@ public class ForgeInstallService {
     private let tempDirectory: URL
     private var installProfile: ForgeInstallProfile!
     private var values: [String: String]!
-    
+
     private lazy var installerURL: URL = tempDirectory.appending(path: "installer")
     private lazy var librariesURL: URL = repository.librariesDirectory
-    
+
     /// 下载安装器及其所需文件。
     /// - Parameter progressHandler: 进度回调。
     public func downloadFiles(progressHandler: @MainActor @escaping (Double) -> Void) async throws {
@@ -62,7 +62,7 @@ public class ForgeInstallService {
         self.values = makeValueDict()
         await progressHandler.stopCalculate()
     }
-    
+
     /// 执行安装器。
     /// - Parameter progressHandler: 进度回调。
     public func executeProcessors(progressHandler: @MainActor @escaping (Double) -> Void) async throws {
@@ -87,7 +87,7 @@ public class ForgeInstallService {
         }
         await progressHandler(1)
     }
-    
+
     /// 下载安装器本体并解析。
     /// - Returns: 是否是新版本安装器，且需要继续执行后续步骤。
     private func downloadInstaller(progressHandler: @MainActor @escaping (Double) -> Void) async throws -> Bool {
@@ -99,7 +99,7 @@ public class ForgeInstallService {
         )
         try await FileDownloader.shared.download(item, progressHandler: progressHandler)
         _ = try FileManager.default.unzipItem(at: destination, to: installerURL)
-        
+
         // 处理客户端清单
         let manifestURL: URL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
         let parentURL: URL = runningDirectory.appending(path: ".parent/\(minecraftVersion).json")
@@ -111,7 +111,7 @@ public class ForgeInstallService {
             try FileManager.default.removeItem(at: manifestURL)
         }
         // 此时 manifestURL 上没有文件
-        
+
         let profileURL: URL = installerURL.appending(path: "install_profile.json")
         let data: Data = try .init(contentsOf: profileURL)
         let json: JSON = try .init(data: data)
@@ -122,7 +122,7 @@ public class ForgeInstallService {
                 try FileManager.default.createDirectory(at: forgeDestination.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try FileManager.default.copyItem(at: forgeURL, to: forgeDestination)
             }
-            
+
             try json["versionInfo"].rawData().write(to: manifestURL)
             return false
         } else {
@@ -131,17 +131,17 @@ public class ForgeInstallService {
             return true
         }
     }
-    
+
     internal func installerDownloadURLs() -> [URL] {
         let root = APIEndpoints.ForgeMaven.root
         let paths = [
             "net/minecraftforge/forge/\(minecraftVersion)-\(version)/forge-\(minecraftVersion)-\(version)-installer.jar",
             "net/minecraftforge/forge/\(minecraftVersion)-\(version)-\(minecraftVersion)/forge-\(minecraftVersion)-\(version)-\(minecraftVersion)-installer.jar"
         ]
-        
+
         return paths.map(root.appending(path:))
     }
-    
+
     private func makeValueDict() -> [String: String] {
         let values: [String: String] = [
             "SIDE": "client",
@@ -151,11 +151,10 @@ public class ForgeInstallService {
             "ROOT": repository.url.path,
             "LIBRARY_DIR": librariesURL.path
         ].merging(installProfile.data.mapValues { parseValue($0.client) }, uniquingKeysWith: { _, value in value })
-        
+
         return values
     }
-    
-    
+
     private func parseValue(_ value: String) -> String {
         if value.starts(with: "/") {
             return installerURL.appending(path: value).path
@@ -168,21 +167,21 @@ public class ForgeInstallService {
             return value
         }
     }
-    
+
     private func copyLibraries() throws {
         let sourceDirectory: URL = installerURL.appending(path: "maven")
         guard FileManager.default.fileExists(atPath: sourceDirectory.path) else {
             return
         }
         let baseComponents: [String] = sourceDirectory.pathComponents
-        
+
         guard let enumerator: FileManager.DirectoryEnumerator = FileManager.default.enumerator(
             at: sourceDirectory,
             includingPropertiesForKeys: [.isRegularFileKey]
         ) else {
             throw SimpleError("创建 enumerator 失败。")
         }
-        
+
         for case let url as URL in enumerator {
             guard let isRegularFile: Bool = try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile,
                   isRegularFile else {
@@ -197,18 +196,18 @@ public class ForgeInstallService {
             try FileManager.default.moveItem(at: url, to: destination)
         }
     }
-    
+
     /// 下载安装器所需的依赖项。
     private func downloadInstallerDependencies(progressHandler: @MainActor @escaping (Double) -> Void) async throws {
         let libraries: [ForgeInstallProfile.Library] = installProfile.libraries
         let downloadItems: [DownloadItem] = libraries.compactMap { $0.artifact.downloadItem(destinationDirectory: librariesURL) }
         try await FileDownloader.shared.download(files: downloadItems, progressHandler: progressHandler)
     }
-    
+
     private func parseMavenCoord(coord: String) -> String {
         return librariesURL.appending(path: MavenCoordinateUtils.path(of: coord)).path
     }
-    
+
     private func executeProcessor(_ processor: ForgeInstallProfile.Processor) throws {
         let classpath: String = (processor.classpath + [processor.jar]).map(parseMavenCoord(coord:)).joined(separator: ":")
         let mainClass: String = try JarUtils.mainClass(of: librariesURL.appending(path: MavenCoordinateUtils.path(of: processor.jar)))
@@ -222,7 +221,7 @@ public class ForgeInstallService {
             throw SimpleError("Forge 安装器 \(processor.jar) 执行失败。")
         }
     }
-    
+
     private func downloadMojmaps(to destination: URL) async throws {
         guard let url: URL = manifest.downloads?.clientMappings?.url else {
             throw SimpleError("下载混淆表失败：未找到混淆表下载项。")

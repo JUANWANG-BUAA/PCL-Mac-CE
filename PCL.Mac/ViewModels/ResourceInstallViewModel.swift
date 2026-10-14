@@ -13,29 +13,29 @@ import ZIPFoundation
 class ResourceInstallViewModel: ObservableObject {
     public typealias VersionGroup = (VersionMapKey, [ProjectVersionModel])
     public typealias VersionList = [VersionGroup]
-    
+
     @Published public var versionList: VersionList?
     @Published public var selectedVersionGroup: VersionGroup?
     @Published public var loaded: Bool = false
-    
+
     public let project: ProjectListItemModel
     public let loadingVM: MyLoadingViewModel = .init(text: "加载中")
-    
+
     public init(project: ProjectListItemModel) {
         self.project = project
     }
-    
+
     public func load(selectedInstance: MinecraftInstance? = nil) async throws {
         let selectedInstanceKey: VersionMapKey? = project.type == .modpack ? nil : selectedInstance.map { .init(loader: $0.modLoader, version: $0.version) }
         let selectedVersionType: MinecraftVersion.VersionType? = (selectedInstance?.version).flatMap { VersionManifest.shared?.version(for: $0.id) }?.type
         var selectedVersionGroup: VersionGroup? = selectedInstanceKey.map { ($0, []) }
-        
+
         if let selected = selectedVersionGroup, project.type != .mod {
             selectedVersionGroup?.0 = .init(loader: nil, version: selected.0.version)
         }
-        
+
         let versions: [ModrinthVersion] = try await ModrinthAPIClient.shared.versions(ofProject: project.id, revalidate: true)
-        
+
         var versionMap: [VersionMapKey: [ProjectVersionModel]] = [:]
         for version in versions {
             var dependencies: [ProjectVersionModel.Dependency] = []
@@ -51,7 +51,7 @@ class ResourceInstallViewModel: ObservableObject {
                     debug(version)
                 }
             }
-            
+
             var keys: [VersionMapKey] = []
             for gameVersion in version.gameVersions {
                 if let type = VersionManifest.shared?.version(for: gameVersion)?.type,
@@ -79,7 +79,7 @@ class ResourceInstallViewModel: ObservableObject {
                     gameVersion: key.version.id,
                     loader: key.loader
                 )
-                
+
                 if let selectedInstanceKey, selectedInstanceKey.compatible(with: key) {
                     selectedVersionGroup?.1.append(value)
                 } else {
@@ -87,7 +87,7 @@ class ResourceInstallViewModel: ObservableObject {
                 }
             }
         }
-        
+
         let versionList: VersionList = versionMap.map { ($0, $1) }.sorted(by: { $0.0 > $1.0 })
         let finalSelectedGroup: VersionGroup? = selectedVersionGroup?.1.isEmpty == true ? nil : selectedVersionGroup
         await MainActor.run {
@@ -96,7 +96,7 @@ class ResourceInstallViewModel: ObservableObject {
             self.loaded = true
         }
     }
-    
+
     /// 检查实例是否可以安装某个版本。
     /// - Parameters:
     ///   - instance: 当前实例。
@@ -115,18 +115,18 @@ class ResourceInstallViewModel: ObservableObject {
             throw InstanceCheckError.versionUnsupported(supported: version.gameVersion, found: instance.version.id)
         }
     }
-    
+
     public func createInstallTask(forVersion version: ProjectVersionModel, to instance: MinecraftInstance) async throws -> MyTask<EmptyModel> {
         guard let primaryFile = version.primaryFile else {
             throw SimpleError("这个版本中没有主要文件！")
         }
-        
+
         let saveDirectoryName = project.type.saveDirectory ?? ""
         let saveDirectoryURL = instance.url.appending(path: saveDirectoryName)
-        
+
         return .init(
             name: "资源下载 - \(project.title) \(version.version)",
-            .init(0, "下载文件") { task, model in
+            .init(0, "下载文件") { task, _ in
                 try await FileDownloader.shared.download(
                     url: primaryFile.url,
                     destination: saveDirectoryURL.appending(path: primaryFile.name),
@@ -136,13 +136,13 @@ class ResourceInstallViewModel: ObservableObject {
             }
         )
     }
-    
+
     /// 创建普通下载任务：把资源下载到下载缓存目录（不绑定任何实例）。
     public func createCacheDownloadTask(forVersion version: ProjectVersionModel) throws -> (task: MyTask<EmptyModel>, destination: URL) {
         guard let primaryFile = version.primaryFile else {
             throw SimpleError("这个版本中没有主要文件！")
         }
-        
+
         let destination: URL = URLConstants.downloadCacheURL
             .appending(path: project.type.saveDirectory ?? "")
             .appending(path: primaryFile.name)
@@ -159,19 +159,19 @@ class ResourceInstallViewModel: ObservableObject {
         )
         return (task, destination)
     }
-    
+
     public struct VersionMapKey: Hashable, Equatable, Comparable, Identifiable, CustomStringConvertible {
         public let id: UUID = .init()
         public let loader: ModLoader?
         public let version: MinecraftVersion
-        
+
         public func compatible(with another: VersionMapKey) -> Bool {
             if another.loader != nil {
                 return self.loader == another.loader && self.version == another.version
             }
             return self.version == another.version
         }
-        
+
         public static func < (lhs: Self, rhs: Self) -> Bool {
             if lhs.version != rhs.version {
                 return lhs.version < rhs.version
@@ -179,16 +179,16 @@ class ResourceInstallViewModel: ObservableObject {
                 return (lhs.loader?.index ?? 0) < (rhs.loader?.index ?? 0)
             }
         }
-        
+
         public func hash(into hasher: inout Hasher) {
             hasher.combine(loader)
             hasher.combine(version)
         }
-        
+
         public static func == (lhs: Self, rhs: Self) -> Bool {
             return lhs.loader == rhs.loader && lhs.version == rhs.version
         }
-        
+
         public var description: String {
             if let loader {
                 return "\(loader) \(version)"
@@ -196,12 +196,12 @@ class ResourceInstallViewModel: ObservableObject {
             return version.description
         }
     }
-    
+
     public enum InstanceCheckError: LocalizedError {
         case modLoaderMissing(name: ModLoader)
         case modLoaderMismatch(required: ModLoader, found: ModLoader)
         case versionUnsupported(supported: String, found: String)
-        
+
         public var errorDescription: String? {
             switch self {
             case .modLoaderMissing(let needed):
@@ -215,14 +215,13 @@ class ResourceInstallViewModel: ObservableObject {
     }
 }
 
-
 // MARK: - 整合包相关
 extension ResourceInstallViewModel {
     public func createModpackDownloadTask(_ version: ProjectVersionModel) throws -> (MyTask<EmptyModel>, URL) {
         guard let primaryFile = version.primaryFile else {
             throw SimpleError("这个版本中没有主要文件！")
         }
-        
+
         let destination: URL = URLConstants.tempURL.appending(path: "modpack-download-\(version.id)")
         let task: MyTask<EmptyModel> = .init(
             name: "下载整合包 - \(project.title) \(version.version)",
@@ -237,7 +236,7 @@ extension ResourceInstallViewModel {
         )
         return (task, destination)
     }
-    
+
     public func loadIndex(_ url: URL) throws -> ModrinthModpackIndex {
         do {
             let archive: Archive = try .init(url: url, accessMode: .read)
@@ -254,10 +253,10 @@ extension ResourceInstallViewModel {
             throw ModpackInstallError.invalidModpackFormat(underlying: error)
         }
     }
-    
+
     public enum ModpackInstallError: LocalizedError {
         case invalidModpackFormat(underlying: Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .invalidModpackFormat(let underlying):

@@ -16,7 +16,7 @@ enum FileDropHandler {
             await viewModel.importModpack(at: url, repository: instanceManager.currentRepository)
             return
         }
-        
+
         let resourceLoadService = ResourceLoadService(
             remoteLookupService: .init(curseforgeClient: .init(apiKey: Secrets.shared.curseforgeApiKey ?? "")),
             cache: .shared
@@ -30,7 +30,7 @@ enum FileDropHandler {
                 hint("该实例不支持安装模组！", type: .critical)
                 return
             }
-            
+
             let directoryName = resource.type.saveDirectory!
             do {
                 try FileManager.default.copyItem(at: url, to: instance.url.appending(path: "\(directoryName)/\(url.lastPathComponent)"))
@@ -41,7 +41,7 @@ enum FileDropHandler {
             }
             return
         }
-        
+
         hint("无法识别 \(url.lastPathComponent) 的类型！", type: .critical)
     }
 }

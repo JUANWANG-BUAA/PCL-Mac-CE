@@ -15,7 +15,7 @@ public class MinecraftLauncher {
     private let runningDirectory: URL
     private let librariesURL: URL
     private var values: [String: String]
-    
+
     public init(options: LaunchOptions) {
         self.manifest = options.manifest
         self.runningDirectory = options.runningDirectory
@@ -28,7 +28,7 @@ public class MinecraftLauncher {
             "launcher_version": Metadata.appVersion,
             "classpath_separator": ":",
             "library_directory": librariesURL.path,
-            
+
             "auth_player_name": options.profile.name,
             "version_name": options.runningDirectory.lastPathComponent,
             "game_directory": runningDirectory.path,
@@ -42,7 +42,7 @@ public class MinecraftLauncher {
             "user_properties": "{}"
         ]
     }
-    
+
     /// 启动 Minecraft。
     /// - Returns: 游戏进程。
     public func launch() throws -> Process {
@@ -50,7 +50,7 @@ public class MinecraftLauncher {
         let process: Process = .init()
         process.executableURL = options.javaRuntime.executableURL
         process.currentDirectoryURL = runningDirectory
-        
+
         var arguments: [String] = []
         arguments.append("-Xmx\(options.memory)m")
         arguments.append(contentsOf: manifest.jvmArguments.flatMap { $0.rules.allSatisfy { $0.test(with: options) } ? $0.value : [] })
@@ -66,11 +66,11 @@ public class MinecraftLauncher {
         arguments.append(contentsOf: manifest.gameArguments.flatMap { $0.rules.allSatisfy { $0.test(with: options) } ? $0.value : [] })
         arguments = arguments.map { $0.replacingPlaceholders(with: values) }
         process.arguments = arguments
-        
+
         let pipe: Pipe = .init()
         process.standardOutput = pipe
         process.standardError = pipe
-        
+
         log("正在使用以下参数启动 Minecraft：\(arguments.map { $0 == options.accessToken ? "🥚" : $0 })")
         try process.run()
         Self.gameLogQueue.async {
@@ -83,7 +83,7 @@ public class MinecraftLauncher {
                 handle = nil
             }
             defer { try? handle?.close() }
-            
+
             while process.isRunning {
                 let data: Data = pipe.fileHandleForReading.availableData
                 if data.isEmpty { break }
@@ -92,7 +92,7 @@ public class MinecraftLauncher {
         }
         return process
     }
-    
+
     private func buildClasspath() -> String {
         var urls: [URL] = []
         for library in manifest.getLibraries() {

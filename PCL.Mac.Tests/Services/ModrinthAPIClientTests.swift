@@ -16,16 +16,16 @@ struct ModrinthAPIClientTests {
         for hit in response.hits {
             print(hit.title)
         }
-        
+
         _ = try await ModrinthAPIClient.shared.search(type: .mod, "Fabric API", forVersion: "1.21.11")
         _ = try await ModrinthAPIClient.shared.search(type: .mod, "", forVersion: nil)
-        
+
         let sodium: ModrinthProject = try await ModrinthAPIClient.shared.project("sodium").unwrap()
         print(sodium)
         _ = try await ModrinthAPIClient.shared.versions(ofProject: sodium)
         let version: ModrinthVersion = try await ModrinthAPIClient.shared.version(sodium.versions![0]).unwrap()
         print(version)
-        
+
         let hashes: [String] = [
             "666a30970020ff45f90cd7c96781e62ca99193ae",
             "12b1c41872fea2287793bbcae3b1f73c212d76eb",

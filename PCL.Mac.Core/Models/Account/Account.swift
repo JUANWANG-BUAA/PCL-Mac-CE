@@ -22,17 +22,17 @@ public enum AccountType: String, Codable {
 public class AccountWrapper: Codable {
     public let type: AccountType
     public let account: Account
-    
+
     public init(_ account: Account) {
         self.type = account.type
         self.account = account
     }
-    
+
     private enum CodingKeys: String, CodingKey {
         case type
         case account
     }
-    
+
     public required init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.type = try container.decode(AccountType.self, forKey: .type)
@@ -45,7 +45,7 @@ public class AccountWrapper: Codable {
             self.account = try container.decode(YggdrasilAccount.self, forKey: .account)
         }
     }
-    
+
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(type, forKey: .type)

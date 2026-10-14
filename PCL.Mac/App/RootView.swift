@@ -10,7 +10,8 @@ import Core
 
 struct RootView: View {
     @ObservedObject var instanceManager: InstanceManager
-    
+    @ObservedObject private var themeManager: ThemeManager = .shared
+
     var body: some View {
         ContentView()
             .ignoresSafeArea(.all)
@@ -19,5 +20,7 @@ struct RootView: View {
             .environmentObject(MinecraftDownloadPageViewModel())
             .environmentObject(MultiplayerViewModel())
             .environmentObject(CardInteractionState(isStatic: true))
+            // 主题切换时重建整个视图树，使所有静态色板读取（Color.colorN 等）刷新
+            .id(themeManager.theme)
     }
 }

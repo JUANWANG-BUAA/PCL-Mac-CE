@@ -23,7 +23,7 @@ extension MinecraftVersion.VersionType: Localizable {
         case .aprilFool: .iconGoldBlock
         }
     }
-    
+
     var localizedName: String {
         switch self {
         case .release: "正式版"

@@ -12,11 +12,11 @@ import ZIPFoundation
 
 class EasyTierManager {
     public static let shared: EasyTierManager = .init()
-    
+
     private let coreURL: URL = URLConstants.easyTierURL.appending(path: "easytier-core")
     private let cliURL: URL = URLConstants.easyTierURL.appending(path: "easytier-cli")
     private let logURL: URL = URLConstants.logsDirectoryURL.appending(path: "easytier.log")
-    
+
     private let architecture: String
     /// gitee 镜像源下载项。
     ///
@@ -24,10 +24,10 @@ class EasyTierManager {
     private let mirrorDownloadItems: [ComponentType: DownloadItem]
     /// 官方 GitHub Release 压缩包（内含 `easytier-macos-<arch>/` 目录下的裸二进制）。
     private let officialArchiveURL: URL
-    
+
     private var isEasyTierInstalled: Bool?
     private var easyTierInstances: [EasyTier] = []
-    
+
     private init() {
         self.architecture = Architecture.systemArchitecture() == .arm64 ? "aarch64" : "x86_64"
         self.mirrorDownloadItems = [
@@ -44,23 +44,23 @@ class EasyTierManager {
         ]
         self.officialArchiveURL = APIEndpoints.EasyTier.officialRelease(architecture: architecture)
     }
-    
+
     public func makeEasyTier(peers: [String]) -> EasyTier {
         easyTierInstances.removeAll { $0.process == nil }
         let options: [EasyTier.Option] = [
             .p2pOnly,
             .enableKcpProxy, .latencyFirst, .multiThread, .compression(algorithm: "zstd")
         ] + peers.map(EasyTier.Option.peer(address:))
-        
+
         let instance: EasyTier = .init(coreURL: coreURL, cliURL: cliURL, logURL: logURL, options: options)
         easyTierInstances.append(instance)
         return instance
     }
-    
+
     public func terminateAll() {
         easyTierInstances.forEach { $0.terminate() }
     }
-    
+
     /// 判断是否已经安装 EasyTier。
     public func isInstalled(refresh: Bool = false) -> Bool {
         if let isEasyTierInstalled, !refresh {
@@ -70,7 +70,7 @@ class EasyTierManager {
         isEasyTierInstalled = installed
         return installed
     }
-    
+
     /// 如果没有安装 EasyTier，提示用户安装。
     /// - Returns: 是否未安装 EasyTier。
     public func hintInstall() -> Bool {
@@ -91,7 +91,7 @@ class EasyTierManager {
         }
         return true
     }
-    
+
     /// 删除 EasyTier。
     public func delete() {
         if !isInstalled() {
@@ -109,7 +109,7 @@ class EasyTierManager {
         }
         _ = isInstalled(refresh: true)
     }
-    
+
     /// 创建一个安装任务。
     public func makeInstallTask() -> MyTask<EmptyModel> {
         return .init(
@@ -125,7 +125,7 @@ class EasyTierManager {
                     try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: self.destination(for: type).path)
                 }
             },
-            .init(1, "__completion", display: false) { task, _ in
+            .init(1, "__completion", display: false) { _, _ in
                 EasyTierManager.shared.isEasyTierInstalled = true
                 if await AppRouter.shared.last == .tasks {
                     await MainActor.run {
@@ -135,13 +135,13 @@ class EasyTierManager {
             }
         )
     }
-    
+
     public enum ComponentType: CaseIterable {
         case cli, core
     }
-    
+
     // MARK: - 下载源
-    
+
     /// 从 gitee 镜像源并发下载两个裸二进制。
     private func downloadFromMirror(progressHandler: (@MainActor (Double) -> Void)?) async throws {
         // ConcurrentProgressHandler 为 @MainActor 隔离，在主线程创建并开始计算；
@@ -170,19 +170,19 @@ class EasyTierManager {
         }
         await MainActor.run { progress.stopCalculate() }
     }
-    
+
     /// 从官方 GitHub Release 压缩包下载并提取两个裸二进制。
     private func downloadFromOfficialArchive(progressHandler: (@MainActor (Double) -> Void)?) async throws {
         let archiveURL: URL = URLConstants.tempURL.appending(path: "easytier-macos-\(architecture).zip")
         defer { try? FileManager.default.removeItem(at: archiveURL) }
-        
+
         let item: DownloadItem = .init(url: officialArchiveURL, destination: archiveURL, checksums: nil)
         try await FileDownloader.shared.download(item, progressHandler: progressHandler)
-        
+
         let extractURL: URL = URLConstants.tempURL.appending(path: "easytier-extract-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: extractURL) }
         try FileManager.default.unzipItem(at: archiveURL, to: extractURL)
-        
+
         // 压缩包内为 easytier-macos-<arch>/easytier-{core,cli}
         let rootURL: URL = extractURL.appending(path: "easytier-macos-\(architecture)")
         for type in ComponentType.allCases {
@@ -198,18 +198,18 @@ class EasyTierManager {
             log("已从官方 GitHub Release 提取 \(destination.lastPathComponent)")
         }
     }
-    
+
     // MARK: - 安装状态检查
-    
+
     private func destination(for type: ComponentType) -> URL {
         type == .cli ? cliURL : coreURL
     }
-    
+
     /// 官方包来源标记文件。
     private func officialSourceMarker(for type: ComponentType) -> URL {
         destination(for: type).appendingPathExtension("official-source")
     }
-    
+
     private func checkSingle(type: ComponentType) -> Bool {
         let destination: URL = self.destination(for: type)
         guard FileUtils.isExecutable(at: destination) else { return false }

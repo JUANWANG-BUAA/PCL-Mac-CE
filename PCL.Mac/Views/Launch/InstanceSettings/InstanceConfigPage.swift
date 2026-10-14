@@ -12,12 +12,12 @@ struct InstanceConfigPage: View {
     @StateObject private var viewModel: InstanceConfigViewModel
     @StateObject private var instanceVM: InstanceViewModel
     @StateObject private var loadingVM: MyLoadingViewModel = .init(text: "加载中")
-    
+
     init(instanceManager: InstanceManager, id: String) {
         self._viewModel = .init(wrappedValue: .init(instanceManager: instanceManager, id: id))
         self._instanceVM = .init(wrappedValue: InstanceViewModel(instanceManager: instanceManager))
     }
-    
+
     var body: some View {
         CardContainer {
             MyCard(nil, padding: 10) {
@@ -58,7 +58,7 @@ struct InstanceConfigPage: View {
                 .cardIndex(2)
         }
     }
-    
+
     @ViewBuilder
     private var jvmCard: some View {
         MyCard("JVM 设置", foldable: false) {
@@ -109,9 +109,9 @@ struct InstanceConfigPage: View {
             .padding(.top, 12)
         }
     }
-    
+
     @ViewBuilder
-    private func configLine(label: String,  @ViewBuilder body: () -> some View) -> some View {
+    private func configLine(label: String, @ViewBuilder body: () -> some View) -> some View {
         HStack(spacing: 20) {
             MyText(label)
                 .frame(width: 120, alignment: .leading)

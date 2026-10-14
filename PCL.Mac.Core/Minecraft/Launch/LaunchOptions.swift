@@ -18,12 +18,12 @@ public struct LaunchOptions {
     public var mainClass: String!
     public var extraJvmArguments: [String] = []
     public var demo: Bool = false
-    
+
     // Authlib Injector
     public var authlibInjectorPath: String?
     public var authServerURL: URL?
     public var prefetchedMeta: String?
-    
+
     public func validate() throws {
         if profile == nil || accessToken == nil { throw LaunchError.missingAccount }
         if javaRuntime == nil { throw LaunchError.missingJava }
@@ -32,6 +32,6 @@ public struct LaunchOptions {
         if repository == nil { throw LaunchError.missingRepository }
         if mainClass == nil { throw LaunchError.missingMainClass}
     }
-    
+
     public init() {}
 }

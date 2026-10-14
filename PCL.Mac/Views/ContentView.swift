@@ -13,9 +13,9 @@ struct ContentView: View {
     @ObservedObject private var hintManager: HintManager = .shared
     @ObservedObject private var router: AppRouter = .shared
     @ObservedObject private var easterEggManager: EasterEggManager = .shared
-    
+
     @EnvironmentObject private var instanceManager: InstanceManager
-    
+
     var body: some View {
         VStack(spacing: 0) {
             TitleBarView()
@@ -40,7 +40,7 @@ struct ContentView: View {
             .animation(.easeOut(duration: 0.2), value: hintManager.hints)
             .padding(.bottom, 100)
         }
-        .background(Color(0xC0DEF5))
+        .background(ThemeManager.shared.theme.pageBackground)
         .rotation3DEffect(easterEggManager.rotationAngle, axis: easterEggManager.rotationAxis)
         .contrast(easterEggManager.modifyColor ? -1 : 1)
         .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
@@ -67,11 +67,11 @@ struct ContentView: View {
 private struct HintView: View {
     @State private var appeared: Bool = false
     private let model: HintModel
-    
+
     init(model: HintModel) {
         self.model = model
     }
-    
+
     var body: some View {
         ZStack(alignment: .leading) {
             RightRoundedRectangle(cornerRadius: 5)
@@ -89,7 +89,7 @@ private struct HintView: View {
             appeared = true
         }
     }
-    
+
     private var color: Color {
         switch model.type {
         case .info: Color(0x0A8EFC)
@@ -102,13 +102,13 @@ private struct HintView: View {
 private struct MessageBoxOverlay: View {
     @ObservedObject var messageBoxManager: MessageBoxManager = .shared
     @State private var messageBox: MessageBoxModel?
-    
+
     @State private var opacity: CGFloat = 0
     @State private var rotation: CGFloat = 4
     @State private var offsetY: CGFloat = 40
-    
+
     @State private var animationHideWorkItem: DispatchWorkItem?
-    
+
     var body: some View {
         Group {
             if let messageBox {
@@ -158,7 +158,7 @@ private struct ExtraButtonsOverlay: View {
     @ObservedObject private var router: AppRouter = .shared
     @ObservedObject private var launchManager: MinecraftLaunchManager = .shared
     @ObservedObject private var taskManager: TaskManager = .shared
-    
+
     var body: some View {
         VStack(spacing: 0) {
             ExtraButton(.iconDownloadPage, showTasksButton) {
@@ -178,24 +178,24 @@ private struct ExtraButtonsOverlay: View {
         .animation(.spring(response: 0.4), value: launchManager.isRunning)
         .animation(.spring(response: 0.4), value: showTasksButton)
     }
-    
+
     private var showTasksButton: Bool {
         !taskManager.tasks.filter(\.display).isEmpty && router.last != .tasks
     }
-    
+
     private struct ExtraButton: View {
         @State private var hovered: Bool = false
         @State private var pressed: Bool = false
         private let icon: ImageResource
         private let show: Bool
         private let onClick: () -> Void
-        
+
         init(_ icon: ImageResource, _ show: Bool, onClick: @escaping () -> Void) {
             self.icon = icon
             self.show = show
             self.onClick = onClick
         }
-        
+
         var body: some View {
             Circle()
                 .fill(hovered ? Color.color4 : .color3)

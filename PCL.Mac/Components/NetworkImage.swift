@@ -14,12 +14,12 @@ struct NetworkImage: View {
     private let url: URL
     /// 相对于图片左上角的像素裁剪区域；为 nil 时显示完整图片。
     private let cropRect: CGRect?
-    
+
     init(url: URL, cropRect: CGRect? = nil) {
         self.url = url
         self.cropRect = cropRect
     }
-    
+
     var body: some View {
         imageView
             .task(id: url) {

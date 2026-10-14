@@ -14,14 +14,14 @@ struct MyComboBox: View {
     @State private var checkedScale: CGFloat = 0.0
     @State private var canClick: Bool = true
     private let text: String
-    
+
     private let scaleAnimation: Animation = .spring(response: 0.3, dampingFraction: 0.5)
-    
+
     init(checked: Binding<Bool>, text: String) {
         self._checked = checked
         self.text = text
     }
-    
+
     var body: some View {
         HStack(spacing: 8) {
             ZStack(alignment: .center) {
@@ -29,7 +29,7 @@ struct MyComboBox: View {
                     .strokeBorder(hovered ? Color.color3 : checked ? .color2 : .color1, lineWidth: 1.1)
                     .frame(width: 18, height: 18)
                     .scaleEffect(scale, anchor: .center)
-                
+
                 Image(.iconTaskFinished)
                     .resizable()
                     .scaledToFit()
@@ -57,16 +57,16 @@ struct MyComboBox: View {
                     withAnimation(.spring(duration: 0.1)) {
                         scale = 0.5
                     }
-                    
+
                     let checked = checked
                     self.checked.toggle()
-                    
+
                     if checked {
                         withAnimation(scaleAnimation) {
                             checkedScale = 0
                         }
                     }
-                    
+
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         withAnimation(scaleAnimation) {
                             scale = 1
@@ -98,7 +98,7 @@ struct MyComboBox: View {
 
 private struct PreviewView: View {
     @State private var checked: Bool = false
-    
+
     var body: some View {
         MyComboBox(checked: $checked, text: "复选框")
             .padding()

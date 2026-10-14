@@ -9,7 +9,7 @@ import Foundation
 
 public enum ResourceType: String, Codable {
     case mod, modpack, resourcepack, shader
-    
+
     public var saveDirectory: String? {
         switch self {
         case .mod: "mods"
@@ -25,12 +25,12 @@ public struct Resource: Codable, Hashable, Equatable {
         case modrinth(projectId: String)
         case curseforge(id: Int32)
     }
-    
+
     public enum Icon: Codable, Hashable, Equatable {
         case archiveEntry(path: String, globalHash: String)
         case network(url: URL)
     }
-    
+
     public let id: UUID = .init()
     public let type: ResourceType
     public let name: String
@@ -40,7 +40,7 @@ public struct Resource: Codable, Hashable, Equatable {
     public let loaders: [ModLoader]
     public let tags: [String]
     public let sources: [Source]
-    
+
     public init(
         type: ResourceType,
         name: String,
@@ -60,7 +60,7 @@ public struct Resource: Codable, Hashable, Equatable {
         self.tags = tags
         self.sources = sources
     }
-    
+
     private enum CodingKeys: CodingKey {
         // 不持久化存储 id
         case type, name, version, description, icon, loaders, tags, sources

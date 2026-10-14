@@ -116,7 +116,7 @@ struct LaunchSidebar: Sidebar {
             .onTapGesture {
                 accountVM.currentPanel = .accountList
             }
-            
+
             VStack {
                 Spacer()
                     .frame(height: 160)
@@ -143,7 +143,7 @@ struct LaunchSidebar: Sidebar {
                     }
                     CapeSelection.request(for: account)
                 }
-            
+
             Image(systemName: "arrow.left.arrow.right")
                 .resizable()
                 .scaledToFit()

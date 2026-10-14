@@ -13,7 +13,7 @@ protocol Sidebar: View {
 
 struct EmptySidebar: Sidebar {
     let width: CGFloat = 0
-    
+
     var body: some View {
         EmptyView()
     }

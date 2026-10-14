@@ -10,9 +10,9 @@ import Core
 
 struct Secrets {
     public static let shared: Secrets = .init()
-    
+
     public let curseforgeApiKey: String?
-    
+
     private init() {
         let secrets: [String: String]?
         do {
@@ -22,10 +22,10 @@ struct Secrets {
             err("加载 Secrets.properties 失败：\(error.localizedDescription)")
             secrets = nil
         }
-        
+
         curseforgeApiKey = Self.secret(key: "CURSE_FORGE_API_KEY", in: secrets)
     }
-    
+
     private static func secret(key: String, in secrets: [String: String]?) -> String? {
         if let secret = ProcessInfo.processInfo.environment["PCLMAC_\(key)"] ?? secrets?[key] {
             return secret

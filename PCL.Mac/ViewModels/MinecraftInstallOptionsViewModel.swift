@@ -37,14 +37,14 @@ class MinecraftInstallOptionsViewModel: ObservableObject {
     public let version: VersionManifest.Version
     private let instanceManager: InstanceManager
     private var lastLoader: ModLoader?
-    
+
     init(instanceManager: InstanceManager, version: VersionManifest.Version) {
         self.instanceManager = instanceManager
         self.version = version
         self.name = version.id
         checkName()
     }
-    
+
     private func checkName() {
         do {
             _ = try instanceManager.currentRepository.checkInstanceName(name, trim: false)

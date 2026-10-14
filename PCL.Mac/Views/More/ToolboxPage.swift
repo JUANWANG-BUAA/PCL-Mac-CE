@@ -10,7 +10,7 @@ import Core
 
 struct ToolboxPage: View {
     @StateObject private var viewModel: ToolboxViewModel = .init()
-    
+
     var body: some View {
         CardContainer {
             MyCard("百宝箱", foldable: false) {
@@ -24,7 +24,7 @@ struct ToolboxPage: View {
                         )
                     }
                     .frame(width: 120)
-                    
+
                     MyButton("千万别点", type: .red) {
                         MessageBoxManager.shared.showText(
                             title: "警告",
@@ -69,18 +69,18 @@ struct ToolboxPage: View {
 struct CaveMessageModifier: AnimatableModifier {
     let text: String
     var progress: Double
-    
+
     var animatableData: Double {
         get { progress }
         set { progress = newValue }
     }
-    
+
     func body(content: Content) -> some View {
         let total: Int = text.count
         let clamped: Double = min(max(progress, 0.0), 1.0)
         let countDouble: Double = Double(total) * clamped
         let count: Int = Int(countDouble.rounded(.down))
-        
+
         return MyText(String(text.prefix(count)))
     }
 }

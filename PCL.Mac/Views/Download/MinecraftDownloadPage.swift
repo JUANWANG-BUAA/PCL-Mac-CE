@@ -17,7 +17,7 @@ struct MinecraftDownloadPage: View {
         formatter.dateFormat = "yyyy/MM/dd HH:mm"
         return formatter
     }()
-    
+
     var body: some View {
         CardContainer {
             if viewModel.loaded {
@@ -42,7 +42,7 @@ struct MinecraftDownloadPage: View {
             }
         }
     }
-    
+
     var latestVersionsCard: some View {
         Group {
             if let latestRelease = viewModel.latestRelease {
@@ -57,7 +57,7 @@ struct MinecraftDownloadPage: View {
             }
         }
     }
-    
+
     @ViewBuilder
     func categoryCard(_ category: MinecraftVersion.VersionType) -> some View {
         let versions: [VersionManifest.Version] = viewModel.versionMap[category] ?? []
@@ -73,7 +73,7 @@ struct MinecraftDownloadPage: View {
 
 private struct VersionView: View {
     @EnvironmentObject private var viewModel: InstanceManager
-    
+
     private static let dateFormatter: DateFormatter = {
         let formatter: DateFormatter = .init()
         formatter.dateFormat = "yyyy/MM/dd HH:mm"
@@ -81,12 +81,12 @@ private struct VersionView: View {
     }()
     private let version: VersionManifest.Version
     private let description: String
-    
+
     init(_ version: VersionManifest.Version, description: String) {
         self.version = version
         self.description = description
     }
-    
+
     var body: some View {
         MyListItem(.init(image: version.type.icon, name: version.id, description: description))
         .onTapGesture {

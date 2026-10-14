@@ -11,20 +11,20 @@ struct MyLoading: View {
     @ObservedObject private var viewModel: MyLoadingViewModel
     /// 是否显示为失败，只会在下一次敲击开始前被修改
     @State private var isFailed: Bool = false
-    
+
     @State private var pickaxeAngle: Double = 0
     @State private var leftPathOffset: CGSize = .zero
     @State private var rightPathOffset: CGSize = .zero
     @State private var pathOpacity: CGFloat = 1
     @State private var animationLoopTask: Task<Void, Never>?
-    
+
     private let showCard: Bool
-    
+
     init(viewModel: MyLoadingViewModel, showCard: Bool = true) {
         self.viewModel = viewModel
         self.showCard = showCard
     }
-    
+
     var body: some View {
         Group {
             if showCard {
@@ -50,29 +50,29 @@ struct MyLoading: View {
             stopAnimationLoop()
         }
     }
-    
+
     private var pickaxe: some View {
         VStack {
             ZStack {
                 // 横线
                 Self.linePath
                 .stroke(viewModel.isFailed ? Color.red : Color.color2, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                
+
                 // 镐子
                 Self.pickaxePath
                 .stroke(viewModel.isFailed ? Color.red : Color.color2, lineWidth: 2)
                 .rotationEffect(.init(degrees: pickaxeAngle), anchor: .init(x: 0.625, y: 0.6875))
-                
+
                 // 小碎片
                 Group {
                     Self.leftPath
                     .offset(leftPathOffset)
-                    
+
                     Self.rightPath
                     .offset(rightPathOffset)
                 }
                 .opacity(pathOpacity)
-                
+
                 // 叉叉
                 if isFailed {
                     Self.failedPath
@@ -88,7 +88,7 @@ struct MyLoading: View {
             }
         }
     }
-    
+
     private func startAnimationLoop() {
         guard animationLoopTask == nil else { return }
         animationLoopTask = .init { @MainActor in
@@ -111,18 +111,18 @@ struct MyLoading: View {
                             self.isFailed = true
                         }
                     }
-                    
+
                     try await Task.sleep(seconds: 0.98)
                 }
             } catch {}
         }
     }
-    
+
     private func stopAnimationLoop() {
         animationLoopTask?.cancel()
         animationLoopTask = nil
     }
-    
+
     private func setPickaxeAngle(_ value: Double, duration: Double, animation: Animation, wait: Bool = false) async throws {
         await MainActor.run {
             withAnimation(animation) {
@@ -133,12 +133,12 @@ struct MyLoading: View {
             try await Task.sleep(seconds: duration)
         }
     }
-    
+
     private static let linePath: Path = .init { path in
         path.move(to: CGPoint(x: 5, y: 66))
         path.addLine(to: CGPoint(x: 29, y: 66))
     }
-    
+
     private static let pickaxePath: Path = .init { path in
         path.move(to: CGPoint(x: 53.7693, y: 59.6884))
         path.addLine(to: CGPoint(x: 53.7763, y: 27.5221))
@@ -155,19 +155,19 @@ struct MyLoading: View {
         path.addLine(to: CGPoint(x: 53.7693, y: 59.6884))
         path.closeSubpath()
     }
-    
+
     private static let leftPath: Path = .init { path in
         path.move(to: CGPoint(x: 11, y: 61.67))
         path.addLine(to: CGPoint(x: 12.8992, y: 60.0019))
         path.addLine(to: CGPoint(x: 15.2859, y: 64.6345))
     }
-    
+
     private static let rightPath: Path = .init { path in
         path.move(to: CGPoint(x: 19.7416, y: 60.147))
         path.addLine(to: CGPoint(x: 21.4566, y: 62.0039))
         path.addLine(to: CGPoint(x: 16.8852, y: 64.5056))
     }
-    
+
     private static let failedPath: Path = .init { path in
         path.move(to: CGPoint(x: 10.2929, y: 49.2929))
         path.addCurve(to: CGPoint(x: 20.2929, y: 60.7071), control1: CGPoint(x: 9.90237, y: 49.6834), control2: CGPoint(x: 9.90237, y: 50.3166))
@@ -175,7 +175,7 @@ struct MyLoading: View {
         path.addCurve(to: CGPoint(x: 21.7071, y: 59.2929), control1: CGPoint(x: 22.0976, y: 60.3166), control2: CGPoint(x: 22.0976, y: 59.6834))
         path.addCurve(to: CGPoint(x: 11.7071, y: 49.2929), control1: CGPoint(x: 21.7071, y: 59.2929), control2: CGPoint(x: 11.7071, y: 49.2929))
         path.addCurve(to: CGPoint(x: 10.2929, y: 49.2929), control1: CGPoint(x: 11.3166, y: 48.9024), control2: CGPoint(x: 10.6834, y: 48.9024))
-        
+
         path.move(to: CGPoint(x: 10.2929, y: 60.7071))
         path.addCurve(to: CGPoint(x: 11.7071, y: 60.7071), control1: CGPoint(x: 10.6834, y: 61.0976), control2: CGPoint(x: 11.3166, y: 61.0976))
         path.addCurve(to: CGPoint(x: 21.7071, y: 50.7071), control1: CGPoint(x: 22.0977, y: 50.3166), control2: CGPoint(x: 22.0976, y: 49.6835))
@@ -186,9 +186,9 @@ struct MyLoading: View {
     }
 }
 
-fileprivate struct PreviewView: View {
+private struct PreviewView: View {
     private let viewModel: MyLoadingViewModel = .init(text: "加载中")
-    
+
     var body: some View {
         VStack {
             MyLoading(viewModel: viewModel)

@@ -12,13 +12,13 @@ struct InstanceListPage: View {
     @StateObject private var viewModel: InstanceListViewModel
     @StateObject private var instanceVM: InstanceViewModel
     private let repositoryId: UUID
-    
+
     init(instanceManager: InstanceManager, repositoryId: UUID) {
         self._viewModel = .init(wrappedValue: .init(instanceManager: instanceManager, repositoryId: repositoryId))
         self._instanceVM = .init(wrappedValue: .init(instanceManager: instanceManager))
         self.repositoryId = repositoryId
     }
-    
+
     var body: some View {
         CardContainer {
             MyCard("当前目录：\(viewModel.repository.name)", foldable: false) {
@@ -59,11 +59,11 @@ struct InstanceListPage: View {
                 .frame(height: 35)
                 .padding(.top, 6)
             }
-            
+
             if viewModel.loading {
                 MyLoading(viewModel: viewModel.loadingViewModel)
             }
-            
+
             if let errorInstances = viewModel.errorInstances, !errorInstances.isEmpty {
                 MyCard("错误的实例") {
                     VStack(spacing: 0) {
@@ -75,14 +75,14 @@ struct InstanceListPage: View {
                     }
                 }
             }
-            
+
             if let moddedInstances = viewModel.moddedInstances, !moddedInstances.isEmpty {
                 MyCard("可安装 Mod", folded: viewModel.vanillaInstances?.isEmpty == false) {
                     instanceList(moddedInstances)
                 }
                 .cardIndex(1)
             }
-            
+
             if let vanillaInstances = viewModel.vanillaInstances, !vanillaInstances.isEmpty {
                 MyCard("常规实例", folded: false) {
                     instanceList(vanillaInstances)
@@ -94,7 +94,7 @@ struct InstanceListPage: View {
             instanceVM.switchRepository(to: viewModel.repository)
         }
     }
-    
+
     @ViewBuilder
     private func instanceList(_ instances: [MinecraftInstance]) -> some View {
         VStack(spacing: 0) {
@@ -108,9 +108,9 @@ struct InstanceListPage: View {
             }
         }
     }
-    
+
     @ViewBuilder
-    private func infoLine(label: String,  @ViewBuilder body: () -> some View) -> some View {
+    private func infoLine(label: String, @ViewBuilder body: () -> some View) -> some View {
         HStack(spacing: 20) {
             MyText(label)
                 .frame(width: 120, alignment: .leading)
@@ -129,13 +129,13 @@ private struct ErrorInstanceView: View {
     private let instance: ErrorInstance
     private let directory: URL
     private let onDeleted: () -> Void
-    
+
     init(instance: ErrorInstance, repository: MinecraftRepository, onDeleted: @escaping () -> Void) {
         self.instance = instance
         self.directory = repository.versionsDirectory.appending(path: instance.name)
         self.onDeleted = onDeleted
     }
-    
+
     var body: some View {
         MyListItem { hovered in
             HStack {
@@ -144,15 +144,15 @@ private struct ErrorInstanceView: View {
                     .scaledToFit()
                     .frame(width: 36, height: 36)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
-                
+
                 VStack(alignment: .leading) {
                     MyText(instance.name)
                     MyText(instance.message, size: 12, color: .colorGray3)
                 }
                 .lineLimit(1)
-                
+
                 Spacer(minLength: 0)
-                
+
                 HStack {
                     ListItemButton(.resource(.btnOpen)) {
                         NSWorkspace.shared.activateFileViewerSelecting([directory])
@@ -165,7 +165,7 @@ private struct ErrorInstanceView: View {
             }
         }
     }
-    
+
     private func deleteInstance() {
         MessageBoxManager.shared.showText(
             title: "删除错误的实例",
@@ -194,7 +194,7 @@ private struct InstanceView: View {
     private let version: MinecraftVersion
     private let icon: ImageResource
     private let isCurrent: Bool
-    
+
     init(instance: MinecraftInstance, isCurrent: Bool) {
         self.name = instance.name
         self.version = instance.version
@@ -205,7 +205,7 @@ private struct InstanceView: View {
             self.icon = .iconGrassBlock
         }
     }
-    
+
     var body: some View {
         MyListItem(.init(image: icon, name: name, description: isCurrent ? "\(version.id) · 当前选择" : version.id), selected: isCurrent)
     }

@@ -49,57 +49,25 @@ public class FileDownloader {
         try FileManager.default.createDirectory(at: file.destination.deletingLastPathComponent(), withIntermediateDirectories: true)
 
         let candidates = file.urls.flatMap { sourceManager.orderedCandidates(for: $0, preferMirror: preferMirror) }
-        if candidates.isEmpty {
+        guard !candidates.isEmpty else {
             err("\(file.destination.lastPathComponent) 的候选列表为空")
             throw DownloadError.unknownError
         }
-        
-        var lastError: Error?
 
+        var lastError: Error?
         for candidate in candidates {
             for retryCount in 0...maxRetryCount {
-                await progressHandler?(0)
-
-                var request = URLRequest(url: candidate.url)
-                request.setValue("PCL-Mac/\(Metadata.appVersion)", forHTTPHeaderField: "User-Agent")
-                for (key, value) in candidate.headers ?? [:] {
-                    request.setValue(value, forHTTPHeaderField: key)
-                }
-
                 do {
-                    log("下载 \(candidate.url) → \(file.destination)")
-                    let task = session.downloadTask(with: request)
-                    try await DownloadDelegate.shared.start(task, destination: file.destination, progressHandler: progressHandler)
-
-                    // 校验
-                    if file.checksums != nil {
-                        guard try FileUtils.check(file) else {
-                            try FileManager.default.removeItem(at: file.destination)
-                            throw DownloadError.checksumMismatch
-                        }
-                    }
-                    if file.executable {
-                        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.destination.path)
-                    }
+                    try await attemptDownload(file, from: candidate, progressHandler: progressHandler)
                     return
                 } catch {
                     try? FileManager.default.removeItem(at: file.destination)
-
                     if error.isCancellationError { throw error }
-
                     lastError = error
-
-                    if case DownloadError.checksumMismatch = error {
-                        warn("校验失败 \(candidate.url.lastPathComponent)，尝试下一个候选")
+                    if shouldSkipCandidate(after: error) {
+                        warn("\(candidate.url.lastPathComponent) 下载失败（\(error.localizedDescription)），尝试下一个候选")
                         break
                     }
-
-                    if let downloadError = error as? DownloadError,
-                       case .badStatusCode = downloadError {
-                        warn("\(candidate.url.lastPathComponent) 返回错误，尝试下一个候选")
-                        break
-                    }
-
                     if retryCount < maxRetryCount {
                         warn("下载 \(candidate.url.lastPathComponent) 失败: \(error.localizedDescription)，重试 (\(retryCount + 1)/\(maxRetryCount))")
                         try await Task.sleep(seconds: Double(retryCount + 1) * 0.5)
@@ -110,6 +78,44 @@ public class FileDownloader {
         }
 
         throw lastError ?? DownloadError.unknownError
+    }
+
+    /// 对单个候选执行一次下载尝试（含校验与可执行权限设置）。
+    private func attemptDownload(
+        _ file: DownloadItem,
+        from candidate: DownloadCandidate,
+        progressHandler: (@MainActor (Double) -> Void)?
+    ) async throws {
+        await progressHandler?(0)
+
+        var request = URLRequest(url: candidate.url)
+        request.setValue("PCL-Mac/\(Metadata.appVersion)", forHTTPHeaderField: "User-Agent")
+        for (key, value) in candidate.headers ?? [:] {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+
+        log("下载 \(candidate.url) → \(file.destination)")
+        let task = session.downloadTask(with: request)
+        try await DownloadDelegate.shared.start(task, destination: file.destination, progressHandler: progressHandler)
+
+        // 校验
+        if file.checksums != nil {
+            guard try FileUtils.check(file) else {
+                try FileManager.default.removeItem(at: file.destination)
+                throw DownloadError.checksumMismatch
+            }
+        }
+        if file.executable {
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.destination.path)
+        }
+    }
+
+    /// 该错误是否应直接放弃当前候选（换源）而不再重试：
+    /// 校验失败与状态码错误通常与镜像源有关，重试同一候选无意义。
+    private func shouldSkipCandidate(after error: Error) -> Bool {
+        if case DownloadError.checksumMismatch = error { return true }
+        if let downloadError = error as? DownloadError, case .badStatusCode = downloadError { return true }
+        return false
     }
 
     /// 批量下载文件。

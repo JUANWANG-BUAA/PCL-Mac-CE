@@ -9,32 +9,32 @@ import Foundation
 
 public struct MojangJavaManifest: Decodable {
     public let files: [String: File]
-    
+
     private enum CodingKeys: String, CodingKey {
         case files
     }
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.files = try container.decode([String: File].self, forKey: .files)
     }
-    
+
     public enum File: Decodable {
         case directory
         case file(url: URL, sha1: String?, size: Int?, executable: Bool)
         case link(target: String)
-        
+
         private enum CodingKeys: String, CodingKey {
             case type
             case downloads, executable
             case target
         }
-        
+
         private enum DownloadsCodingKeys: String, CodingKey { case raw, lzma }
         private enum DownloadCodingKeys: String, CodingKey {
             case url, sha1, size
         }
-        
+
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             let type: String = try container.decode(String.self, forKey: .type)
@@ -60,22 +60,22 @@ public struct MojangJavaManifest: Decodable {
 
 public struct MojangJavaList: Decodable {
     public let entries: [String: [String: [JavaDownload]]]
-    
+
     public init(from decoder: any Decoder) throws {
         self.entries = try decoder.singleValueContainer().decode([String: [String: [JavaDownload]]].self)
     }
-    
+
     public struct JavaDownload: Decodable {
         public let manifestURL: URL
         public let version: String
         public let releaseTime: Date
-        
+
         private enum CodingKeys: String, CodingKey {
             case manifest, version
         }
         private enum ManifestCodingKeys: String, CodingKey { case url }
         private enum VersionCodingKeys: String, CodingKey { case name, released }
-        
+
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.manifestURL = try container.nestedContainer(keyedBy: ManifestCodingKeys.self, forKey: .manifest).decode(URL.self, forKey: .url)

@@ -15,9 +15,9 @@ public class MicrosoftAuthService {
     private var deviceCode: String?
     private var oAuthToken: String?
     private var refreshToken: String?
-    
+
     public init() {}
-    
+
     /// 开始登录并获取设备码。
     /// - Returns: 用户授权代码和 `URL`。
     public func start() async throws -> AuthorizationCode {
@@ -39,7 +39,7 @@ public class MicrosoftAuthService {
             verificationURL: URL(string: json["verification_uri"].stringValue) ?? APIEndpoints.MicrosoftAuth.verificationFallback
         )
     }
-    
+
     /// 轮询用户验证状态。
     /// - Returns: 用户是否完成了验证。
     public func poll() async throws -> Bool {
@@ -62,7 +62,7 @@ public class MicrosoftAuthService {
         }
         return false
     }
-    
+
     /// 完成后续登录步骤。
     /// - Returns: 包含玩家档案、Minecraft 令牌和 OAuth 刷新令牌的结构体。
     public func authenticate() async throws -> MinecraftAuthResponse {
@@ -78,7 +78,7 @@ public class MicrosoftAuthService {
         }
         return .init(profile: profile, accessToken: minecraftToken, refreshToken: refreshToken)
     }
-    
+
     /// 刷新 Minecraft 登录信息和令牌。
     /// - Parameter token: OAuth 刷新令牌。
     /// - Returns: 新的 `MinecraftAuthResponse`。
@@ -106,18 +106,18 @@ public class MicrosoftAuthService {
         }
         return .init(profile: profile, accessToken: minecraftToken, refreshToken: refreshToken)
     }
-    
+
     public struct AuthorizationCode {
         public let code: String
         public let verificationURL: URL
     }
-    
+
     public struct MinecraftAuthResponse {
         public let profile: PlayerProfile
         public let accessToken: String
         public let refreshToken: String
     }
-    
+
     public enum Error: Swift.Error {
         case xboxAuthenticationFailed(code: UInt32)
         case apiError(description: String)
@@ -126,28 +126,27 @@ public class MicrosoftAuthService {
         case internalError
         case notPurchased
     }
-    
-    
+
     private struct XboxLiveAuthResponse {
         public let token: String
         public let uhs: String
     }
-    
+
     private func post(_ url: URLConvertible, _ body: [String: Any], encodeMethod: HTTPClient.EncodeMethod = .json) async throws -> JSON {
         let response = try await HTTPClient.shared.post(url, body: body, using: encodeMethod)
         let json: JSON = try response.json()
         guard let string: String = .init(data: response.data, encoding: .utf8) else { throw Error.internalError }
-        
+
         if let error: String = json["error"].string {
             if error == "authorization_pending" || error == "slow_down" {
                 return json
             }
-            
+
             if error == "invalid_grant" {
                 err("刷新令牌已过期或被撤销，需要重新登录")
                 throw Error.grantExpired
             }
-            
+
             let description: String = json["error_description"].string ?? json["errorMessage"].stringValue
             err("调用 API 失败：\(response.statusCode) \(error)，错误描述：\(description)")
             throw Error.apiError(description: description)
@@ -162,7 +161,7 @@ public class MicrosoftAuthService {
         }
         return json
     }
-    
+
     private func authenticateXBL(with accessToken: String) async throws -> XboxLiveAuthResponse {
         let json: JSON = try await post(
             APIEndpoints.XboxAuth.userAuthenticate,
@@ -182,7 +181,7 @@ public class MicrosoftAuthService {
         }
         return XboxLiveAuthResponse(token: json["Token"].stringValue, uhs: uhs)
     }
-    
+
     private func authorizeXSTS(with accessToken: String) async throws -> XboxLiveAuthResponse {
         let json: JSON = try await post(
             APIEndpoints.XboxAuth.xstsAuthorize,
@@ -203,7 +202,7 @@ public class MicrosoftAuthService {
         }
         return XboxLiveAuthResponse(token: json["Token"].stringValue, uhs: uhs)
     }
-    
+
     private func loginMinecraft(with xstsAuthResponse: XboxLiveAuthResponse) async throws -> String {
         let json: JSON = try await post(
             APIEndpoints.MojangServices.apiRoot.appending(path: "authentication/login_with_xbox"),
@@ -213,7 +212,7 @@ public class MicrosoftAuthService {
         )
         return json["access_token"].stringValue
     }
-    
+
     private func getMinecraftProfile(with token: String) async throws -> PlayerProfile? {
         let json: JSON = try await HTTPClient.shared.get(
             APIEndpoints.MojangServices.apiRoot.appending(path: "minecraft/profile"),

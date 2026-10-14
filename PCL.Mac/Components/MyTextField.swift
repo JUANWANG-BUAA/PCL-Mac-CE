@@ -13,13 +13,13 @@ struct MyTextField: View {
     @FocusState private var focused: Bool
     private let placeholder: String
     private let secure: Bool
-    
+
     init(text: Binding<String>, placeholder: String = "", secure: Bool = false) {
         self._text = text
         self.placeholder = placeholder
         self.secure = secure
     }
-    
+
     var body: some View {
         ZStack(alignment: .leading) {
             Group {
@@ -36,14 +36,14 @@ struct MyTextField: View {
             .onSubmit {
                 focused = false
             }
-            
+
             if !focused && text.isEmpty {
                 Text(placeholder)
                     .foregroundStyle(Color.colorGray3)
                     .padding(.horizontal, 6)
                     .allowsHitTesting(false)
             }
-            
+
             RoundedRectangle(cornerRadius: 4)
                 .strokeBorder(foregroundColor, lineWidth: 1.5, antialiased: false)
                 .allowsHitTesting(false)
@@ -59,13 +59,13 @@ struct MyTextField: View {
         .background(backgroundColor)
         .frame(height: 26)
     }
-    
+
     private var foregroundColor: Color {
         if focused { return .color3 }
         if hovered { return .color4 }
         return .color5
     }
-    
+
     private var backgroundColor: Color {
         if focused || hovered { return .color7 }
         return .white.opacity(0.5)

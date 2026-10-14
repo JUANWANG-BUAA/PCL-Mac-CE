@@ -15,21 +15,21 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         queue.maxConcurrentOperationCount = 1
         return queue
     }()
-    
+
     public class DownloadContext {
         public let destination: URL
         public let progressHandler: (@MainActor (Double) -> Void)?
         public var continuation: CheckedContinuation<Void, Error>?
-        
+
         fileprivate init(destination: URL, continuation: CheckedContinuation<Void, Error>, progressHandler: (@MainActor (Double) -> Void)?) {
             self.destination = destination
             self.progressHandler = progressHandler
             self.continuation = continuation
         }
     }
-    
+
     private var contexts: [Int: DownloadContext] = [:]
-    
+
     public func start(_ task: URLSessionDownloadTask, destination: URL, progressHandler: (@MainActor (Double) -> Void)?) async throws {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -43,7 +43,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             task.cancel()
         }
     }
-    
+
     public func register(
         task: URLSessionDownloadTask,
         destination: URL,
@@ -55,7 +55,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             self.contexts[task.taskIdentifier] = context
         }
     }
-    
+
     public func urlSession(
         _ session: URLSession,
         downloadTask: URLSessionDownloadTask,
@@ -64,7 +64,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         guard let context: DownloadContext = contexts[downloadTask.taskIdentifier] else {
             return
         }
-        
+
         guard let response = downloadTask.response.flatMap({ $0 as? HTTPURLResponse }) else {
             resume(
                 task: downloadTask,
@@ -92,7 +92,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         updateProgress(for: downloadTask, with: 1)
         resume(task: downloadTask, with: .success(()))
     }
-    
+
     public func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
@@ -100,7 +100,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     ) {
         resume(task: task, with: .failure(error ?? DownloadError.unknownError))
     }
-    
+
     public func urlSession(
         _ session: URLSession,
         downloadTask: URLSessionDownloadTask,
@@ -115,7 +115,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             updateProgress(for: downloadTask, with: Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
         }
     }
-    
+
     private func resume(task: URLSessionTask, with value: Result<Void, Error>) {
         if let context = contexts[task.taskIdentifier] {
             context.continuation?.resume(with: value)
@@ -123,7 +123,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             contexts.removeValue(forKey: task.taskIdentifier)
         }
     }
-    
+
     private func updateProgress(for task: URLSessionTask, with progress: Double) {
         if let context = contexts[task.taskIdentifier], let progressHandler = context.progressHandler {
             DispatchQueue.main.async {
@@ -131,7 +131,7 @@ public class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             }
         }
     }
-    
+
     private override init() {
         super.init()
     }

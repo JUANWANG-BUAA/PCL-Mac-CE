@@ -13,16 +13,16 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
     @State private var panel: SelectPanel?
     @State private var rect: NSRect = .zero
     @State private var observer: NSObjectProtocol?
-    
+
     @Binding private var selected: Entry
-    
+
     private let entries: [Entry]
-    
+
     init(_ selected: Binding<Entry>, entries: [Entry]) {
         self._selected = selected
         self.entries = entries
     }
-    
+
     var body: some View {
         ZStack(alignment: .leading) {
             GeometryReader { proxy in
@@ -36,17 +36,17 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
                         recalculateRect(proxy: proxy)
                     }
             }
-            
+
             RoundedRectangle(cornerRadius: 4)
                 .strokeBorder(foregroundColor, lineWidth: 1.5, antialiased: false)
                 .background(backgroundColor)
                 .allowsHitTesting(false)
-            
+
             HStack {
                 MyText(selected.description)
-                
+
                 Spacer(minLength: 0)
-                
+
                 Image(.btnFold)
                     .resizable()
                     .scaledToFit()
@@ -73,7 +73,7 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
                     presented = false
                     close()
                 })
-                
+
                 let panel = SelectPanel(
                     contentRect: rect,
                     styleMask: [],
@@ -83,7 +83,7 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
                 panel.contentView = hostingView
                 panel.backgroundColor = .clear
                 panel.hidesOnDeactivate = true
-                
+
                 self.observer = NotificationCenter.default.addObserver(
                     forName: NSWindow.didResignKeyNotification,
                     object: panel,
@@ -92,9 +92,9 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
                     self.presented = false
                     self.close()
                 }
-                
+
                 panel.makeKeyAndOrderFront(nil)
-                
+
                 self.panel = panel
             }
         }
@@ -102,15 +102,15 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
             close()
         }
     }
-    
+
     private var foregroundColor: Color {
         hovered ? .color4 : .color5
     }
-    
+
     private var backgroundColor: Color {
         hovered ? .color7 : .white.opacity(0.5)
     }
-    
+
     private func close() {
         if let observer {
             NotificationCenter.default.removeObserver(observer)
@@ -119,11 +119,11 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
         panel?.close()
         panel = nil
     }
-    
+
     private func recalculateRect(proxy: GeometryProxy) {
         guard let window = NSApplication.shared.windows.first,
               let contentView = window.contentView else { return }
-        
+
         let global = proxy.frame(in: .global)
         let contentHeight = contentView.bounds.height
         let popupHeight = proxy.size.height * min(CGFloat(entries.count), 5.5)
@@ -142,18 +142,18 @@ private struct PopupView<Entry: Hashable & CustomStringConvertible>: View {
     private let entries: [Entry]
     private let selectedEntry: Entry
     private let onSelect: (Entry) -> Void
-    
+
     init(entries: [Entry], selectedEntry: Entry, onSelect: @escaping (Entry) -> Void) {
         self.entries = entries
         self.selectedEntry = selectedEntry
         self.onSelect = onSelect
     }
-    
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 4)
                 .fill(.white)
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(entries, id: \.self) { entry in
@@ -179,7 +179,7 @@ private struct PopupView<Entry: Hashable & CustomStringConvertible>: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 4))
-            
+
             RoundedRectangle(cornerRadius: 4)
                 .strokeBorder(Color.color4, lineWidth: 1.5, antialiased: false)
         }

@@ -11,15 +11,15 @@ struct MyListItem<Content: View>: View {
     @State private var hovered: Bool = false
     @State private var backgroundScale: CGFloat = 0.92
     private let content: (Bool) -> Content
-    
+
     init(_ content: @escaping (Bool) -> Content) {
         self.content = content
     }
-    
+
     init(_ content: @escaping () -> Content) {
         self.init({ _ in content() })
     }
-    
+
     init(_ model: ListItem, selected: Bool = false) where Content == AnyView {
         self.init {
             AnyView(
@@ -51,7 +51,7 @@ struct MyListItem<Content: View>: View {
             )
         }
     }
-    
+
     var body: some View {
         content(hovered)
             .frame(maxWidth: .infinity)
@@ -81,13 +81,13 @@ struct ListItemButton: View {
     private let icon: ListItem.Image
     private let scale: Double
     private let clickPerform: () -> Void
-    
+
     init(_ icon: ListItem.Image, scale: Double = 1.0, clickPerform: @escaping () -> Void) {
         self.icon = icon
         self.scale = scale
         self.clickPerform = clickPerform
     }
-    
+
     var body: some View {
         icon.makeView()
             .scaledToFit()

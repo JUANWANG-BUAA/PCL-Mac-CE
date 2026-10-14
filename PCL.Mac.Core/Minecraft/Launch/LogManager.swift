@@ -19,7 +19,7 @@ public class LogManager {
     }()
     private let logQueue: DispatchQueue = .init(label: "PCL.Mac.Log")
     private let logger: Logger = .init()
-    
+
     public func enableLogging(logsURL: URL = URLConstants.logsDirectoryURL) {
         let logFileURL: URL = logsURL.appending(path: "Log1.log")
         if !FileManager.default.fileExists(atPath: logsURL.path) {
@@ -34,7 +34,7 @@ public class LogManager {
             self.fileHandle = handle
         }
     }
-    
+
     public func log(message: Any, level: String, file: String = #file, line: Int = #line) {
         // 构建日志字符串
         let time: String = dateFormatter.string(from: Date())
@@ -58,23 +58,23 @@ public class LogManager {
             }
         }
     }
-    
+
     public func info(_ message: Any, file: String = #file, line: Int = #line) {
         log(message: message, level: "INFO", file: file, line: line)
     }
-    
+
     public func warn(_ message: Any, file: String = #file, line: Int = #line) {
         log(message: message, level: "WARN", file: file, line: line)
     }
-    
+
     public func error(_ message: Any, file: String = #file, line: Int = #line) {
         log(message: message, level: "ERROR", file: file, line: line)
     }
-    
+
     public func debug(_ message: Any, file: String = #file, line: Int = #line) {
         log(message: message, level: "DEBUG", file: file, line: line)
     }
-    
+
     private static func updateLogs(logsURL: URL) {
         try? FileManager.default.removeItem(at: logsURL.appending(path: "Log5.log"))
         moveLog(logsURL: logsURL, from: "Log4.log", to: "Log5.log")
@@ -82,7 +82,7 @@ public class LogManager {
         moveLog(logsURL: logsURL, from: "Log2.log", to: "Log3.log")
         moveLog(logsURL: logsURL, from: "Log1.log", to: "Log2.log")
     }
-    
+
     private static func moveLog(logsURL: URL, from source: String, to destination: String) {
         try? FileManager.default.moveItem(at: logsURL.appending(path: source), to: logsURL.appending(path: destination))
     }

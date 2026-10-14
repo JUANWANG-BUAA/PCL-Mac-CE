@@ -10,12 +10,12 @@ import CoreLocation
 
 public enum LocaleUtils {
     @MainActor private static var inChinaMainland: Bool?
-    
+
     /// 判断系统地区设置是否为中国大陆。
     public static func isSystemLocaleChinese() -> Bool {
         return Locale.current.identifier == "zh_CN"
     }
-    
+
     /// 根据当前网络的公网 IP 推断所在地是否为中国大陆（网络所在地），并非精确的设备物理位置。
     ///
     /// 查询使用了 [CloudFlare Trace](https://www.cloudflare-cn.com/cdn-cgi/trace) 基于出口 IP 进行地区判断，

@@ -11,26 +11,26 @@ import Core
 struct InstalledResourcesPage: View {
     @StateObject private var viewModel: InstalledResourcesViewModel
     @StateObject private var loadingVM: MyLoadingViewModel
-    
+
     init(instanceManager: InstanceManager, id: String, type: ResourceType) {
         self._viewModel = .init(wrappedValue: .init(instanceManager: instanceManager, id: id, type: type))
         self._loadingVM = .init(wrappedValue: MyLoadingViewModel(text: "加载中"))
     }
-    
+
     var body: some View {
         Group {
             if !viewModel.supportMods {
                 MyCard(nil) {
                     VStack(spacing: 10) {
                         MyText("该实例不可使用 Mod", size: 19, color: .color3)
-                        
+
                         Rectangle()
                             .fill(Color.color3)
                             .frame(height: 2)
-                        
+
                         MyText("你需要先安装 Forge、Fabric 等 Mod 加载器才能使用 Mod，请在安装实例时选择这些加载器。\n如果你已经安装了 Mod 加载器，那么你很可能选择了错误的实例，请点击实例选择按钮切换实例。")
                             .padding(.vertical, 5)
-                        
+
                         HStack(spacing: 20) {
                             MyButton("转到下载页面", type: .highlight) {
                                 AppRouter.shared.setRoot(.download)
@@ -55,11 +55,11 @@ struct InstalledResourcesPage: View {
                                 NSWorkspace.shared.open(WebLinks.CylorineSite.shaderHelp)
                             }
                     }
-                    
+
                     MySearchBox(placeholder: "搜索\(viewModel.type.localizedName)") { keyword in
                         viewModel.setSearchKeyword(keyword)
                     }
-                    
+
                     MyCard(nil) {
                         HStack {
                             MyButton("下载\(viewModel.type.localizedName)", type: .highlight) {
@@ -77,7 +77,7 @@ struct InstalledResourcesPage: View {
                         .frame(height: 40)
                     }
                     .cardIndex(1)
-                    
+
                     if let resources = viewModel.resources, !resources.isEmpty {
                         PaginatedContainer(currentPage: $viewModel.currentPage, pageCount: viewModel.pageCount) { currentPage in
                             MyCard(nil) {
@@ -113,7 +113,7 @@ struct InstalledResourcesPage: View {
             viewModel.resources = nil
         }
     }
-    
+
     /// 加载已安装资源列表；失败时提供重试入口。
     private func loadResources() async {
         loadingVM.reset()
@@ -126,7 +126,7 @@ struct InstalledResourcesPage: View {
             }
         }
     }
-    
+
     /// 跳转到下载页对应类型的搜索页，并带上本实例的定向上下文。
     private func downloadMore() {
         AppRouter.shared.setRoot(.download)
@@ -137,12 +137,12 @@ struct InstalledResourcesPage: View {
 private struct ResourceListItem: View {
     @ObservedObject private var viewModel: InstalledResourcesViewModel
     @ObservedObject private var resource: ResourceDisplayModel
-    
+
     init(viewModel: InstalledResourcesViewModel, resource: ResourceDisplayModel) {
         self.viewModel = viewModel
         self.resource = resource
     }
-    
+
     var body: some View {
         MyListItem { hovered in
             HStack {
@@ -151,7 +151,7 @@ private struct ResourceListItem: View {
                     .frame(width: 36, height: 36)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .foregroundStyle(Color.color1)
-                
+
                 VStack(alignment: .leading) {
                     HStack(alignment: .center, spacing: 0) {
                         Group {
@@ -163,7 +163,7 @@ private struct ResourceListItem: View {
                             }
                         }
                         .animation(.easeInOut(duration: 0.1), value: resource.disabled)
-                        
+
                         MyText(" | \(resource.fileName)", size: 12, color: .colorGray3)
                         HStack(spacing: 3) {
                             ForEach(resource.tags, id: \.self) { tag in
@@ -181,9 +181,9 @@ private struct ResourceListItem: View {
                 }
                 .lineLimit(1)
                 .textSelection(.enabled)
-                
+
                 Spacer(minLength: 0)
-                
+
                 HStack {
                     ListItemButton(.resource(.btnOpen), scale: 0.8) {
                         NSWorkspace.shared.activateFileViewerSelecting([resource.url])
@@ -201,7 +201,7 @@ private struct ResourceListItem: View {
             }
         }
     }
-    
+
     private func viewInfo() {
         Task {
             do {
@@ -216,7 +216,7 @@ private struct ResourceListItem: View {
             }
         }
     }
-    
+
     private func toggleDisabled() {
         do {
             try viewModel.toggleDisabled(resource)
@@ -226,7 +226,7 @@ private struct ResourceListItem: View {
             hint("\(type)资源失败：\(error.localizedDescription)", type: .critical)
         }
     }
-    
+
     private func deleteResource() {
         Task {
             let result = await MessageBoxManager.shared.showTextAsync(

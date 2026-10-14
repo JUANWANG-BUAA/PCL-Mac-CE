@@ -11,12 +11,12 @@ public actor AsyncSemaphore {
     private let maxCount: Int
     private var currentCount: Int
     private var waitQueue: [CheckedContinuation<Void, Never>] = []
-    
+
     public init(value: Int) {
         self.maxCount = value
         self.currentCount = value
     }
-    
+
     public func wait() async {
         if currentCount > 0 {
             currentCount -= 1
@@ -26,7 +26,7 @@ public actor AsyncSemaphore {
             }
         }
     }
-    
+
     public func signal() {
         if !waitQueue.isEmpty {
             let continuation = waitQueue.removeFirst()

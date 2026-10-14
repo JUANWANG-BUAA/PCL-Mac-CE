@@ -10,9 +10,9 @@ import Core
 
 class UpdateService {
     public static let shared: UpdateService = .init()
-    
+
     private let semaphore: AsyncSemaphore = .init(value: 1)
-    
+
     public func runInteractiveUpdateFlow(manually: Bool = false) {
         if LauncherConfig.shared.ignoreLauncherUpdates && !manually {
             log("启动器更新被忽略，取消更新检查")
@@ -40,7 +40,7 @@ class UpdateService {
                 }
                 return
             }
-            
+
             let result = await MessageBoxManager.shared.showTextAsync(
                 title: "PCL.Mac 有更新可用",
                 content: "发现新版本：\(version.name)\n更新摘要：\(version.summary)\n\n是否下载并安装更新？",
@@ -51,19 +51,19 @@ class UpdateService {
                     }
                 } + [.init(id: 2, label: "不再提示", type: .normal), .no(), .yes(label: "下载并安装（\(formatSize(version.downloads.size))）", type: .highlight)]
             )
-            
+
             if result == 2 {
                 LauncherConfig.shared.ignoreLauncherUpdates = true
                 return
             }
-            
+
             if result != 1 {
                 if !manually {
                     hint("你也可以在设置中手动更新！")
                 }
                 return
             }
-            
+
             hint("正在下载并安装更新，完成后 PCL.Mac 会自动重启……")
             do {
                 let useMirror = await LocaleUtils.isInChinaMainland(strict: false)
@@ -74,17 +74,17 @@ class UpdateService {
             }
         }
     }
-    
+
     private func formatSize(_ size: Int) -> String {
         let units: [String] = ["B", "KB", "MB", "GB", "TB"]
         var value: Double = .init(size)
         var unitIndex: Int = 0
-        
+
         while value >= 1024 && unitIndex < units.count - 1 {
             value /= 1024
             unitIndex += 1
         }
-        
+
         let formatted: String = .init(format: value < 10 && unitIndex > 0 ? "%.1f" : "%.0f", value)
         return "\(formatted) \(units[unitIndex])"
     }

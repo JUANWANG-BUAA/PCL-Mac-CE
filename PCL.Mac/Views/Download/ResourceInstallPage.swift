@@ -13,19 +13,19 @@ struct ResourceInstallPage: View {
     @StateObject private var instanceVM: InstanceViewModel
     @State private var currentPage: Int = 0
     private let context: InstallContext
-    
+
     init(instanceManager: InstanceManager, project: ProjectListItemModel, context: InstallContext = .general) {
         self._viewModel = .init(wrappedValue: .init(project: project))
         self._instanceVM = .init(wrappedValue: InstanceViewModel(instanceManager: instanceManager))
         self.context = context
     }
-    
+
     /// 实例定向模式下的目标实例。
     private var targetInstance: MinecraftInstance? {
         guard case .instance(let id) = context else { return nil }
         return instanceVM.repositories.lazy.compactMap { $0.instance(named: id) }.first
     }
-    
+
     var body: some View {
         CardContainer {
             modeTip
@@ -56,7 +56,7 @@ struct ResourceInstallPage: View {
             await loadVersions()
         }
     }
-    
+
     /// 加载版本列表；失败时提供重试入口。
     private func loadVersions() async {
         do {
@@ -69,9 +69,9 @@ struct ResourceInstallPage: View {
             }
         }
     }
-    
+
     // MARK: - 模式提示条
-    
+
     /// 下载模式提示条：实例定向模式显示目标实例与退出入口；普通模式说明双通道行为。
     @ViewBuilder
     private var modeTip: some View {
@@ -102,15 +102,15 @@ struct ResourceInstallPage: View {
             }
         }
     }
-    
+
     /// 退出实例定向模式，就地切换为普通下载。
     private func exitInstanceMode() {
         AppRouter.shared.removeLast()
         AppRouter.shared.append(.resourceDownload(type: viewModel.project.type, context: .general))
     }
-    
+
     // MARK: - 版本点击
-    
+
     private func onVersionTap(_ version: ProjectVersionModel) async throws {
         switch context {
         case .instance:
@@ -141,7 +141,7 @@ struct ResourceInstallPage: View {
             }
         }
     }
-    
+
     /// 校验兼容性并安装到指定实例。
     private func install(_ version: ProjectVersionModel, to instance: MinecraftInstance) async throws {
         do {
@@ -168,7 +168,7 @@ struct ResourceInstallPage: View {
                 return
             }
         }
-        
+
         if await MessageBoxManager.shared.showTextAsync(
             title: "确认",
             content: "确定要安装 \(viewModel.project.title) \(version.version) 到「\(instance.name)」吗？",
@@ -183,7 +183,7 @@ struct ResourceInstallPage: View {
             }
         }
     }
-    
+
     /// 普通下载：下载到下载缓存目录。
     private func downloadToCache(_ version: ProjectVersionModel) {
         do {
@@ -196,21 +196,21 @@ struct ResourceInstallPage: View {
             hint("创建下载任务失败：\(error.localizedDescription)", type: .critical)
         }
     }
-    
+
     /// 弹出全部仓库的实例列表供用户选择；没有任何实例时提示并返回 `nil`。
     private func pickInstance() async -> MinecraftInstance? {
         let instances: [(instance: MinecraftInstance, repository: MinecraftRepository)] = instanceVM.repositories
             .compactMap { repository in repository.instances?.values.map { ($0, repository) } }
             .flatMap { $0 }
             .sorted { $0.0.name < $1.0.name }
-        
+
         guard !instances.isEmpty else {
             hint("请先安装一个实例，再下载\(viewModel.project.type.localizedName)！", type: .critical)
             AppRouter.shared.setRoot(.download)
             AppRouter.shared.append(.minecraftDownload)
             return nil
         }
-        
+
         let index: Int? = await MessageBoxManager.shared.showListAsync(
             title: "选择要安装到的实例",
             items: instances.map { instance, repository in
@@ -226,7 +226,7 @@ struct ResourceInstallPage: View {
         instanceVM.switchInstance(to: picked.instance, in: picked.repository)
         return picked.instance
     }
-    
+
     private func onModpackTap(_ version: ProjectVersionModel) async throws {
         let repository = instanceVM.currentRepository
         guard await MessageBoxManager.shared.showTextAsync(
@@ -236,9 +236,9 @@ struct ResourceInstallPage: View {
             .no(),
             .yes(type: .highlight)
         ) == 1 else { return }
-        
+
         hint("开始下载整合包……")
-        
+
         let (downloadTask, destination): (MyTask<EmptyModel>, URL)
         do {
             (downloadTask, destination) = try viewModel.createModpackDownloadTask(version)
@@ -247,7 +247,7 @@ struct ResourceInstallPage: View {
             hint("创建下载任务失败：\(error.localizedDescription)", type: .critical)
             return
         }
-        
+
         let downloadExecutorTask: Task<Void, Error> = TaskManager.shared.execute(task: downloadTask)
         do {
             try await downloadExecutorTask.value
@@ -256,16 +256,16 @@ struct ResourceInstallPage: View {
             hint("下载整合包失败：\(error.localizedDescription)", type: .critical)
             return
         }
-        
+
         let service = ModpackImportService(modpackURL: destination)
-        
+
         do {
             let index = try service.load()
             guard let name = await MessageBoxManager.shared.showInputAsync(
                 title: "安装整合包 - 输入实例名",
                 initialContent: index.name
             ) else { return }
-            
+
             let task = try service.createImportTask(name: name, repository: repository) { instance in
                 instanceVM.switchInstance(to: instance, in: repository)
             }
@@ -275,7 +275,7 @@ struct ResourceInstallPage: View {
             hint("安装整合包失败：\(error.localizedDescription)", type: .critical)
         }
     }
-    
+
     @ViewBuilder
     private func versionCard(versionGroup: ResourceInstallViewModel.VersionGroup, isSelected: Bool = false, folded: Bool = true) -> some View {
         MyCard((isSelected ? "最佳版本：" : "") + versionGroup.0.description, folded: folded) {
@@ -316,10 +316,10 @@ struct ResourceInstallPage: View {
             }
         }
     }
-    
+
     private struct VersionListItemView: View {
         private let model: ListItem
-        
+
         init(version: ProjectVersionModel) {
             self.model = .init(
                 image: version.type.icon,
@@ -327,7 +327,7 @@ struct ResourceInstallPage: View {
                 description: "\(version.version)，更新于\(version.datePublished)，\(version.type.localizedName)"
             )
         }
-        
+
         var body: some View {
             MyListItem(model)
         }

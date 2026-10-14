@@ -9,13 +9,13 @@ import Foundation
 
 public class ModrinthAPIClient {
     public static let shared: ModrinthAPIClient = .init(apiRoot: APIEndpoints.Modrinth.apiRoot)
-    
+
     private let apiRoot: URL
-    
+
     private init(apiRoot: URL) {
         self.apiRoot = apiRoot
     }
-    
+
     /// 搜索 Modrinth 项目。
     /// - Parameters:
     ///   - type: 项目类型（`ResourceType`）。
@@ -36,7 +36,7 @@ public class ModrinthAPIClient {
             facets.append(["versions:\(gameVersion)"])
         }
         let facetsString: String = String(data: try JSONSerialization.data(withJSONObject: facets), encoding: .utf8)!
-        
+
         let response = try await HTTPClient.shared.get(
             apiRoot.appending(path: "/v2/search"),
             params: [
@@ -48,7 +48,7 @@ public class ModrinthAPIClient {
         )
         return try response.decode(SearchResponse.self)
     }
-    
+
     /// 获取指定 id 或 slug 对应的 `ModrinthProject`。
     /// - Parameters:
     ///   - slug: 指定 id 或 slug。
@@ -59,7 +59,7 @@ public class ModrinthAPIClient {
         if response.statusCode == 404 { return nil }
         return try response.decode(ModrinthProject.self)
     }
-    
+
     /// 批量获取指定 id 或 slug 对应的 `ModrinthProject`
     /// - Parameters:
     ///   - slugs: id 或 slug 列表。
@@ -73,7 +73,7 @@ public class ModrinthAPIClient {
             revalidate: revalidate
         ).decode([ModrinthProject].self)
     }
-    
+
     /// 获取指定 project 的所有 `ModrinthVersion`。
     /// - Parameters:
     ///   - slug: 指定 project 的 id 或 slug。
@@ -82,7 +82,7 @@ public class ModrinthAPIClient {
     public func versions(ofProject slug: String, revalidate: Bool = false) async throws -> [ModrinthVersion] {
         return try await HTTPClient.shared.get(apiRoot.appending(path: "/v2/project/\(slug)/version"), revalidate: revalidate).decode([ModrinthVersion].self)
     }
-    
+
     /// 获取指定 project 的所有 `ModrinthVersion`。
     /// - Parameters:
     ///   - slug: 指定 `ModrinthProject`。
@@ -91,7 +91,7 @@ public class ModrinthAPIClient {
     public func versions(ofProject project: ModrinthProject, revalidate: Bool = false) async throws -> [ModrinthVersion] {
         return try await versions(ofProject: project.slug, revalidate: revalidate)
     }
-    
+
     /// 获取指定 id 对应的 `ModrinthVersion`。
     /// - Parameter slug: 指定 id。
     /// - Returns: 对应的 `ModrinthVersion`，不存在时返回 `nil`。
@@ -100,7 +100,7 @@ public class ModrinthAPIClient {
         if response.statusCode == 404 { return nil }
         return try response.decode(ModrinthVersion.self)
     }
-    
+
     /// 根据文件的 SHA-1 哈希值查询 `ModrinthVersion`。
     /// - Parameter hash: 文件的 SHA-1 哈希值。
     /// - Returns: 如果找到则返回对应的 `ModrinthVersion`，否则返回 `nil`。
@@ -109,7 +109,7 @@ public class ModrinthAPIClient {
         if response.statusCode == 404 { return nil }
         return try response.decode(ModrinthVersion.self)
     }
-    
+
     /// 批量根据文件的 SHA-1 查询 `ModrinthVersion`。
     /// - Parameter hashes: 所有文件的 SHA-1 哈希值（`[String]`）。
     /// - Returns: 包含所有找到的 `ModrinthVersion` 的 dict。
@@ -123,14 +123,14 @@ public class ModrinthAPIClient {
             using: .json
         ).decode([String: ModrinthVersion].self)
     }
-    
+
     // MARK: - 数据模型
-    
+
     public struct SearchResponse: Decodable, Sendable {
         private enum CodingKeys: String, CodingKey {
             case hits, offset, limit, totalHits = "total_hits"
         }
-        
+
         public let hits: [ModrinthProject]
         public let offset: Int
         public let limit: Int

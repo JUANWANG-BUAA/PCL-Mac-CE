@@ -18,7 +18,7 @@ public enum LaunchPrecheck {
         entries += checkAccount(options.profile, hasMicrosoftAccount: hasMicrosoftAccount)
         return entries
     }
-    
+
     private static func checkJava(instance: MinecraftInstance, currentJava: JavaRuntime) -> [Entry] {
         var entries: [Entry] = []
         let minVersion: Int = instance.manifest.javaVersion.majorVersion
@@ -29,7 +29,7 @@ public enum LaunchPrecheck {
         }
         return entries
     }
-    
+
     private static func checkAccount(_ profile: PlayerProfile, hasMicrosoftAccount: Bool) -> [Entry] {
         var entries: [Entry] = []
         if !hasMicrosoftAccount {
@@ -37,7 +37,7 @@ public enum LaunchPrecheck {
         }
         return entries
     }
-    
+
     public enum Entry {
         case javaVersionTooLow(min: Int)
         case noMicrosoftAccount

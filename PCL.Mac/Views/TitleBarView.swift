@@ -11,7 +11,7 @@ import Core
 struct TitleBarView: View {
     @ObservedObject private var router: AppRouter = .shared
     @ObservedObject private var flagsManager: FlagsManager = .shared
-    
+
     var body: some View {
         ZStack(alignment: .leading) {
             Rectangle()
@@ -32,7 +32,7 @@ struct TitleBarView: View {
                             .foregroundStyle(.white)
                             .frame(height: 19)
                         MyTag("Mac", labelColor: .color2)
-                        
+
                         if Metadata.debugMode {
                             MyTag("Debug", backgroundColor: Color(0x9BF00B))
                         }
@@ -63,13 +63,13 @@ private struct PageButton: View {
     private let label: String
     private let icon: ImageResource
     private let route: AppRoute
-    
+
     init(_ label: String, _ icon: ImageResource, _ route: AppRoute) {
         self.label = label
         self.icon = icon
         self.route = route
     }
-    
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 13)
@@ -90,7 +90,7 @@ private struct PageButton: View {
         }
         .gesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { value in
+                .onChanged { _ in
                     if router.root != route {
                         router.setRoot(route)
                     }
@@ -99,11 +99,11 @@ private struct PageButton: View {
         .animation(.easeInOut(duration: 0.2), value: isRoot)
         .animation(.easeInOut(duration: 0.2), value: hovered)
     }
-    
+
     private var foregroundColor: Color {
         isRoot ? .color2 : .white
     }
-    
+
     private var backgroundColor: Color {
         .white.opacity(isRoot ? 1 : hovered ? 0.25 : 0)
     }

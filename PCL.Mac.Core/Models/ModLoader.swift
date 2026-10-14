@@ -9,7 +9,7 @@ import Foundation
 
 public enum ModLoader: String, Codable, CustomStringConvertible {
     case fabric, forge, neoforge
-    
+
     public var index: Int {
         switch self {
         case .fabric: 0
@@ -17,7 +17,7 @@ public enum ModLoader: String, Codable, CustomStringConvertible {
         case .neoforge: 2
         }
     }
-    
+
     public var description: String {
         switch self {
         case .fabric: "Fabric"

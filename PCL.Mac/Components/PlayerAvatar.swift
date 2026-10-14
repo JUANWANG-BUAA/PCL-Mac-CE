@@ -13,12 +13,12 @@ struct PlayerAvatar: View {
     @State private var skinImage: CIImage?
     private let account: Account
     private let length: CGFloat
-    
+
     init(_ account: Account, length: CGFloat = 58) {
         self.account = account
         self.length = length
     }
-    
+
     var body: some View {
         ZStack {
             if let skinImage {
@@ -45,7 +45,7 @@ struct PlayerAvatar: View {
 
 private struct SkinLayerView: View {
     private let image: NSImage?
-    
+
     init(image: CIImage, startX: CGFloat, startY: CGFloat) {
         let yOffset: CGFloat = image.extent.height == 32 ? 0 : 32
         let cropped: CIImage = image.cropped(to: CGRect(x: startX, y: startY + yOffset, width: 8, height: 8))
@@ -57,7 +57,7 @@ private struct SkinLayerView: View {
         }
         self.image = NSImage(cgImage: cgImage, size: cropped.extent.size)
     }
-    
+
     var body: some View {
         if let image {
             Image(nsImage: image)

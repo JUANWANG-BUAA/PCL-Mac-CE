@@ -17,13 +17,13 @@ class MultiplayerViewModel: ObservableObject {
     @MainActor @Published public var state: State = .ready
     @MainActor @Published public private(set) var room: Room?
     @MainActor @Published public var easyTierStatus: CLAPIClient.EasyTierStatus?
-    
+
     private var server: ScaffoldingServer?
     private var client: ScaffoldingClient?
     private var serverCheckTask: Task<Void, Swift.Error>?
     @MainActor private var peers: [String]?
     private let vendor: String = "PCL.Mac \(Metadata.appVersion), SwiftScaffolding 0.2.1, EasyTier v2.5.0"
-    
+
     /// 创建并启动一个 Scaffolding 联机中心。
     /// - Parameter serverPort: Minecraft 服务器的端口。
     /// - Returns: 房间邀请码。
@@ -51,7 +51,7 @@ class MultiplayerViewModel: ObservableObject {
                         hostInfo: await self.playerInfo()
                     )
                     await self.registerCustomProtocols(to: server)
-                    
+
                     _ = try await server.startListener()
                     try server.createRoom(terminationHandler: { [weak self] process in
                         guard let self else { return }
@@ -94,7 +94,7 @@ class MultiplayerViewModel: ObservableObject {
             stopHost()
         }
     }
-    
+
     /// 关闭联机中心。
     @MainActor
     public func stopHost() {
@@ -106,7 +106,7 @@ class MultiplayerViewModel: ObservableObject {
         state = .ready
         log("关闭联机中心成功")
     }
-    
+
     /// 创建客户端并加入房间。
     /// - Parameters:
     ///   - roomCode: 房间码。
@@ -122,7 +122,7 @@ class MultiplayerViewModel: ObservableObject {
                     easyTier: EasyTierManager.shared.makeEasyTier(peers: peers),
                     playerInfo: await self.playerInfo()
                 )
-                
+
                 try await client.connect(to: roomCode, terminationHandler: { [weak self] process in
                     guard let self else { return }
                     Task { @MainActor in
@@ -150,7 +150,7 @@ class MultiplayerViewModel: ObservableObject {
             }
         }
     }
-    
+
     /// 退出房间。
     @MainActor
     public func leave() {
@@ -160,18 +160,18 @@ class MultiplayerViewModel: ObservableObject {
         state = .ready
         log("退出房间成功")
     }
-    
+
     @discardableResult
     public func fetchEasyTierStatus() async throws -> CLAPIClient.EasyTierStatus {
         let status: CLAPIClient.EasyTierStatus = try await CLAPIClient.shared.getEasyTierStatus()
         easyTierStatus = status
         return status
     }
-    
+
     public func roomCode() -> String? {
         return server?.roomCode
     }
-    
+
     private func showError(title: String, body: String) {
         MessageBoxManager.shared.showText(
             title: title,
@@ -179,11 +179,11 @@ class MultiplayerViewModel: ObservableObject {
             level: .error
         )
     }
-    
+
     private func switchState(to state: State) async {
         self.state = state
     }
-    
+
     @MainActor
     private func handleEasyTierExit(_ process: Process) {
         guard state == .hostReady || state == .memberReady else {
@@ -201,7 +201,7 @@ class MultiplayerViewModel: ObservableObject {
         client = nil
         server = nil
     }
-    
+
     private func handleHeartbeatFailure(_ error: Swift.Error) async {
         switch error {
         case RoomError.roomClosed:
@@ -215,23 +215,24 @@ class MultiplayerViewModel: ObservableObject {
         }
         leave()
     }
-    
+
     private func registerCustomProtocols(to server: ScaffoldingServer) {
-        server.handler.registerHandler(for: "cs:close_room") { [weak self] sender, buf in
+        server.handler.registerHandler(for: "cs:close_room") { [weak self] _, buf in
             guard let self else { return .init(status: 0, data: Data()) }
             guard buf.data.count > 1 + 64 else {
                 throw SimpleError("Request body too short")
             }
-            let publicKey = try! Curve25519.Signing.PublicKey(
-                rawRepresentation: Data(base64Encoded: "jIT9qh1/37/budNx6tyP7bYZe59I+MGFVG1BKybg/KU=")!
-            )
+            guard let publicKeyData = Data(base64Encoded: "jIT9qh1/37/budNx6tyP7bYZe59I+MGFVG1BKybg/KU=") else {
+                throw SimpleError("内置公钥数据无效")
+            }
+            let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: publicKeyData)
             let message: String = try buf.readString(buf.readUInt8())
             let signature: Data = try buf.readData(length: 64)
-            
+
             guard publicKey.isValidSignature(signature, for: message.data(using: .utf8)!) else {
                 throw SimpleError("Signature validation failed")
             }
-            
+
             let parts: [String] = message.split(separator: "\0").map(String.init)
             let formatter: ISO8601DateFormatter = .init()
             guard parts.count == 4,
@@ -251,23 +252,23 @@ class MultiplayerViewModel: ObservableObject {
             return .init(status: 0, data: Data())
         }
     }
-    
+
     private func playerInfo() -> PlayerInfo {
         return .init(
             name: AccountViewModel().currentAccount?.profile.name ?? "Anonymous",
             vendor: vendor
         )
     }
-    
+
     private func fetchPeers() async throws -> [String] {
         var peers: [String] = try await CLAPIClient.shared.getEasyTierPeers()
-        
+
         if let customPeer = LauncherConfig.shared.multiplayerCustomPeer {
             peers.append(customPeer)
         }
         return peers
     }
-    
+
     @MainActor
     private func peers() async -> [String] {
         if let peers { return peers }
@@ -281,17 +282,17 @@ class MultiplayerViewModel: ObservableObject {
             return []
         }
     }
-    
+
     public enum State: Equatable {
         case ready
         case creatingRoom, hostReady
         case joiningRoom, memberReady
     }
-    
+
     public enum Error: LocalizedError {
         case invalidState
         case startServerFailed(message: String)
-        
+
         public var errorDescription: String? {
             switch self {
             case .invalidState: "错误的状态。"

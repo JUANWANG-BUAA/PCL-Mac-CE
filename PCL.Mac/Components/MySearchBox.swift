@@ -12,12 +12,12 @@ struct MySearchBox: View {
     @FocusState private var focused: Bool
     private let placeholder: String
     private let onSubmit: (String) -> Void
-    
+
     init(placeholder: String, onSubmit: @escaping (String) -> Void) {
         self.placeholder = placeholder
         self.onSubmit = onSubmit
     }
-    
+
     var body: some View {
         MyCard(nil) {
             HStack {
@@ -26,7 +26,7 @@ struct MySearchBox: View {
                     .scaledToFit()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(Color.color1)
-                
+
                 ZStack(alignment: .leading) {
                     TextField("", text: $query)
                         .textFieldStyle(.plain)

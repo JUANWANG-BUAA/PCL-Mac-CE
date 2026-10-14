@@ -14,14 +14,14 @@ struct MyExtraTextButton: View {
     private let imageSize: CGFloat
     private let text: String
     private let action: () -> Void
-    
+
     init(icon: ImageResource, imageSize: CGFloat, text: String, action: @escaping () -> Void) {
         self.icon = icon
         self.imageSize = imageSize
         self.text = text
         self.action = action
     }
-    
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 1000)

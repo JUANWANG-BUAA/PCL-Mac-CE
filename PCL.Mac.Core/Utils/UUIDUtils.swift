@@ -17,14 +17,14 @@ public enum UUIDUtils {
         let string: String = uuid.uuidString.lowercased()
         return !withHyphens ? string.replacingOccurrences(of: "-", with: "") : string
     }
-    
+
     /// 将字符串转换成 `UUID`。
     /// - Parameter string: 待转换的字符串。
     /// - Returns: 转换后的 `UUID`。
     public static func uuid(of string: String) -> UUID? {
         return try? uuidThrowing(of: string)
     }
-    
+
     /// 将字符串转换成 `UUID`。
     /// - Parameter string: 待转换的字符串。
     /// - Returns: 转换后的 `UUID`。
@@ -44,13 +44,13 @@ public enum UUIDUtils {
         } else {
             throw UUIDError.invalidUUIDFormat
         }
-        
+
         guard let uuid: UUID = .init(uuidString: uuidString) else {
             throw UUIDError.invalidUUIDFormat
         }
         return uuid
     }
-    
+
     /// 符合 Bukkit 行为的离线玩家 UUID 生成器。
     /// https://github.com/MCLF-CN/docs/issues/7
     /// - Parameter name: 离线玩家的玩家名。

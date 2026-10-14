@@ -19,7 +19,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
     public let onlySupportsSnapshot: Bool
     public let downloads: String
     public let lastUpdate: String
-    
+
     public init(id: String, title: String, description: String, type: ResourceType, iconURL: URL?, tags: [String], supportDescription: String, onlySupportsSnapshot: Bool, downloads: String, lastUpdate: String) {
         self.id = id
         self.title = title
@@ -32,10 +32,10 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
         self.downloads = downloads
         self.lastUpdate = lastUpdate
     }
-    
+
     public init(_ project: ModrinthProject) {
         let (supportDescription, onlySupportsSnapshot) = Self.generateSupportDescription(for: project)
-        
+
         self.init(
             id: project.id,
             title: project.title,
@@ -49,14 +49,14 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
             lastUpdate: Self.formatLastUpdate(project.lastUpdate)
         )
     }
-    
+
     public static func formatLastUpdate(_ lastUpdate: Date) -> String {
         let formatter: RelativeDateTimeFormatter = .init()
         formatter.unitsStyle = .full
         return formatter.localizedString(for: lastUpdate, relativeTo: Date())
             .replacingOccurrences(of: "(\\d+)", with: " $1 ", options: .regularExpression)
     }
-    
+
     public static func formatDownloads(_ downloads: Int) -> String {
         if downloads > 10000 * 10000 {
             return String(format: "%.2f 亿", Double(downloads) / 10000 / 10000)
@@ -66,18 +66,18 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
             return downloads.description
         }
     }
-    
+
     public static func localizeTag(_ key: String) -> String? {
         let key = "category.modrinth.\(key)"
         let localized = NSLocalizedString(key, comment: "")
         return localized == key ? nil : localized
     }
-    
+
     private static func generateSupportDescription(for project: ModrinthProject) -> (String, Bool) {
         guard let versionManifest = VersionManifest.shared else { return ("", false) }
-        
+
         var description: String = ""
-        
+
         let modLoaders: [ModLoader] = project.categories.compactMap(ModLoader.init(rawValue:))
         if modLoaders.count == 1 {
             description += "仅 \(modLoaders.first!.description)"
@@ -85,7 +85,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
             description += modLoaders.map(\.description).joined(separator: " / ")
         }
         if !description.isEmpty { description += " " }
-        
+
         guard let gameVersions = project.gameVersions else {
             return (description + "未知", false)
         }
@@ -94,10 +94,10 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
             return (description + (modLoaders.count == 1 ? "" : "仅") + "快照版本", true)
         }
         description += generateGameVersionDescription(releaseVersions, latestVersion: versionManifest.latestRelease)
-        
+
         return (description, false)
     }
-    
+
     private static func generateGameVersionDescription(_ gameVersions: [String], latestVersion: String) -> String {
         guard gameVersions.count > 1 else {
             return gameVersions.isEmpty ? "" : gameVersions[0]
@@ -105,7 +105,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
         guard let latestPair: VersionPair = .init(latestVersion) else {
             return "错误"
         }
-        
+
         func rangeDescription(start: VersionPair, end: VersionPair) -> String {
             if start == end {
                 return start.description
@@ -115,9 +115,9 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
                 return "\(start)~\(end)"
             }
         }
-        
+
         let versionPairs: [VersionPair] = Array(Set(gameVersions.compactMap(VersionPair.init))).sorted()
-        
+
         var ranges: [String] = []
         var start: VersionPair = versionPairs[0]
         var end: VersionPair = start
@@ -133,12 +133,12 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
         ranges.append(rangeDescription(start: start, end: end))
         return ranges.reversed().joined(separator: ", ")
     }
-    
+
     private struct VersionPair: Hashable, Equatable, Comparable, CustomStringConvertible {
         public let major: Int
         public let minor: Int
         private let rawVersion: String
-        
+
         public init?(_ version: String) {
             let parts: [Int] = version.split(separator: ".").compactMap { Int($0) }
             guard parts.count >= 2 else { return nil }
@@ -146,7 +146,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
             self.minor = parts[1]
             self.rawVersion = version
         }
-        
+
         public func isNext(to another: VersionPair) -> Bool {
             if self == another { return false }
             // 确保版本号格式相同
@@ -154,7 +154,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
                 let boundaryVersions: [String] = ["1.21", "26.1"]
                 return boundaryVersions.contains(self.rawVersion) && boundaryVersions.contains(another.rawVersion)
             }
-            
+
             if self.major == another.major {
                 return abs(self.minor - another.minor) == 1
             } else {
@@ -167,7 +167,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
                 }
             }
         }
-        
+
         /// 检查当前版本是不是该年份（26）的最后一个版本（正式更新，例如 26.4）。
         /// 在该版本号的格式为旧版格式时，此函数一定会返回 `false`。
         public func isYearlyLatest() -> Bool {
@@ -177,26 +177,26 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
                 .filter { $0.type == .release && $0.id.starts(with: "\(major).") }
                 .first.flatMap { VersionPair($0.id) }
             return self == yearlyLatest
-            
+
         }
-        
+
         public func hash(into hasher: inout Hasher) {
             hasher.combine(major)
             hasher.combine(minor)
             // 忽略 rawVersion
         }
-        
+
         public static func == (lhs: Self, rhs: Self) -> Bool {
             return lhs.major == rhs.major && lhs.minor == rhs.minor // 忽略 rawVersion
         }
-        
+
         public static func < (lhs: Self, rhs: Self) -> Bool {
             if lhs.major != rhs.major {
                 return lhs.major < rhs.major
             }
             return lhs.minor < rhs.minor
         }
-        
+
         public var description: String {
             "\(major).\(minor)"
         }

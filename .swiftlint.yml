@@ -1,0 +1,71 @@
+# SwiftLint 配置（PCL.Mac）
+# 目标：中文优先项目的合理工程基线，而非机械套用默认值。
+# 设计原则：
+#   1. 复杂度类规则（cyclomatic_complexity / body_length）保留并适度放宽——
+#      它们用于发现"该拆分的函数"，是本项目的主要质量闸门；
+#   2. 命名类规则允许设计 token 与循环惯例短名；
+#   3. 格式类规则（trailing_whitespace 等）已全量修复，保持开启防止回退。
+
+excluded:
+  - docs-book
+  - Packaging
+  - PCL.Mac.xcodeproj
+  - "**/.build"
+
+# 行宽：中文注释与长字符串较多，忽略注释/URL/函数声明
+line_length:
+  warning: 150
+  error: 250
+  ignores_comments: true
+  ignores_urls: true
+  ignores_function_declarations: true
+
+# 命名：最短 1 字符（循环变量 i/e、坐标 x/y），设计 token（xs/sm/md/lg）豁免
+identifier_name:
+  min_length:
+    warning: 1
+    error: 1
+  max_length:
+    warning: 40
+    error: 60
+  excluded:
+    - id
+    - os
+    - xs
+    - sm
+    - md
+    - lg
+    - xl
+    - xxl
+
+# 圈复杂度：>12 警告（建议拆分），>20 错误
+cyclomatic_complexity:
+  warning: 12
+  error: 20
+
+# 函数体长度：>60 行警告，>130 行错误
+function_body_length:
+  warning: 60
+  error: 130
+
+# 类型体长度：大型 ViewModel 允许到 400 行
+type_body_length:
+  warning: 400
+  error: 700
+
+file_length:
+  warning: 600
+  error: 1000
+
+# 具名元组：允许 3 成员（如 SubTask 摘要、坐标轴三元组）
+large_tuple:
+  warning: 3
+  error: 4
+
+# 嵌套深度：SwiftUI 视图构建器天然较深
+nesting:
+  type_level:
+    warning: 2
+  function_level:
+    warning: 3
+    error: 5

@@ -9,15 +9,15 @@ import Foundation
 
 public final class JavaManager: ObservableObject {
     public static var shared: JavaManager!
-    
+
     @Published public private(set) var javaRuntimes: [JavaRuntime]
     private var customJavaRuntimes: [URL]
-    
+
     @MainActor
     public func research() throws {
         self.javaRuntimes = try JavaSearcher.search(customJavaRuntimes: customJavaRuntimes)
     }
-    
+
     public init(customJavaRuntimes: [URL]) {
         self.customJavaRuntimes = customJavaRuntimes
         do {
@@ -35,7 +35,7 @@ public final class JavaManager: ObservableObject {
             self.javaRuntimes = []
         }
     }
-    
+
     @MainActor
     public func addCustomRuntime(_ runtime: JavaRuntime) -> Bool {
         if javaRuntimes.contains(runtime) { return false }
@@ -43,7 +43,7 @@ public final class JavaManager: ObservableObject {
         customJavaRuntimes.append(runtime.executableURL)
         return true
     }
-    
+
     @MainActor
     @discardableResult
     public func removeCustomRuntime(_ executableURL: URL) -> Bool {

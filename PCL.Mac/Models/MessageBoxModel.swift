@@ -13,27 +13,27 @@ struct MessageBoxModel: Equatable, Identifiable {
     public let content: Content
     public let level: Level
     public let buttons: [Button]
-    
+
     public enum Content {
         case text(text: String)
         case list(items: [ListItem])
         case input(initialContent: String?, placeholder: String?)
     }
-    
+
     public enum Level {
         case info, error
     }
-    
+
     public static func == (lhs: MessageBoxModel, rhs: MessageBoxModel) -> Bool {
         return lhs.id == rhs.id
     }
-    
+
     public struct Button {
         public let id: Int
         public let label: String
         public let type: MyButton.Style
         public let onClick: (() -> Void)?
-        
+
         /// 创建一个弹窗按钮。
         /// - Parameters:
         ///   - onClick: 点击回调，有值时被点击后不会关闭弹窗。
@@ -43,7 +43,7 @@ struct MessageBoxModel: Equatable, Identifiable {
             self.type = type
             self.onClick = onClick
         }
-        
+
         /// 创建一个 `id` 为 `1` 的“是”按钮。
         /// - Parameters:
         ///   - label: 按钮文本，默认为 `"确认"`。
@@ -51,7 +51,7 @@ struct MessageBoxModel: Equatable, Identifiable {
         public static func yes(label: String = "确认", type: MyButton.Style = .normal) -> Button {
             return .init(id: 1, label: label, type: type)
         }
-        
+
         /// 创建一个 `id` 为 `0` 的“否”按钮。
         /// - Parameters:
         ///   - label: 按钮文本，默认为 `"取消"`。

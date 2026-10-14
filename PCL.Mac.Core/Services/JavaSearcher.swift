@@ -48,10 +48,10 @@ public enum JavaSearcher {
             }
             isCustom = true
         }
-        
+
         return runtimes
     }
-    
+
     /// 加载磁盘上的 Java 运行时。
     /// - Parameters:
     ///   - url: 运行时的 `URL`，位于 Java 主目录内即可（如 `bin/java`）。
@@ -84,7 +84,7 @@ public enum JavaSearcher {
         } else {
             implementor = release["IMPLEMENTOR"]
         }
-        
+
         // 类型判断
         var type: JavaRuntime.JavaType?
         var executableURL: URL?
@@ -113,7 +113,7 @@ public enum JavaSearcher {
             isCustom: isCustom
         )
     }
-    
+
     private static func parseVersionNumber(_ version: String) -> Int? {
         let components: [String] = version.split(separator: ".").map(String.init)
         if components.count == 1 {
@@ -127,7 +127,7 @@ public enum JavaSearcher {
         }
         return nil
     }
-    
+
     private static func findJavaHomes() -> [URL] {
         var homeDirectories: [URL] = javaDirectories.flatMap { contents(of: $0).compactMap(javaHome(at:)) }
         homeDirectories += homebrewDirectories.flatMap {
@@ -135,7 +135,7 @@ public enum JavaSearcher {
                 .filter { $0.lastPathComponent.starts(with: "openjdk") }
                 .compactMap(javaHome(at:))
         }
-        
+
         var visited: Set<String> = []
         return homeDirectories.filter { visited.insert($0.resolvingSymlinksInPath().path).inserted }
     }

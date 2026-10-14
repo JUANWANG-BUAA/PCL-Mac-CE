@@ -44,3 +44,4 @@
 - [ADR-004 语义 Bug 修复轮：基于用户日志的实证修复](decisions/adr-004-bugfixes.md)
 - [ADR-005 下载模式分离与选择互斥审计](decisions/adr-005-download-modes.md)
 - [ADR-006 可用性与健壮性扫尾轮](decisions/adr-006-usability.md)
+- [ADR-007 主题系统、静态分析基线与复杂度治理](decisions/adr-007-theming-quality.md)

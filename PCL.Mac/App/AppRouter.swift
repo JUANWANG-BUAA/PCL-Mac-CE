@@ -14,7 +14,7 @@ enum InstallContext: Hashable, Equatable, CustomStringConvertible {
     case general
     /// 实例定向下载：已锁定目标实例（`id` 为实例目录名）。
     case instance(id: String)
-    
+
     var description: String {
         switch self {
         case .general: "general"
@@ -26,30 +26,30 @@ enum InstallContext: Hashable, Equatable, CustomStringConvertible {
 enum AppRoute: Identifiable, Hashable, Equatable {
     // 根页面
     case launch, download, multiplayer, settings, more, tasks
-    
+
     // 启动页面的子页面
     case instanceList(repositoryId: UUID), instanceSettings(id: String)
-    
+
     // 实例设置页面的子页面
     case instanceConfig(id: String), installedResources(id: String, type: ResourceType)
-    
+
     // 下载页面的子页面
     case minecraftDownload, minecraftInstallOptions(version: VersionManifest.Version)
     /// 资源搜索页（Mod / 资源包 / 光影包 / 整合包），`context` 区分普通下载与实例定向下载。
     case resourceDownload(type: ResourceType, context: InstallContext)
     case projectInstall(project: ProjectListItemModel, context: InstallContext)
-    
+
     // 联机页面的子页面
     case multiplayerSub, multiplayerSettings
-    
+
     // 设置页面的子页面
     case launcherSettings, javaSettings, otherSettings
-    
+
     // 更多页面的子页面
     case about, toolbox
-    
+
     var id: String { stringValue }
-    
+
     var stringValue: String {
         switch self {
         default: String(describing: self)
@@ -61,9 +61,9 @@ enum AppRoute: Identifiable, Hashable, Equatable {
 class AppRouter: ObservableObject {
     static let shared: AppRouter = .init()
     private static let rootRoutes: [AppRoute] = [.launch, .download, .multiplayer, .settings, .more]
-    
+
     @Published private(set) var path: [AppRoute] = [.launch]
-    
+
     /// 当前子页面的标题
     var title: String {
         switch last {
@@ -75,7 +75,7 @@ class AppRouter: ObservableObject {
         default: "错误：当前页面（\(last)）没有标题，请报告此问题！"
         }
     }
-    
+
     /// 当前页面是不是子页面（需要显示返回键和标题，隐藏导航按钮）
     var isSubPage: Bool {
         switch last {
@@ -87,10 +87,10 @@ class AppRouter: ObservableObject {
         default: false
         }
     }
-    
+
     var last: AppRoute { path[path.count - 1] }
     var root: AppRoute { path[0] }
-    
+
     func setRoot(_ newRoot: AppRoute) {
         path = [newRoot]
         // 各根页面的默认子页面
@@ -99,26 +99,26 @@ class AppRouter: ObservableObject {
         if newRoot == .settings { append(.launcherSettings) }
         if newRoot == .more { append(.about) }
     }
-    
+
     func append(_ route: AppRoute) {
         path.append(route)
         if case .instanceSettings(let id) = route { append(.instanceConfig(id: id)) }
     }
-    
+
     func removeLast() {
         if path.count > 1 {
             path.removeLast()
             if case .instanceSettings = last { removeLast() }
         }
     }
-    
+
     private init() {}
 }
 
 struct AppRouterView: View {
     @ObservedObject private var router: AppRouter = .shared
     @EnvironmentObject private var instanceManager: InstanceManager
-    
+
     var body: some View {
         switch router.last {
         case .launch:
@@ -168,9 +168,9 @@ struct AppSidebarView: View {
     @ObservedObject private var router: AppRouter = .shared
     @State private var width: CGFloat = 0
     @State private var animationProgress: Double = 0
-    
+
     init() {}
-    
+
     var sidebar: any Sidebar {
         switch router.last {
         case .launch: LaunchSidebar(instanceManager: instanceManager)
@@ -184,15 +184,15 @@ struct AppSidebarView: View {
         default: EmptySidebar()
         }
     }
-    
+
     var body: some View {
         ZStack(alignment: .leading) {
             Rectangle()
-                .fill(.white)
+                .fill(ThemeManager.shared.theme.sidebarBackground)
                 .frame(width: width)
                 .shadow(radius: 2)
                 .zIndex(10)
-            
+
             AnyView(sidebar)
                 .opacity(animationProgress)
                 .scaleEffect(animationProgress * 0.04 + 0.96)

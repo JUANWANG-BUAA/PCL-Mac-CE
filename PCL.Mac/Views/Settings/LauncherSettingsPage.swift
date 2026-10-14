@@ -11,7 +11,8 @@ import Core
 struct LauncherSettingsPage: View {
     @State private var downloadSourcePolicy: DownloadSourcePolicy = LauncherConfig.shared.downloadSourcePolicy
     @State private var homepageType: LauncherConfig.HomepageType = LauncherConfig.shared.homepageType
-    
+    @State private var theme: AppTheme = ThemeManager.shared.theme
+
     var body: some View {
         CardContainer {
             MyCard("下载", foldable: false) {
@@ -26,7 +27,20 @@ struct LauncherSettingsPage: View {
                     LauncherConfig.shared.downloadSourcePolicy = newValue
                 }
             }
-            
+
+            MyCard("外观", foldable: false) {
+                configLine(label: "主题") {
+                    MySelect(
+                        $theme,
+                        entries: AppTheme.allCases
+                    )
+                }
+                .onChange(of: theme) { newValue in
+                    ThemeManager.shared.switchTo(newValue)
+                }
+            }
+            .cardIndex(1)
+
             MyCard("个性化", foldable: false) {
                 configLine(label: "主页") {
                     MySelect(
@@ -38,12 +52,12 @@ struct LauncherSettingsPage: View {
                     LauncherConfig.shared.homepageType = newValue
                 }
             }
-            .cardIndex(1)
+            .cardIndex(2)
         }
     }
-    
+
     @ViewBuilder
-    private func configLine(label: String,  @ViewBuilder body: () -> some View) -> some View {
+    private func configLine(label: String, @ViewBuilder body: () -> some View) -> some View {
         HStack(spacing: 20) {
             MyText(label)
                 .frame(width: 80, alignment: .leading)

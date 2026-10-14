@@ -18,13 +18,13 @@ public class ResourceLoadService {
         ResourcepackParser.self,
         ShaderParser.self
     ]
-    
+
     public init(preferredType: ResourceType? = nil, remoteLookupService: ResourceRemoteLookupService, cache: ResourceCache) {
         self.preferredType = preferredType
         self.remoteLookupService = remoteLookupService
         self.cache = cache
     }
-    
+
     /// 将单个资源文件加载为 `Resource` 结构体。
     /// - Returns: 一个 `Resource`，若无法识别资源则返回 `nil`。
     /// - Throws: `LoadError`
@@ -34,16 +34,16 @@ public class ResourceLoadService {
             throw .fileNotExists
         }
         guard isDirectory.boolValue == false else { throw .foundDirectory }
-        
+
         let sha1: String
         do {
             sha1 = try FileUtils.sha1(of: fileURL)
         } catch {
             throw .readError(underlying: error)
         }
-        
+
         if let cached = cache.resource(forHash: sha1) { return cached }
-        
+
         let remoteInfo: ResourceRemoteLookupService.RemoteResourceInfo?
         do {
             remoteInfo = try await remoteLookupService.lookup(hash: sha1)
@@ -51,14 +51,14 @@ public class ResourceLoadService {
             err("加载 \(fileURL.lastPathComponent) 的远端资源信息失败：\(error.localizedDescription)")
             remoteInfo = nil
         }
-        
+
         if let resource = try parseFile(at: fileURL, remoteInfo: remoteInfo, sha1: sha1) {
             cache.store(resource, forHash: sha1)
             return resource
         }
         return nil
     }
-    
+
     /// 遍历目录中的资源文件，并将它们加载为 `Resource` 结构体。
     /// - Parameter directoryURL: 目录的 `URL`。
     /// - Returns: `[URL: Resource]` 字典，包含所有加载成功的模组。
@@ -69,12 +69,12 @@ public class ResourceLoadService {
             return [:]
         }
         guard isDirectory.boolValue == true else { throw .foundFile }
-        
+
         guard let enumerator = FileManager.default.enumerator(
             at: directoryURL,
             includingPropertiesForKeys: [.isRegularFileKey]
         ) else { throw .failedToCreateEnumerator }
-        
+
         func enumerateFiles(body: (URL) throws -> Void) {
             for case let fileURL as URL in enumerator {
                 guard validPathExtensions.contains(fileURL.pathExtension) && (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
@@ -85,15 +85,15 @@ public class ResourceLoadService {
                 }
             }
         }
-        
+
         var total = 0
         var cached = 0
         var loaded = 0
         var unsupported = 0
         var failed = 0
-        
+
         defer { debug("资源目录加载完成，共 \(total) 个文件，\(cached) 个命中缓存，\(loaded) 个加载成功，\(unsupported) 个无法识别，\(failed) 个加载失败") }
-        
+
         var result: [URL: Resource] = [:]
         var hashes: [URL: String] = [:]
         enumerateFiles { url in
@@ -108,11 +108,11 @@ public class ResourceLoadService {
                 }
             }
         }
-        
+
         if hashes.isEmpty {
             return result
         }
-        
+
         let remoteLookupResult: [String: ResourceRemoteLookupService.RemoteResourceInfo]
         do {
             remoteLookupResult = try await remoteLookupService.lookup(hashes: Array(hashes.values))
@@ -120,7 +120,7 @@ public class ResourceLoadService {
             err("加载远端资源信息失败：\(error.localizedDescription)")
             remoteLookupResult = [:]
         }
-        
+
         for (fileURL, hash) in hashes {
             do {
                 guard let resource = try parseFile(at: fileURL, remoteInfo: remoteLookupResult[hash], sha1: hash) else {
@@ -136,10 +136,10 @@ public class ResourceLoadService {
                 failed += 1
             }
         }
-        
+
         return result
     }
-    
+
     public enum LoadError: LocalizedError {
         case fileNotExists
         case foundDirectory
@@ -147,7 +147,7 @@ public class ResourceLoadService {
         case failedToCreateEnumerator
         case readError(underlying: Error)
         case extractError(underlying: Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .fileNotExists:
@@ -165,8 +165,7 @@ public class ResourceLoadService {
             }
         }
     }
-    
-    
+
     private func parseFile(at url: URL, remoteInfo: ResourceRemoteLookupService.RemoteResourceInfo?, sha1: String) throws(LoadError) -> Resource? {
         let archive: Archive
         do {
@@ -174,10 +173,10 @@ public class ResourceLoadService {
         } catch {
             throw .extractError(underlying: error)
         }
-        
+
         var fileType: ResourceType?
         var parseResult: ResourceParseResult?
-        
+
         let preferredParsers = parsers.filter { $0.type == preferredType }
         let otherParsers = parsers.filter { $0.type != preferredType }
         for parser in preferredParsers + otherParsers {
@@ -189,9 +188,9 @@ public class ResourceLoadService {
                 break
             }
         }
-        
+
         guard let fileType, let parseResult else { return nil }
-        
+
         let icon: Resource.Icon?
         if let iconPath = parseResult.iconPath, let entry = archive[iconPath] {
             do {
@@ -207,7 +206,7 @@ public class ResourceLoadService {
         } else {
             icon = nil
         }
-        
+
         return .init(
             type: fileType,
             name: parseResult.name,

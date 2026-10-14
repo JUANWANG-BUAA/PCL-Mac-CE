@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MultiplayerSidebar: Sidebar {
     let width: CGFloat = 150
-    
+
     var body: some View {
         VStack {
             MyNavigationList(

@@ -15,7 +15,7 @@ class MinecraftDownloadPageViewModel: ObservableObject {
     @Published public var latestSnapshot: VersionManifest.Version?
     @Published public var versionMap: [MinecraftVersion.VersionType: [VersionManifest.Version]] = [:]
     @Published public var errorMessage: String?
-    
+
     init() {
         if let manifest = VersionManifest.shared {
             updateVersionMap(from: manifest)
@@ -23,14 +23,14 @@ class MinecraftDownloadPageViewModel: ObservableObject {
             reload()
         }
     }
-    
+
     @discardableResult
     public func load(revalidate: Bool = false) async throws -> VersionManifest {
         let manifest = try await VersionManifest.load(revalidate: revalidate)
         updateVersionMap(from: manifest)
         return manifest
     }
-    
+
     public func reload() {
         errorMessage = nil
         loaded = false
@@ -46,14 +46,14 @@ class MinecraftDownloadPageViewModel: ObservableObject {
             }
         }
     }
-    
+
     public func destroy() {
         loaded = false
         latestRelease = nil
         latestSnapshot = nil
         versionMap = [:]
     }
-    
+
     public func aprilFoolVersionDescription(_ id: String) -> String {
         switch id.lowercased() {
         case "15w14a": "2015 | 作为一款全年龄向的游戏，我们需要和平，需要爱与拥抱。"
@@ -68,8 +68,7 @@ class MinecraftDownloadPageViewModel: ObservableObject {
         default: "20?? | ???（当前版本的启动器中没有这个游戏版本的描述……）"
         }
     }
-    
-    
+
     private func updateVersionMap(from manifest: VersionManifest) {
         latestRelease = manifest.version(for: manifest.latestRelease)
         latestSnapshot = manifest.latestSnapshot.flatMap { manifest.version(for: $0) }

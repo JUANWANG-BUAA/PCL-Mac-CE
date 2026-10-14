@@ -12,19 +12,19 @@ import ZIPFoundation
 
 class UpdateManager {
     public static let shared: UpdateManager = .init(APIEndpoints.CylorineSite.launcherUpdate)
-    
+
     private let updateMetadataURL: URL
-    
+
     private init(_ updateMetadataURL: URL) {
         self.updateMetadataURL = updateMetadataURL
     }
-    
+
     public func checkUpdates() async throws -> UpdateModel.Version? {
         if Metadata.debugMode || Metadata.bundleVersion == 0 { return nil }
         let model: UpdateModel = try await HTTPClient.shared.get(updateMetadataURL, revalidate: true).decode(UpdateModel.self)
         return Metadata.bundleVersion >= model.latestVersion.bundleVersion ? nil : model.latestVersion
     }
-    
+
     public func installUpdate(_ version: UpdateModel.Version, useMirror: Bool = true) async throws {
         let destination: URL = URLConstants.tempURL.appending(path: "launcher-update-\(version.bundleVersion)")
         let downloadItem: DownloadItem = .init(
@@ -45,7 +45,7 @@ class UpdateManager {
             backupItemName: "PCL.Mac.app.backup",
             options: [.usingNewMetadataOnly]
         )
-        
+
         log("App Bundle 替换完成，正在重启")
         // 使用 /usr/bin/open 延迟开启新进程，确保同时只有一个进程存在
         let process: Process = .init()

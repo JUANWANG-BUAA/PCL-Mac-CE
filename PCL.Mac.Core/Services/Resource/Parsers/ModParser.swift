@@ -11,19 +11,19 @@ import TOMLDecoder
 
 enum ModParser: ResourceParser {
     private static  let tomlDecoder: TOMLDecoder = .init()
-    
+
     static let type: ResourceType = .mod
-    
+
     private static let metaFiles: [String] = [
         "fabric.mod.json",
         "META-INF/mods.toml",
         "META-INF/neoforge.mods.toml"
     ]
-    
+
     static func canHandle(fileURL: URL, archive: Archive) -> Bool {
         return metaFiles.contains { archive[$0] != nil }
     }
-    
+
     static func parse(fileURL: URL, archive: Archive, remoteInfo: ResourceRemoteLookupService.RemoteResourceInfo?) -> ResourceParseResult? {
         var jarManifest: [String: String] = [:]
         if let entry = archive["META-INF/MANIFEST.MF"] {
@@ -67,8 +67,7 @@ enum ModParser: ResourceParser {
             loaders: loaders
         )
     }
-    
-    
+
     private static func loadFabric(from data: Data) throws -> ModMeta {
         let fabricMeta: FabricMeta
         do {
@@ -87,7 +86,7 @@ enum ModParser: ResourceParser {
             icon: fabricMeta.icon
         )
     }
-    
+
     /// 将 JSON 字符串字面量内未转义的控制字符（< 0x20）替换为 \uXXXX 转义序列。
     private static func escapingControlCharacters(inJSONStrings data: Data) -> Data {
         var output: [UInt8] = []
@@ -115,14 +114,14 @@ enum ModParser: ResourceParser {
         }
         return .init(output)
     }
-    
+
     private static func loadForge(from data: Data, jarManifest: [String: String]) throws -> ModMeta {
         var values: [String: String] = [:]
-        
+
         if let version = jarManifest["Implementation-Version"] {
             values["file.jarVersion"] = version
         }
-        
+
         let forgeMeta: ForgeMeta = try tomlDecoder.decode(ForgeMeta.self, from: data)
         return .init(
             id: forgeMeta.modId,
@@ -132,7 +131,7 @@ enum ModParser: ResourceParser {
             icon: forgeMeta.logoFile
         )
     }
-    
+
     private struct ModMeta {
         let id: String
         let name: String?
@@ -140,7 +139,7 @@ enum ModParser: ResourceParser {
         let version: String
         let icon: String?
     }
-    
+
     private struct FabricMeta: Codable {
         let schemaVersion: Int
         let id: String
@@ -149,26 +148,26 @@ enum ModParser: ResourceParser {
         let description: String?
         let icon: String?
     }
-    
+
     private struct ForgeMeta: Decodable {
         let modId: String
         let version: String
         let displayName: String?
         let description: String?
         let logoFile: String?
-        
+
         private enum CodingKeys: CodingKey {
             case mods
         }
-        
+
         private enum ModCodingKeys: CodingKey {
             case modId, version, displayName, description, logoFile
         }
-        
+
         init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             var modsContainer = try container.nestedUnkeyedContainer(forKey: .mods)
-            
+
             let first = try modsContainer.nestedContainer(keyedBy: ModCodingKeys.self)
             self.modId = try first.decode(String.self, forKey: .modId)
             self.version = try first.decode(String.self, forKey: .version)

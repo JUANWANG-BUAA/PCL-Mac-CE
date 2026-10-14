@@ -24,19 +24,19 @@ public enum ModpackImportTask {
             completion: completion
         )
         var subTasks: [MyTask<Model>.SubTask] = minecraftInstallTask.subTasks
-        
+
         subTasks.insert(
             contentsOf: [
                 .init(6, "下载整合包所需文件") { task, model in
                     let progressHandler = await ConcurrentProgressHandler(totalHandler: task.setProgress(_:))
-                    
+
                     let fetchProgressHandler = await progressHandler.handler(withMultiplier: 0.2)
                     let total = Double(index.files.count)
                     var completed = 0.0
                     var downloadItems: [DownloadItem] = []
-                    
+
                     await progressHandler.startCalculate()
-                    
+
                     try await withThrowingTaskGroup(of: DownloadItem?.self) { group in
                         for file in index.files {
                             group.addTask {
@@ -53,11 +53,11 @@ public enum ModpackImportTask {
                             await fetchProgressHandler(completed / total)
                         }
                     }
-                    
+
                     let downloadProgressHandler = await progressHandler.handler(withMultiplier: 0.8)
                     try await FileDownloader.shared.download(files: downloadItems, progressHandler: downloadProgressHandler)
                 },
-                .init(7, "应用整合包修改") { task, model in
+                .init(7, "应用整合包修改") { _, model in
                     for dirName in index.overridesDirectories {
                         let overridesDirectory: URL = modpackDirectory.appending(path: dirName)
                         if FileManager.default.fileExists(atPath: overridesDirectory.path) {
@@ -72,20 +72,20 @@ public enum ModpackImportTask {
             ],
             at: subTasks.count - 2
         )
-        
+
         return .init(
             name: "整合包安装：\(index.name)",
             model: minecraftInstallTask.model,
             subTasks
         )
     }
-    
+
     public typealias Model = MinecraftInstallTask.Model
-    
+
     public enum Error: LocalizedError {
         case failedToCreateEnumerator
         case failedToApplyOverrides(underlying: Swift.Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .failedToCreateEnumerator:
@@ -95,7 +95,7 @@ public enum ModpackImportTask {
             }
         }
     }
-    
+
     fileprivate static func apply(_ source: URL, to destination: URL) throws {
         guard let enumerator = FileManager.default.enumerator(
             at: source,
@@ -103,9 +103,10 @@ public enum ModpackImportTask {
         ) else {
             throw Error.failedToCreateEnumerator
         }
-        
+
         for case let fileURL as URL in enumerator {
-            if try fileURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == false {
+            guard try fileURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == false else { continue }
+            do {
                 let dest: URL = destination.appending(path: fileURL.pathComponents.dropFirst(source.pathComponents.count).joined(separator: "/"))
                 if FileManager.default.fileExists(atPath: dest.path) {
                     try FileManager.default.removeItem(at: dest)
@@ -127,12 +128,12 @@ public enum SimpleModpackImportTask {
         completion: (@MainActor (MinecraftInstance) -> Void)? = nil
     ) -> MyTask<Model> {
         let runningDirectory = repository.versionsDirectory.appending(path: name)
-        
+
         return .init(
             name: "整合包安装：\(index.name)",
-            .init(0, "拷贝整合包文件") { task, model in
+            .init(0, "拷贝整合包文件") { _, _ in
                 try FileManager.default.createDirectory(at: runningDirectory, withIntermediateDirectories: true)
-                
+
                 for dirName in index.overridesDirectories {
                     let overridesDirectory = modpackDirectory.appending(path: dirName)
                     if FileManager.default.fileExists(atPath: overridesDirectory.path) {
@@ -144,7 +145,7 @@ public enum SimpleModpackImportTask {
                     }
                 }
             },
-            .init(1, "__completion", display: false) { task, model in
+            .init(1, "__completion", display: false) { _, _ in
                 try? FileManager.default.removeItem(at: runningDirectory.appending(path: ".incomplete"))
                 try await repository.load()
                 guard let instance = repository.instance(named: name) else {
@@ -159,6 +160,6 @@ public enum SimpleModpackImportTask {
             try? FileManager.default.removeItem(at: runningDirectory)
         }
     }
-    
+
     public typealias Model = EmptyModel
 }

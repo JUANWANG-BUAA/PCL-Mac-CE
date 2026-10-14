@@ -12,32 +12,32 @@ struct MyCard<Content: View, Action: View>: View {
     @Environment(\.disableCardAppearAnimation) private var disableCardAppearAnimation: Bool
     @Environment(\.disableHoverAnimation) private var disableHoverAnimation: Bool
     @EnvironmentObject private var interactionState: CardInteractionState
-    
+
     /// 下移出现动画变量。
     @State private var appeared: Bool = false
-    
+
     /// 下移出现动画是否已完成。
     @State private var appearFinished: Bool = false
-    
+
     /// 卡片是否已被折叠。
     @State private var folded: Bool = true
-    
+
     /// 是否被鼠标悬停。
     @State private var hovered: Bool = false
-    
+
     /// 是否显示鼠标悬停样式，用于避免动画冲突。
     @State private var showHovered: Bool = false
-    
+
     /// 是否显示卡片内容，在被折叠时为 `false`。
     @State private var showContent: Bool = false
-    
+
     /// `content()` 的实际高度。
     @State private var actualContentHeight: CGFloat = 0
-    
+
     /// `content()` 的高度限制。
-    @State private var contentHeightLimit: CGFloat? = nil
+    @State private var contentHeightLimit: CGFloat?
     @State private var foldWorkItem: DispatchWorkItem?
-    
+
     private let title: String
     private let foldable: Bool
     private let initialFolded: Bool
@@ -45,7 +45,7 @@ struct MyCard<Content: View, Action: View>: View {
     private let padding: CGFloat
     private let content: () -> Content
     private let action: () -> Action
-    
+
     /// 创建一个卡片视图。
     /// - Parameters:
     ///   - title: 卡片的标题，为 `nil` 时没有标题栏且不可折叠。
@@ -70,7 +70,7 @@ struct MyCard<Content: View, Action: View>: View {
         self.content = content
         self.action = action
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             if titled {
@@ -95,7 +95,7 @@ struct MyCard<Content: View, Action: View>: View {
                     guard foldable else { return }
                     self.foldWorkItem?.cancel()
                     interactionState.isTransitioning = true
-                    
+
                     if folded {
                         // 展开卡片
                         withAnimation(.spring(response: 0.35)) {
@@ -129,7 +129,7 @@ struct MyCard<Content: View, Action: View>: View {
                     }
                 }
             }
-            
+
             if showContent || actualContentHeight == 0 {
                 VStack {
                     content()
@@ -169,9 +169,20 @@ struct MyCard<Content: View, Action: View>: View {
             self.showHovered = hovered
         }
         .background {
-            RoundedRectangle(cornerRadius: Radius.lg)
-                .fill(Color.colorGray8)
-                .shadow(color: showHovered ? ShadowToken.cardHover : ShadowToken.card, radius: 6)
+            if ThemeManager.shared.theme.usesMaterialCards {
+                // Liquid Glass：系统材质卡片 + 高光描边
+                RoundedRectangle(cornerRadius: Radius.lg)
+                    .fill(.regularMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Radius.lg)
+                            .strokeBorder(.white.opacity(0.55), lineWidth: 0.5)
+                    }
+                    .shadow(color: showHovered ? ShadowToken.cardHover : ShadowToken.card, radius: 8)
+            } else {
+                RoundedRectangle(cornerRadius: Radius.lg)
+                    .fill(Color.colorGray8)
+                    .shadow(color: showHovered ? ShadowToken.cardHover : ShadowToken.card, radius: 6)
+            }
         }
         .offset(y: appeared ? 0 : -25)
         .opacity(appeared ? 1 : 0)
@@ -188,7 +199,7 @@ struct MyCard<Content: View, Action: View>: View {
                     appearFinished = true
                 }
             }
-            
+
             folded = initialFolded
             showContent = !initialFolded
             if folded {
@@ -210,30 +221,30 @@ struct MyCard<Content: View, Action: View>: View {
                 }
                 .frame(maxHeight: .infinity)
             }
-            
+
             Grid(alignment: .top) {
                 GridRow {
                     MyCard("foldable, titled") {
                         content()
                     }
-                    
+
                     MyCard("foldable, titled, folded", folded: true) {
                         content()
                     }
                 }
-                
+
                 GridRow {
                     MyCard("not-foldable, titled", foldable: false) {
                         content()
                     }
-                    
+
                     MyCard(nil) {
                         content()
                     }
                 }
             }
             .padding()
-            
+
             Spacer()
         }
     }

@@ -11,16 +11,16 @@ struct MyNavigationList: View {
     @ObservedObject private var router: AppRouter = .shared
     private let routes: [Route]
     private let performRefresh: ((AppRoute) -> Void)?
-    
+
     init(_ routes: Route..., performRefresh: ((AppRoute) -> Void)? = nil) {
         self.init(routeList: routes, performRefresh: performRefresh)
     }
-    
+
     init(routeList: [Route], performRefresh: ((AppRoute) -> Void)? = nil) {
         self.routes = routeList
         self.performRefresh = performRefresh
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(routes, id: \.route) { route in
@@ -34,12 +34,12 @@ struct MyNavigationList: View {
             }
         }
     }
-    
+
     struct Route {
         let route: AppRoute
         let image: ImageResource?
         let text: String
-        
+
         init(_ route: AppRoute, _ image: ImageResource?, _ text: String) {
             self.route = route
             self.image = image
@@ -57,7 +57,7 @@ private struct RouteView: View {
     private let image: ImageResource?
     private let label: String
     private let refresh: ((AppRoute) -> Void)?
-    
+
     init(route: MyNavigationList.Route, refresh: ((AppRoute) -> Void)?) {
         self.route = route.route
         self.image = route.image
@@ -65,7 +65,7 @@ private struct RouteView: View {
         self.refresh = refresh
         self._selected = State(initialValue: AppRouter.shared.last == route.route)
     }
-    
+
     var body: some View {
         HStack(spacing: 11) {
             RoundedRectangle(cornerRadius: 2)

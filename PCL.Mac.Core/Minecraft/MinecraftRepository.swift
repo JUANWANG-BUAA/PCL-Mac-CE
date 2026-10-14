@@ -14,7 +14,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
     public let dateCreated: Date
     @Published public var name: String
     @Published public var currentInstanceId: UUID?
-    
+
     @Published public var instances: [UUID: MinecraftInstance]?
     @Published public var errorInstances: [ErrorInstance]?
     public var currentInstance: MinecraftInstance? {
@@ -24,18 +24,18 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
         }
         set { currentInstanceId = newValue?.id }
     }
-    
+
     public private(set) lazy var assetsDirectory: URL = url.appending(path: "assets")
     public private(set) lazy var librariesDirectory: URL = url.appending(path: "libraries")
     public private(set) lazy var versionsDirectory: URL = url.appending(path: "versions")
-    
+
     public init(name: String, url: URL) {
         self.id = .init()
         self.name = name
         self.url = url
         self.dateCreated = .now
     }
-    
+
     /// 创建必要目录。
     public func createDirectories() throws {
         let fileManager: FileManager = .default
@@ -44,7 +44,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
         try fileManager.createDirectory(at: librariesDirectory, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: versionsDirectory, withIntermediateDirectories: true)
     }
-    
+
     /// 加载该仓库中的所有实例。
     /// 只会在读取目录失败时抛出错误。
     public func load() async throws {
@@ -57,35 +57,35 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
             }
         }
     }
-    
+
     /// 从仓库中获取实例。
     /// - Parameter id: 实例的 `UUID`。
     public func instance(id: UUID) -> MinecraftInstance? {
         return instances?[id]
     }
-    
+
     /// 从仓库中获取实例。
     /// - Parameter name: 实例名称。
     public func instance(named name: String) -> MinecraftInstance? {
         return instances?.values.first(where: { $0.name == name })
     }
-    
+
     /// 判断仓库中是否存在带有指定名称的实例。
     public func contains(named name: String) -> Bool {
         return FileManager.default.fileExists(atPath: versionsDirectory.appending(path: name).path)
     }
-    
+
     /// 判断仓库中是否存在带有指定 id 的实例。
     public func contains(id: UUID) -> Bool {
         guard let instances else { return false }
         return instances.keys.contains(id)
     }
-    
+
     @MainActor
     public func addInstance(_ instance: MinecraftInstance) {
         instances?[instance.id] = instance
     }
-    
+
     /// 删除带有指定名称的实例。
     @MainActor
     public func removeInstance(named name: String) throws {
@@ -100,12 +100,12 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
         }
         self.instances = instances
     }
-    
+
     @MainActor
     public func removeInstance(_ instance: MinecraftInstance) throws {
         try self.removeInstance(named: instance.name)
     }
-    
+
     @MainActor
     public func saveAllInstances() throws {
         guard let instances else { return }
@@ -114,7 +114,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
             instance.dirty = false
         }
     }
-    
+
     /// 检查实例名是否合法。
     /// - Parameters:
     ///   - name: 待检查的实例名。
@@ -129,30 +129,29 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
         if trimmed.isEmpty {
             throw .empty
         }
-        
+
         let invalidCharacters: [Character] = [
             ":", ";", "/", "\\"
         ]
         if invalidCharacters.contains(where: trimmed.contains(_:)) {
             throw .containsInvalidCharacter
         }
-        
+
         if trimmed.starts(with: ".") {
             throw .startsWithDot
         }
-        
+
         if self.contains(named: trimmed) {
             throw .alreadyExists
         }
         return trimmed
     }
-    
-    
+
     private func loadInstances() async throws -> LoadResult {
         guard FileManager.default.fileExists(atPath: versionsDirectory.path) else {
             return .empty
         }
-        
+
         let instanceDirectories: [URL] = try FileManager.default.contentsOfDirectory(
             at: versionsDirectory,
             includingPropertiesForKeys: [.isDirectoryKey]
@@ -160,17 +159,17 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
             let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey])
             return resourceValues.isDirectory == true
         }
-        
+
         return await withTaskGroup { group in
             for instanceDirectory in instanceDirectories {
                 group.addTask {
                     return await self.loadInstance(at: instanceDirectory)
                 }
             }
-            
+
             var instances: [MinecraftInstance] = []
             var errorInstances: [ErrorInstance] = []
-            
+
             for await result in group {
                 switch result {
                 case .success(let instance):
@@ -184,7 +183,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
             return .init(instances: instances, errorInstances: errorInstances)
         }
     }
-    
+
     private func loadInstance(at url: URL) async -> InstanceLoadResult {
         let name = url.lastPathComponent
         log("正在加载实例 \(name)")
@@ -205,7 +204,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
             return .failure(name, message: error.localizedDescription)
         }
     }
-    
+
     public required init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? .init()
@@ -214,7 +213,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
         self.currentInstanceId = try container.decodeIfPresent(UUID.self, forKey: .currentInstanceId)
         self.dateCreated = try container.decodeIfPresent(Date.self, forKey: .dateCreated) ?? .distantPast.addingTimeInterval(.random(in: 0...100))
     }
-    
+
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -223,42 +222,42 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
         try container.encode(dateCreated, forKey: .dateCreated)
         try container.encode(currentInstanceId, forKey: .currentInstanceId)
     }
-    
+
     public static func == (lhs: MinecraftRepository, rhs: MinecraftRepository) -> Bool {
         return lhs.id == rhs.id && lhs.url == rhs.url
     }
-    
+
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(url)
     }
-    
+
     public enum CodingKeys: String, CodingKey { case id, name, url, dateCreated, currentInstanceId }
-    
+
     public struct LoadResult {
         public let instances: [MinecraftInstance]
         public let errorInstances: [ErrorInstance]
-        
+
         public static let empty: LoadResult = .init(instances: [], errorInstances: [])
     }
-    
+
     private enum InstanceLoadResult {
         case success(MinecraftInstance)
         case incomplete
         case failure(ErrorInstance)
-        
+
         static func failure(_ name: String, message: String) -> InstanceLoadResult {
             return .failure(.init(name: name, message: message))
         }
     }
-    
+
     public enum NameCheckError: LocalizedError {
         case empty
         case hasWhitespaceEdges
         case containsInvalidCharacter
         case startsWithDot
         case alreadyExists
-        
+
         public var errorDescription: String? {
             switch self {
             case .empty:

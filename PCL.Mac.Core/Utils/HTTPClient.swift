@@ -22,25 +22,25 @@ extension String: URLConvertible {
 
 public class HTTPClient {
     public static let shared: HTTPClient = .init()
-    
+
     public enum EncodeMethod {
         case json
         case urlEncoded
     }
-    
+
     public class Response {
         private let response: HTTPURLResponse
         public let statusCode: Int
         public let headers: [String: String]
         public let data: Data
-        
+
         fileprivate init(data: Data, response: HTTPURLResponse) {
             self.response = response
             self.statusCode = response.statusCode
             self.headers = Self.parseHeaders(response.allHeaderFields)
             self.data = data
         }
-        
+
         public func json() throws -> JSON {
             do {
                 return try JSON(data: data)
@@ -48,7 +48,7 @@ public class HTTPClient {
                 throw ResponseError(.decodeError, url: response.url, response: response)
             }
         }
-        
+
         public func decode<T: Decodable>(_ type: T.Type) throws -> T {
             do {
                 return try JSONDecoder.shared.decode(type, from: data)
@@ -56,7 +56,7 @@ public class HTTPClient {
                 throw ResponseError(.decodeError, url: response.url, response: response)
             }
         }
-        
+
         private static func parseHeaders(_ headers: [AnyHashable: Any]) -> [String: String] {
             return headers.reduce(into: [:]) { result, entry in
                 if let key = entry.key as? String, let value = entry.value as? String {
@@ -65,7 +65,7 @@ public class HTTPClient {
             }
         }
     }
-    
+
     /// 向目标 URL 发送请求。
     /// - Parameters:
     ///   - url: 目标 URL，可以是 `String` 与 `URL`。
@@ -91,10 +91,10 @@ public class HTTPClient {
         guard let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https"
         else { throw RequestError.invalidScheme(url: url) }
-        
+
         let headers = headers?.compactMapValues(\.self)
         let body = body?.compactMapValues(\.self)
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.allHTTPHeaderFields = headers
@@ -103,7 +103,7 @@ public class HTTPClient {
             request.cachePolicy = .reloadRevalidatingCacheData
         }
         request.timeoutInterval = timeout
-        
+
         if let body {
             if method == "GET" {
                 // url params
@@ -118,12 +118,12 @@ public class HTTPClient {
                 } catch {
                     throw RequestError.encodeError(underlying: error)
                 }
-                
+
                 request.httpBody = bodyData
                 request.setValue(contentType, forHTTPHeaderField: "Content-Type")
             }
         }
-        
+
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await URLSession.shared.data(for: request)
@@ -136,10 +136,10 @@ public class HTTPClient {
         if throwOnError && !(200..<300).contains(response.statusCode) {
             throw ResponseError(.badStatus, url: url, response: response)
         }
-        
+
         return Response(data: data, response: response)
     }
-    
+
     /// 向目标 URL 发送 `GET` 请求。
     /// - Parameters:
     ///   - url: 目标 URL，可以是 `String` 与 `URL`。
@@ -159,7 +159,7 @@ public class HTTPClient {
     ) async throws -> Response {
         return try await request(url: url, method: "GET", headers: headers, body: params, using: .urlEncoded, throwOnError: throwOnError, revalidate: revalidate, timeout: timeout)
     }
-    
+
     /// 向目标 URL 发送 `POST` 请求。
     /// - Parameters:
     ///   - url: 目标 URL，可以是 `String` 与 `URL`。
@@ -179,7 +179,7 @@ public class HTTPClient {
     ) async throws -> Response {
         return try await request(url: url, method: "POST", headers: headers, body: body, using: encodeMethod, throwOnError: throwOnError, revalidate: false, timeout: timeout)
     }
-    
+
     private func encode(_ body: [String: Any], using method: EncodeMethod) throws -> (Data, String) {
         switch method {
         case .json:
@@ -188,7 +188,7 @@ public class HTTPClient {
             return (try body.map { "\($0)=\($1)" }.joined(separator: "&").data(using: .utf8).unwrap(), "application/x-www-form-urlencoded")
         }
     }
-    
+
     private init() {}
 }
 
@@ -196,7 +196,7 @@ public enum RequestError: LocalizedError {
     case invalidURL(_ url: URLConvertible)
     case invalidScheme(url: URL)
     case encodeError(underlying: Error)
-    
+
     public var errorDescription: String? {
         switch self {
         case .invalidURL(let url):
@@ -214,20 +214,20 @@ public struct ResponseError: LocalizedError {
     public let url: URL?
     public let response: URLResponse?
     public let error: Error?
-    
+
     init(_ kind: Kind, url: URL?, response: URLResponse?, underlying error: Error? = nil) {
         self.kind = kind
         self.url = url
         self.response = response
         self.error = error
     }
-    
+
     public enum Kind {
         case invalidType
         case badStatus
         case decodeError
     }
-    
+
     public var errorDescription: String? {
         switch kind {
         case .invalidType:

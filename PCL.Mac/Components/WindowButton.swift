@@ -11,12 +11,12 @@ struct WindowButton: View {
     @State private var hovered: Bool = false
     private let icon: ImageResource
     private let action: () -> Void
-    
+
     init(_ icon: ImageResource, action: @escaping () -> Void) {
         self.icon = icon
         self.action = action
     }
-    
+
     var body: some View {
         ZStack {
             Image(icon)

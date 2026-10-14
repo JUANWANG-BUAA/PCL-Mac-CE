@@ -9,7 +9,7 @@ import SwiftUI
 
 struct RightRoundedRectangle: Shape {
     let cornerRadius: CGFloat
-    
+
     func path(in rect: CGRect) -> Path {
         let r: CGFloat = min(cornerRadius, rect.height / 2)
         var path: Path = .init()

@@ -8,9 +8,9 @@
 import SwiftUI
 
 @main
-struct PCL_MacApp: App {
+struct PCLMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate: AppDelegate
-    
+
     var body: some Scene {
         Settings { EmptyView() }
             .commands {

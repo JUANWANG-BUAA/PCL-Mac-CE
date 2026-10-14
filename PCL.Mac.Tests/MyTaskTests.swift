@@ -12,13 +12,13 @@ import Core
 struct MyTaskTests {
     @Test func test() async throws {
         try await MyTask<TestModel>(name: "empty", model: .init()).start()
-        let _ = await #expect(throws: TaskError.invalidOrdinal(value: -1)) {
+        _ = await #expect(throws: TaskError.invalidOrdinal(value: -1)) {
             try await MyTask<TestModel>(name: "Invalid ordinal", model: .init(), .init(-1, "", { _, _ in })).start()
         }
-        let _ = await #expect(throws: TaskError.unknownError) {
+        _ = await #expect(throws: TaskError.unknownError) {
             try await MyTask<TestModel>(name: "Error", model: .init(), .init(0, "", { _, _ in throw TaskError.unknownError })).start()
         }
-        
+
         let task: MyTask<TestModel> = .init(
             name: "Model test", model: .init(),
             .init(0, "下载客户端清单") { _, model in

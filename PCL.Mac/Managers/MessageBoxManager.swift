@@ -17,12 +17,12 @@ class MessageBoxManager: ObservableObject {
     @Published public private(set) var currentMessageBox: MessageBoxModel?
     private let defaultButton: MessageBoxModel.Button = .yes()
     private let semaphore: AsyncSemaphore = .init(value: 1)
-    private var callback:(@MainActor (MessageBoxResult) -> Void)?
+    private var callback: (@MainActor (MessageBoxResult) -> Void)?
     /// 在弹出下一个弹窗时，是否需要等待。
     private var shouldWait: Bool = false
     /// 清除等待状态的 `DispatchWorkItem`。
     private var clearWaitStateWorkItem: DispatchWorkItem?
-    
+
     /// 弹出一个带有纯文本内容的模态框。（Swift Concurrency）
     /// - Parameters:
     ///   - title: 模态框标题。
@@ -43,7 +43,7 @@ class MessageBoxManager: ObservableObject {
         }
         return id
     }
-    
+
     /// 弹出一个带有列表的模态框。（Swift Concurrency）
     /// - Parameters:
     ///   - title: 模态框标题。
@@ -65,7 +65,7 @@ class MessageBoxManager: ObservableObject {
         }
         return index
     }
-    
+
     /// 弹出一个带有输入框的模态框。（Swift Concurrency）
     /// - Parameters:
     ///   - title: 模态框标题。
@@ -89,7 +89,7 @@ class MessageBoxManager: ObservableObject {
         }
         return text
     }
-    
+
     /// 关闭当前模态框。
     /// - Parameter result: 附带的结果。
     @MainActor
@@ -98,14 +98,14 @@ class MessageBoxManager: ObservableObject {
         callback = nil
         currentMessageBox = nil
         Task { await semaphore.signal() }
-        
+
         let workItem: DispatchWorkItem = .init {
             self.shouldWait = false
         }
         self.clearWaitStateWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: workItem)
     }
-    
+
     @MainActor
     public func onButtonTap(_ button: MessageBoxModel.Button) {
         log("按钮 \(button.label) 被点击")
@@ -115,17 +115,17 @@ class MessageBoxManager: ObservableObject {
             complete(with: .button(id: button.id))
         }
     }
-    
+
     @MainActor
     public func onListSelect(index: Int?) {
         complete(with: .listSelection(index: index))
     }
-    
+
     @MainActor
     public func onInputFinished(text: String?) {
         complete(with: .input(text: text))
     }
-    
+
     private func showAsync(
         title: String,
         content: MessageBoxModel.Content,
@@ -143,7 +143,7 @@ class MessageBoxManager: ObservableObject {
             _show(title: title, content: content, level: level, buttons: buttons) { continuation.resume(returning: $0) }
         }
     }
-    
+
     private func _show(
         title: String,
         content: MessageBoxModel.Content,
@@ -163,7 +163,7 @@ class MessageBoxManager: ObservableObject {
         }
         self.callback = callback
     }
-    
+
     /// 错误级别的文本弹窗自动前置“复制信息”按钮，便于把报错完整地转发给他人或 AI 诊断。
     private static func insertingCopyButtonIfNeeded(
         title: String,
@@ -182,13 +182,13 @@ class MessageBoxManager: ObservableObject {
             hint("已复制到剪贴板", type: .finish)
         }] + buttons
     }
-    
+
     public enum MessageBoxResult {
         case button(id: Int)
         case listSelection(index: Int?)
         case input(text: String?)
     }
-    
+
     private init() {}
 }
 
@@ -217,7 +217,7 @@ extension MessageBoxManager {
             callback?(id)
         }
     }
-    
+
     /// 弹出一个带有列表的模态框。
     /// - Parameters:
     ///   - title: 模态框标题。
@@ -245,7 +245,7 @@ extension MessageBoxManager {
             callback?(index)
         }
     }
-    
+
     /// 弹出一个带有输入框的模态框。
     /// - Parameters:
     ///   - title: 模态框标题。
@@ -275,7 +275,7 @@ extension MessageBoxManager {
             callback?(text)
         }
     }
-    
+
     private func show(
         title: String,
         content: MessageBoxModel.Content,
@@ -320,7 +320,7 @@ extension MessageBoxManager {
         let buttons: [MessageBoxModel.Button] = buttons.isEmpty ? [defaultButton] : buttons
         return await showTextAsync(title: title, content: content, level: level, buttons: buttons)
     }
-    
+
     public func showText(
         title: String,
         content: String,

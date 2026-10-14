@@ -13,7 +13,7 @@ public struct CurseForgeMod: Codable {
     public let summary: String
     public let logo: CurseForgeModAsset
     public let classId: Int?
-    
+
     public var projectType: ResourceType? {
         switch classId {
         case 12: .resourcepack
@@ -30,11 +30,11 @@ public struct CurseForgeModAsset: Codable {
     public let title: String
     public let url: URL?
     public let thumbnailURL: URL?
-    
+
     private enum CodingKeys: String, CodingKey {
         case id, title, url, thumbnailURL = "thumbnailUrl"
     }
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(Int32.self, forKey: .id)
@@ -49,14 +49,14 @@ public struct CurseForgeModFile: Codable {
         public let value: String
         public let algo: Int
     }
-    
+
     public let id: Int32
     public let modId: Int32
     public let available: Bool
     public let fileName: String
     public let hashes: [FileHash]
     public let downloadURL: URL
-    
+
     public var checksums: [String: String] {
         return hashes.reduce(into: [:]) { result, hash in
             switch hash.algo {
@@ -66,12 +66,12 @@ public struct CurseForgeModFile: Codable {
             }
         }
     }
-    
+
     private enum CodingKeys: String, CodingKey {
         case id, modId, fileName, hashes
         case available = "isAvailable", downloadURL = "downloadUrl"
     }
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(Int32.self, forKey: .id)

@@ -52,7 +52,7 @@ public class DownloadSourceManager {
     public func orderedCandidates(for url: URL, preferMirror: Bool? = nil) -> [DownloadCandidate] {
         let official = officialSource.candidate(for: url)
         let mirror = isChinaRegion || (policy == .mirrorFirst || preferMirror == true) ? mirrorSource.candidate(for: url) : nil
-        
+
         let preferMirror = preferMirror ?? (policy == .mirrorFirst)
 
         let merged = (preferMirror ? [mirror, official] : [official, mirror]).compactMap(\.self)
@@ -83,7 +83,7 @@ public class DownloadSourceManager {
         preferred(official: officialSource.fabricVersionListURL(for: mcVersion),
                   mirror: mirrorSource.fabricVersionListURL(for: mcVersion))
     }
-    
+
     private func preferred(official: URL?, mirror: URL?) -> URL? {
         let preferMirror = policy == .mirrorFirst
 

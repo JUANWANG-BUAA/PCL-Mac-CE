@@ -13,13 +13,13 @@ struct MultiplayerPage: View {
     @EnvironmentObject private var viewModel: MultiplayerViewModel
     @StateObject private var loadingViewModel: MyLoadingViewModel = .init(text: "创建房间中")
     @State private var isEasyTierInstalled: Bool = true
-    
+
     private static let dateFormatter: DateFormatter = {
         let formatter: DateFormatter = .init()
         formatter.dateFormat = "yyyy/MM/dd HH:mm"
         return formatter
     }()
-    
+
     var body: some View {
         CardContainer {
             switch viewModel.state {
@@ -64,7 +64,7 @@ struct MultiplayerPage: View {
             }
         }
     }
-    
+
     private var installEasyTierBody: some View {
         MyCard("安装 EasyTier", foldable: false) {
             MyListItem(.init(image: .iconDownloadPage, imageSize: 28, name: "安装 EasyTier", description: "联机功能使用 EasyTier 实现，所以你需要先安装 EasyTier 才能进行联机！"))
@@ -80,7 +80,7 @@ struct MultiplayerPage: View {
                 }
         }
     }
-    
+
     private var readyBody: some View {
         MyCard("开始联机", foldable: false) {
             VStack(spacing: 0) {
@@ -124,7 +124,7 @@ struct MultiplayerPage: View {
                                     .yes(label: "继续", type: .red)
                                 ) == 1 else { return }
                             }
-                            
+
                             if let roomCode: String = await MessageBoxManager.shared.showInputAsync(title: "输入房间码", placeholder: "U/XXXX-XXXX-XXXX-XXXX") {
                                 if RoomCode.isValid(code: roomCode) {
                                     viewModel.join(roomCode: roomCode)
@@ -141,7 +141,7 @@ struct MultiplayerPage: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private var multiplayerReadyView: some View {
         if let room = viewModel.room {
@@ -204,7 +204,7 @@ struct MultiplayerPage: View {
             }
         }
     }
-    
+
     /// 检查免责声明；返回 false 表示不满足联机条件（地区不支持或用户未同意），应中止后续操作。
     private func checkDisclaimer() async -> Bool {
         if await LocaleUtils.isInChinaMainland(strict: false) == false {
@@ -233,11 +233,11 @@ struct MultiplayerPage: View {
 
 private struct PlayerListView: View {
     @ObservedObject private var room: Room
-    
+
     init(room: Room) {
         self.room = room
     }
-    
+
     var body: some View {
         MyCard("玩家列表", foldable: false) {
             LazyVStack(spacing: 0) {
@@ -255,14 +255,14 @@ private struct ActionView: View {
     private let text: String
     private let color: Color
     private let onClick: () -> Void
-    
+
     init(_ icon: ImageResource, _ text: String, color: Color = .color1, onClick: @escaping () -> Void) {
         self.icon = icon
         self.text = text
         self.color = color
         self.onClick = onClick
     }
-    
+
     var body: some View {
         MyListItem {
             HStack(spacing: 7) {

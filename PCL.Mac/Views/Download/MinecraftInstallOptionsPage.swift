@@ -13,12 +13,12 @@ struct MinecraftInstallOptionsPage: View {
     @StateObject private var instanceVM: InstanceViewModel
     /// 防止快速连点“开始下载”导致创建两个同名实例的任务。
     @State private var isDownloading: Bool = false
-    
+
     init(instanceManager: InstanceManager, version: VersionManifest.Version) {
         self._viewModel = .init(wrappedValue: .init(instanceManager: instanceManager, version: version))
         self._instanceVM = .init(wrappedValue: .init(instanceManager: instanceManager))
     }
-    
+
     var body: some View {
         CardContainer {
             VStack {
@@ -79,7 +79,7 @@ struct MinecraftInstallOptionsPage: View {
         }
         .animation(.spring(duration: 0.2), value: viewModel.errorMessage)
     }
-    
+
     private var icon: ImageResource {
         if let loader = viewModel.loader {
             return loader.type.icon
@@ -95,13 +95,13 @@ private struct ModLoaderCard: View {
     @State private var loadState: LoadState = .loading
     private let type: ModLoader
     private let minecraftVersion: String
-    
+
     init(_ type: ModLoader, _ minecraftVersion: String, _ currentLoader: Binding<MinecraftInstallTask.Loader?>) {
         self.type = type
         self.minecraftVersion = minecraftVersion
         self._currentLoader = currentLoader
     }
-    
+
     var body: some View {
         MyCard(nil, padding: 0) {
             ZStack(alignment: .topLeading) {
@@ -131,7 +131,7 @@ private struct ModLoaderCard: View {
             await loadVersions()
         }
     }
-    
+
     /// 受控选择：由共享的 `currentLoader` 派生本卡的高亮状态，
     /// 保证 Fabric / Forge / NeoForge 三张卡片的选择视觉互斥。
     private func listSelection(_ versions: [Version]) -> Binding<Int?> {
@@ -152,7 +152,7 @@ private struct ModLoaderCard: View {
             }
         )
     }
-    
+
     private func loadVersions() async {
         do {
             guard let url = switch type {
@@ -191,13 +191,13 @@ private struct ModLoaderCard: View {
             }
         }
     }
-    
+
     private enum LoadState: Equatable, CustomStringConvertible {
         case loading
         case noUsableVersion
         case error(message: String)
         case finished
-        
+
         var description: String {
             switch self {
             case .loading: "加载中"
@@ -207,11 +207,11 @@ private struct ModLoaderCard: View {
             }
         }
     }
-    
+
     private struct Version {
         public let id: String
         public let beta: Bool
-        
+
         public init(id: String) {
             self.id = id
             // 稳定版判断逻辑：https://github.com/PCL-Community/PCL2-CE/blob/45773cb9c69e677a3ae334c3d1f55f08468d623a/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModDownload.vb#L1047

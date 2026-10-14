@@ -13,18 +13,18 @@ struct ResourcesSearchPage: View {
     @EnvironmentObject private var instanceManager: InstanceManager
     @State private var currentPage: Int = 0
     private let context: InstallContext
-    
+
     init(type: ResourceType, context: InstallContext = .general) {
         self._viewModel = StateObject(wrappedValue: .init(type: type))
         self.context = context
     }
-    
+
     /// 实例定向模式下的目标实例。
     private var targetInstance: MinecraftInstance? {
         guard case .instance(let id) = context else { return nil }
         return instanceManager.repositories.values.lazy.compactMap { $0.instance(named: id) }.first
     }
-    
+
     var body: some View {
         CardContainer {
             modeTip
@@ -38,7 +38,7 @@ struct ResourcesSearchPage: View {
                 currentPage = 0
                 Task { await search(query) }
             }
-            
+
             if let searchResults = viewModel.searchResults {
                 PaginatedContainer(currentPage: $currentPage, pageCount: viewModel.totalPages) { _ in
                     MyCard(nil) {
@@ -63,7 +63,7 @@ struct ResourcesSearchPage: View {
             await search("")
         }
     }
-    
+
     /// 搜索；失败时提供重试入口。
     @MainActor
     private func search(_ query: String) async {
@@ -77,7 +77,7 @@ struct ResourcesSearchPage: View {
             }
         }
     }
-    
+
     /// 翻页；失败时提供重试入口。
     @MainActor
     private func changePage(_ page: Int) async {
@@ -91,7 +91,7 @@ struct ResourcesSearchPage: View {
             }
         }
     }
-    
+
     /// 下载模式提示条：实例定向模式显示目标实例与退出入口；普通模式不显示。
     @ViewBuilder
     private var modeTip: some View {
@@ -112,7 +112,7 @@ struct ResourcesSearchPage: View {
             EmptyView()
         }
     }
-    
+
     /// 退出实例定向模式，回到普通下载（同一页面就地切换上下文）。
     private func exitInstanceMode() {
         AppRouter.shared.removeLast()
@@ -123,12 +123,12 @@ struct ResourcesSearchPage: View {
 struct ProjectListItemView: View {
     private let project: ProjectListItemModel
     private let isTagRowSeparated: Bool
-    
+
     init(project: ProjectListItemModel, primary: Bool = false) {
         self.project = project
         self.isTagRowSeparated = primary && project.tags.count > 3
     }
-    
+
     var body: some View {
         MyListItem {
             HStack {
@@ -144,11 +144,11 @@ struct ProjectListItemView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .frame(width: 48, height: 48)
                 .padding(.leading, 4)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     MyText(project.title, size: 16)
                         .lineLimit(1)
-                    
+
                     if isTagRowSeparated {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
@@ -157,7 +157,7 @@ struct ProjectListItemView: View {
                                 }
                             }
                         }
-                        
+
                         MyText(project.description, color: .colorGray3)
                     } else {
                         HStack {
@@ -168,32 +168,32 @@ struct ProjectListItemView: View {
                                 .lineLimit(1)
                         }
                     }
-                    
+
                     HStack {
                         InformationView(icon: .iconSettingsPage, text: project.supportDescription, width: 200)
                         InformationView(icon: .iconDownloadPage, text: project.downloads, width: 150)
                         InformationView(icon: .iconUpload, text: project.lastUpdate, width: 150)
                         Spacer()
                     }
-                    
+
                     Spacer(minLength: 0)
                 }
                 Spacer(minLength: 0)
             }
         }
     }
-    
+
     private struct InformationView: View {
         private let icon: ImageResource
         private let text: String
         private let width: CGFloat
-        
+
         init(icon: ImageResource, text: String, width: CGFloat) {
             self.icon = icon
             self.text = text
             self.width = width
         }
-        
+
         var body: some View {
             HStack(spacing: 6) {
                 Image(icon)

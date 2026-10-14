@@ -7,28 +7,34 @@
 
 import SwiftUI
 
+/// 全局色板。
+///
+/// 所有颜色都委托到 `ThemeManager`，因此主题切换后需要重建视图树才能刷新
+/// （`RootView` 以 `.id(theme)` 实现，见 `ThemeManager` 文档）。
 extension Color {
     // https://github.com/CylorineStudio/PCL.Mac.Refactor/issues/13
     // https://github.com/PCL-Community/PCL2-CE/blob/cf2ddb8cbd2a3edc00ebd9ebf7533b0ba7b7de10/Plain%20Craft%20Launcher%202/Application.xaml#L28-L84
-    static let color1: Color = .init(0x343d4a)
-    static let color2: Color = .init(0x0b5bcb)
-    static let color3: Color = .init(0x1370f3)
-    static let color4: Color = .init(0x4890f5)
-    static let color5: Color = .init(0x96c0f9)
-    static let color6: Color = .init(0xd5e6fd)
-    static let color7: Color = .init(0xe0eafd)
-    static let color8: Color = .init(0xeaf2fe)
-    static let colorBg0: Color = .init(0x96c0f9)
-    static let colorBg1: Color = .init(0xe0eafd, alpha: 0.75)
-    static let colorGray1: Color = .init(0x404040)
-    static let colorGray2: Color = .init(0x737373)
-    static let colorGray3: Color = .init(0x8c8c8c)
-    static let colorGray4: Color = .init(0xa6a6a6)
-    static let colorGray5: Color = .init(0xcccccc)
-    static let colorGray6: Color = .init(0xebebeb)
-    static let colorGray7: Color = .init(0xf0f0f0)
-    static let colorGray8: Color = .init(0xf5f5f5)
-    
+    private static var palette: AppTheme.Palette { ThemeManager.shared.theme.palette }
+
+    static var color1: Color { palette.color1 }
+    static var color2: Color { palette.color2 }
+    static var color3: Color { palette.color3 }
+    static var color4: Color { palette.color4 }
+    static var color5: Color { palette.color5 }
+    static var color6: Color { palette.color6 }
+    static var color7: Color { palette.color7 }
+    static var color8: Color { palette.color8 }
+    static var colorBg0: Color { palette.bg0 }
+    static var colorBg1: Color { palette.bg1 }
+    static var colorGray1: Color { palette.gray1 }
+    static var colorGray2: Color { palette.gray2 }
+    static var colorGray3: Color { palette.gray3 }
+    static var colorGray4: Color { palette.gray4 }
+    static var colorGray5: Color { palette.gray5 }
+    static var colorGray6: Color { palette.gray6 }
+    static var colorGray7: Color { palette.gray7 }
+    static var colorGray8: Color { palette.gray8 }
+
     init(_ hex: UInt, alpha: Double = 1.0) {
         self.init(
             .sRGB,

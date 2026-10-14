@@ -20,9 +20,9 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable, @unchecked Se
     let sources: [Resource.Source]
     @Published var url: URL
     @Published var disabled: Bool
-    
+
     var fileName: String { url.lastPathComponent }
-    
+
     init(
         name: String,
         version: String?,
@@ -42,7 +42,7 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable, @unchecked Se
         self.url = url
         self.disabled = disabled
     }
-    
+
     convenience init(_ url: URL, _ mod: Resource) {
         let icon: ListItem.Image?
         if let modIcon = mod.icon {
@@ -60,7 +60,7 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable, @unchecked Se
         } else {
             icon = nil
         }
-        
+
         self.init(
             name: mod.name,
             version: mod.version,
@@ -72,10 +72,10 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable, @unchecked Se
             disabled: url.pathExtension == "disabled"
         )
     }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(url)
     }
-    
+
     static func == (lhs: ResourceDisplayModel, rhs: ResourceDisplayModel) -> Bool { lhs.url == rhs.url }
 }

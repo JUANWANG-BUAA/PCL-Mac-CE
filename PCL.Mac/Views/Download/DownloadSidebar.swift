@@ -11,15 +11,15 @@ import Core
 struct DownloadSidebar: Sidebar {
     @EnvironmentObject private var minecraftDownloadPageViewModel: MinecraftDownloadPageViewModel
     @ObservedObject private var router: AppRouter = .shared
-    
+
     let width: CGFloat = 150
-    
+
     /// 当前下载上下文：在实例定向模式下切换资源类型时保留目标实例。
     private var context: InstallContext {
         if case .resourceDownload(_, let context) = router.last { return context }
         return .general
     }
-    
+
     var body: some View {
         VStack(spacing: 4) {
             MyText("Minecraft", size: 12, color: .colorGray2)
@@ -35,7 +35,7 @@ struct DownloadSidebar: Sidebar {
                 default: break
                 }
             }
-            
+
             MyText("社区资源", size: 12, color: .colorGray2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 13)

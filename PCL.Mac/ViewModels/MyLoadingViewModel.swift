@@ -13,19 +13,19 @@ class MyLoadingViewModel: ObservableObject {
     /// 失败后的重试动作；为 `nil` 时失败界面不显示重试按钮。
     private(set) var retryAction: (() -> Void)?
     private let initialText: String
-    
+
     init(text: String) {
         self.text = text
         self.initialText = text
     }
-    
+
     @MainActor
     func fail(with message: String, retry: (() -> Void)? = nil) {
         isFailed = true
         text = message
         retryAction = retry
     }
-    
+
     @MainActor
     func reset() {
         text = initialText

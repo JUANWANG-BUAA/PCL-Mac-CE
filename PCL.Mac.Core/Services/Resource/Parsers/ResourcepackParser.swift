@@ -11,14 +11,14 @@ import SwiftyJSON
 
 enum ResourcepackParser: ResourceParser {
     static let type: ResourceType = .resourcepack
-    
+
     static func canHandle(fileURL: URL, archive: Archive) -> Bool {
         return archive["pack.mcmeta"] != nil
     }
-    
+
     static func parse(fileURL: URL, archive: Archive, remoteInfo: ResourceRemoteLookupService.RemoteResourceInfo?) -> ResourceParseResult? {
         guard let entry = archive["pack.mcmeta"] else { return nil }
-        
+
         let meta: PackMeta
         do {
             let data = try archive.extract(entry)
@@ -30,7 +30,7 @@ enum ResourcepackParser: ResourceParser {
             }
             return nil
         }
-        
+
         return .init(
             name: remoteInfo?.name ?? removingFormattingCodes(fileURL.deletingAllPathExtensions().lastPathComponent),
             version: remoteInfo?.version,
@@ -41,7 +41,7 @@ enum ResourcepackParser: ResourceParser {
             loaders: []
         )
     }
-    
+
     private static func removingFormattingCodes(_ string: String) -> String {
         var result = ""
         var skipNext = false
@@ -56,24 +56,24 @@ enum ResourcepackParser: ResourceParser {
         }
         return result
     }
-    
+
     private struct PackMeta: Decodable {
         let description: String?
-        
+
         private enum CodingKeys: CodingKey { case pack }
         private enum PackCodingKeys: CodingKey { case description }
-        
+
         init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             let packContainer = try container.nestedContainer(keyedBy: PackCodingKeys.self, forKey: .pack)
-            
+
             if packContainer.contains(.description) {
                 self.description = Self.parseTextComponent(from: try packContainer.decode(JSON.self, forKey: .description))
             } else {
                 self.description = nil
             }
         }
-        
+
         private static func parseTextComponent(from json: JSON) -> String {
             if let string = json.string {
                 return string

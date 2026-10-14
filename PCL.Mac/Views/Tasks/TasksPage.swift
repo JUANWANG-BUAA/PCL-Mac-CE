@@ -11,7 +11,7 @@ import Core
 struct TasksPage: View {
     @ObservedObject private var taskManager: TaskManager = .shared
     @StateObject private var loadingVM: MyLoadingViewModel = .init(text: "没有正在执行的任务")
-    
+
     var body: some View {
         CardContainer {
             if Metadata.debugMode {
@@ -49,11 +49,11 @@ struct TasksPage: View {
 
 private struct TaskCard: View {
     @ObservedObject private var task: AnyMyTask
-    
+
     init(_ task: AnyMyTask) {
         self.task = task
     }
-    
+
     var body: some View {
         MyCard(task.name, foldable: false) {
             VStack(alignment: .leading) {
@@ -89,7 +89,7 @@ private struct TaskCard: View {
                 }
         }
     }
-    
+
     private var totalProgress: Double {
         task.subTasks.reduce(0, { $0 + $1.progress }) / Double(task.subTasks.count)
     }

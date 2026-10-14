@@ -10,7 +10,7 @@ import Foundation
 public class NeoforgeInstallService: ForgeInstallService {
     override func installerDownloadURLs() -> [URL] {
         let root = APIEndpoints.NeoForgeMaven.root
-        
+
         if minecraftVersion.id == "1.20.1" {
             let version = !self.version.hasPrefix("1.20.1-") ? "1.20.1-\(self.version)" : self.version
             return [root.appending(path: "net/neoforged/forge/\(version)/forge-\(version)-installer.jar")]

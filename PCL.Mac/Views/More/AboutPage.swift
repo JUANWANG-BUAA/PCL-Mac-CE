@@ -16,35 +16,35 @@ struct AboutPage: View {
                     ProfileView(.local(.ltCatt), "龙腾猫跃", "Plain Craft Launcher 的作者！",
                                 .init("GitHub 主页", "https://github.com/LTCatt"),
                                 .init("前往赞助", WebLinks.Afdian.ltCat.absoluteString))
-                    
+
                     ProfileView(.network(url: WebLinks.CylorineSite.avatar("AnemoFlower").absoluteString), "风花AnemoFlower", "PCL.Mac 的作者",
                                 .init("GitHub 主页", "https://github.com/AnemoFlower"),
                                 .init("Bilibili 主页", "https://space.bilibili.com/3461564927576750"),
                                 .init("前往赞助", WebLinks.Afdian.anemoFlower.absoluteString))
-                    
+
                     ProfileView(.network(url: WebLinks.CylorineSite.avatar("CylorineStudio").absoluteString), "Cylorine Studio", "PCL.Mac 的开发团队",
                                 .init("GitHub 主页", "https://github.com/CylorineStudio"),
                                 .init("官方网站", APIEndpoints.CylorineSite.root.absoluteString))
-                    
+
                     ProfileView(.local(.pclMac), "PCL.Mac.Refactor", "当前版本：\(Metadata.appVersion) (\(Metadata.bundleVersion))",
                                 .init("GitHub 仓库", "https://github.com/CylorineStudio/PCL.Mac.Refactor"),
                                 .init("官网页面", WebLinks.CylorineSite.project.absoluteString))
                 }
             }
-            
+
             MyCard("特别鸣谢", foldable: false) {
                 VStack(spacing: 0) {
                     ProfileView(.local(.pclCommunity), "PCL Community", "Plain Craft Launcher 非官方社区",
                                 .init("GitHub 主页", "https://github.com/PCL-Community"))
-                    
+
                     ProfileView(.local(.pclProto), "PCL.Proto", "以 PCL2 和 PCL2-CE 为蓝本，旨在为各 PCL 分支版本提供一个标准化的原型样本。",
                                 .init("GitHub 仓库", "https://github.com/PCL-Community/PCL.Proto"))
-                    
+
                     ProfileView(.local(.bangbang93), "bangbang93", "提供 BMCLAPI 镜像源，详见 https://bmclapi.bangbang93.com",
                                 .init("前往赞助", WebLinks.Afdian.bangbang93.absoluteString))
                 }
             }
-            
+
             MyCard("许可与版权声明", foldable: false) {
                 VStack(spacing: 15) {
                     LicenseListItem(
@@ -78,17 +78,17 @@ struct AboutPage: View {
             }
         }
     }
-    
+
     private struct ProfileView: View {
         @ObservedObject private var easterEggManager: EasterEggManager = .shared
         @Environment(\.disableHoverAnimation) private var cardAppearAnimationPlaying: Bool
-        
+
         private let avatar: Avatar
         private let avatarURL: URL?
         private let nickname: String
         private let description: String
         private let links: [Link]
-        
+
         init(_ avatar: Avatar, _ nickname: String, _ description: String, _ links: Link...) {
             self.avatar = avatar
             if case .network(let url) = avatar {
@@ -100,14 +100,14 @@ struct AboutPage: View {
             self.description = description
             self.links = links
         }
-        
+
         var body: some View {
             MyListItem {
                 HStack {
                     Group {
                         switch avatar {
                         case .local(let imageResource): Image(imageResource).resizable()
-                        case .network(_):
+                        case .network:
                             if let avatarURL {
                                 NetworkImage(url: avatarURL)
                             } else {
@@ -139,36 +139,36 @@ struct AboutPage: View {
                 .padding(2)
             }
         }
-        
+
         struct Link {
             let buttonName: String
             let url: String
-            
+
             init(_ buttonName: String, _ url: String) {
                 self.buttonName = buttonName
                 self.url = url
             }
         }
-        
+
         enum Avatar {
             case local(ImageResource)
             case network(url: String)
         }
     }
-    
+
     private struct LicenseListItem: View {
         private let name: String
         private let info: String
         private let sourceURL: URL
         private let licenseURL: URL
-        
+
         init(_ name: String, _ info: String, sourceURL: String, licenseURL: String) {
             self.name = name
             self.info = info
             self.sourceURL = URL(string: sourceURL)!
             self.licenseURL = URL(string: licenseURL)!
         }
-        
+
         var body: some View {
             HStack(alignment: .top, spacing: 20) {
                 MyText(name)

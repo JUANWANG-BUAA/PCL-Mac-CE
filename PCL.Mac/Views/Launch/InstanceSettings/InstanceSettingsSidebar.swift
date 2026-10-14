@@ -10,11 +10,11 @@ import SwiftUI
 struct InstanceSettingsSidebar: Sidebar {
     let width: CGFloat = 140
     private let id: String
-    
+
     init(id: String) {
         self.id = id
     }
-    
+
     var body: some View {
         VStack {
             MyNavigationList(

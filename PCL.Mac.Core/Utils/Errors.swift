@@ -12,7 +12,7 @@ public enum DownloadError: LocalizedError, Equatable {
     case checksumMismatch
     case badStatusCode(code: Int)
     case unknownError
-    
+
     public var errorDescription: String? {
         switch self {
         case .fileExists:
@@ -50,7 +50,7 @@ public enum JavaError: LocalizedError {
     case failedToParseReleaseFile
     case missingExecutableFile
     case failedToParseVersionNumber(version: String)
-    
+
     public var errorDescription: String? {
         switch self {
         case .invalidURL:
@@ -67,10 +67,10 @@ public enum JavaError: LocalizedError {
 
 public struct SimpleError: LocalizedError {
     private let reason: String
-    
+
     public init(_ reason: String) {
         self.reason = reason
     }
-    
+
     public var errorDescription: String? { reason }
 }

@@ -17,7 +17,7 @@ class InstalledResourcesViewModel: ObservableObject {
     @Published public var currentRepositoryId: UUID
     @Published public var currentPage: Int = 0
     @Published public var pageCount: Int = 0
-    
+
     public let type: ResourceType
     public var hasSearchKeyword: Bool { !searchKeyword.isEmpty }
     private var cancellables: Set<AnyCancellable> = []
@@ -27,9 +27,9 @@ class InstalledResourcesViewModel: ObservableObject {
     private let instance: MinecraftInstance?
     let id: String
     private let entriesPerPage: Int = 20
-    
+
     private let service: ResourceLoadService
-    
+
     init(instanceManager: InstanceManager, id: String, type: ResourceType) {
         self.instance = instanceManager.currentRepository.instance(named: id)
         self.id = id
@@ -40,46 +40,46 @@ class InstalledResourcesViewModel: ObservableObject {
             remoteLookupService: .init(curseforgeClient: .init(apiKey: Secrets.shared.curseforgeApiKey ?? "")),
             cache: .shared
         )
-        
+
         instanceManager.$currentRepositoryId
             .receive(on: DispatchQueue.main)
             .assign(to: \.currentRepositoryId, on: self)
             .store(in: &cancellables)
     }
-    
+
     func load(resetPage: Bool = true) async throws {
         guard let instance else { throw SimpleError("实例不存在。") }
-        
+
         if type == .mod && instance.modLoader == nil {
             supportMods = false
             return
         }
-        
+
         let result: [(URL, Resource)] = try await service.loadResources(in: directory()!)
             .map { ($0, $1) }
             .sorted { $0.1.name.compare($1.1.name, options: .literal) == .orderedAscending }
-        
+
         self.loadResult = result
         if resetPage {
             self.currentPage = 0
         }
         self.updateResources()
     }
-    
+
     func updateResources() {
         if let convertTask {
             convertTask.cancel()
             self.convertTask = nil
         }
         guard let loadResult else { return }
-        
+
         let validResources: [(URL, Resource)] = loadResult.lazy
             .filter {
                 searchKeyword.isEmpty
                 || $0.1.name.contains(searchKeyword)
                 || $0.1.description?.contains(searchKeyword) == true
             }
-        
+
         self.pageCount = validResources.isEmpty ? 0 : Int(ceil(Double(validResources.count) / Double(entriesPerPage)))
         if pageCount == 0 {
             self.resources = []
@@ -87,7 +87,7 @@ class InstalledResourcesViewModel: ObservableObject {
         } else {
             currentPage = min(pageCount - 1, currentPage)
         }
-        
+
         let start = currentPage * entriesPerPage
         let end = min(start + entriesPerPage, validResources.count)
         self.resources = nil
@@ -110,12 +110,12 @@ class InstalledResourcesViewModel: ObservableObject {
             }
         }
     }
-    
+
     func setSearchKeyword(_ keyword: String) {
         searchKeyword = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         updateResources()
     }
-    
+
     func toggleDisabled(_ resource: ResourceDisplayModel) throws {
         let oldURL: URL = resource.url
         let newURL: URL
@@ -134,7 +134,7 @@ class InstalledResourcesViewModel: ObservableObject {
             loadResult?[index].0 = newURL
         }
     }
-    
+
     /// 删除一个已安装的资源文件（移到废纸篓），并同步刷新列表。
     func deleteResource(_ resource: ResourceDisplayModel) async throws {
         try await NSWorkspace.shared.recycle([resource.url])
@@ -142,7 +142,7 @@ class InstalledResourcesViewModel: ObservableObject {
         loadResult?.removeAll { $0.0 == resource.url }
         updateResources()
     }
-    
+
     func loadInfo(for resource: ResourceDisplayModel) async throws -> ProjectListItemModel? {
         for source in resource.sources {
             if case .modrinth(let projectId) = source {
@@ -159,15 +159,15 @@ class InstalledResourcesViewModel: ObservableObject {
         }
         return nil
     }
-    
+
     func directory() -> URL? {
         guard let instance else { return nil }
-        
+
         let directoryName = type.saveDirectory ?? ""
         let url = instance.url.appending(path: directoryName)
-        
+
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        
+
         return url
     }
 }

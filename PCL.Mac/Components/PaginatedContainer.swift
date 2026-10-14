@@ -12,13 +12,13 @@ struct PaginatedContainer<Content: View>: View {
     @State private var disableAppearAnimation: Bool = false
     private let pageCount: Int
     private let content: (Int) -> Content
-    
+
     init(currentPage: Binding<Int>, pageCount: Int, content: @escaping (Int) -> Content) {
         self._currentPage = currentPage
         self.pageCount = pageCount
         self.content = content
     }
-    
+
     init<Data: RandomAccessCollection, ID: Hashable, ElementContent: View>(
         _ data: Data,
         id: KeyPath<Data.Element, ID>,
@@ -36,13 +36,13 @@ struct PaginatedContainer<Content: View>: View {
             )
         }
     }
-    
+
     var body: some View {
         VStack(spacing: 15) {
             content(currentPage)
                 .disableCardAppearAnimation(disableAppearAnimation)
                 .animation(.easeInOut(duration: 0.2), value: currentPage)
-            
+
             MyCard(nil, padding: 8) {
                 HStack(alignment: .center, spacing: 0) {
                     pageButton(.btnFirstPage) {
@@ -55,10 +55,10 @@ struct PaginatedContainer<Content: View>: View {
                         }
                     }
                     .opacity(currentPage == 0 ? 0.2 : 1)
-                    
+
                     MyText((currentPage + 1).description, size: 16, color: .colorGray2)
                         .padding(.horizontal, 8)
-                    
+
                     pageButton(.btnNextPage) {
                         if currentPage < pageCount - 1 {
                             currentPage += 1
@@ -77,7 +77,7 @@ struct PaginatedContainer<Content: View>: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private func pageButton(_ icon: ImageResource, onClick: @escaping () -> Void) -> some View {
         Image(icon)

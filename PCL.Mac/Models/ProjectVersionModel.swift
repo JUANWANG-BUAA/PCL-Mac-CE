@@ -15,7 +15,7 @@ struct ProjectVersionModel: Identifiable {
         public let projectId: String
         public let project: ProjectListItemModel
     }
-    
+
     public let id: String
     public let name: String
     public let version: String

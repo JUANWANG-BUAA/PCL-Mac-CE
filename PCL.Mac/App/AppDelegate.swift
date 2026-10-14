@@ -20,14 +20,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             err("保存配置失败：\(error.localizedDescription)")
         }
     }
-    
+
     private var window: AppWindow!
     private lazy var shouldInit: Bool = ProcessInfo.processInfo.environment["PCL_MAC_TESTING"] == nil && ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1"
     private var keyMonitor: Any?
-    
+
     private var instanceManager: InstanceManager!
     private var cancellables: Set<AnyCancellable> = []
-    
+
     private func executeTask(_ name: String, silent: Bool = false, _ start: @escaping () throws -> Void) {
         do {
             try start()
@@ -38,7 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             err("\(name)失败：\(error.localizedDescription)")
         }
     }
-    
+
     private func executeAsyncTask(_ name: String, silent: Bool = false, _ start: @escaping () async throws -> Void) {
         Task {
             do {
@@ -51,7 +51,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-    
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         do {
             try URLConstants.createDirectories()
@@ -60,10 +60,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             alert.messageText = "PCL.Mac 启动失败：创建数据目录失败。"
             alert.informativeText = error.localizedDescription
             alert.alertStyle = .critical
-            
+
             _ = alert.addButton(withTitle: "反馈")
             _ = alert.addButton(withTitle: "退出")
-            
+
             let response = alert.runModal()
             if response == .alertFirstButtonReturn {
                 NSWorkspace.shared.open(WebLinks.githubDiscussion(category: "q-a"))
@@ -72,21 +72,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         LogManager.shared.enableLogging()
         log("正在启动 PCL.Mac.Refactor \(Metadata.appVersion)")
-        
+
         debug("系统信息：macOS \(ProcessInfo.processInfo.operatingSystemVersionString) \(Architecture.systemArchitecture())")
-        
+
         _ = Secrets.shared
-        
+
         DownloadSourceManager.shared = .init(policy: LauncherConfig.shared.downloadSourcePolicy, curseforgeApiKey: Secrets.shared.curseforgeApiKey)
-        
+
         FlagsManager.shared = .init(enabledFlags: LauncherConfig.shared.enabledFlags)
-        
+
         JavaManager.shared = .init(customJavaRuntimes: LauncherConfig.shared.customJavaRuntimes)
-        
+
         executeAsyncTask("刷新地区信息", silent: true) {
             await DownloadSourceManager.shared.refreshRegion()
         }
-        
+
         executeTask("开启 SwiftScaffolding 日志", silent: true) {
             try SwiftScaffolding.Logger.enableLogging(url: URLConstants.logsDirectoryURL.appending(path: "swift-scaffolding.log"))
         }
@@ -95,7 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 try FileManager.default.removeItem(at: url)
             }
         }
-        
+
         do {
             let cacheURL = URLConstants.cacheURL.appending(path: "version_manifest.json")
             if FileManager.default.fileExists(atPath: cacheURL.path) {
@@ -109,7 +109,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         executeAsyncTask("拉取最新版本列表") {
             try await VersionManifest.load(revalidate: true)
         }
-        
+
         if shouldInit {
             _ = LauncherConfig.shared
             _ = JavaManager.shared
@@ -121,12 +121,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-    
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         if !shouldInit { return }
         log("App 启动完成")
         ResourceCache.shared = .init(cacheDirectory: URLConstants.cacheURL)
-        
+
         let instanceManager = InstanceManager(
             repositories: LauncherConfig.shared.minecraftRepositories.reduce(into: [:], { $0[$1.id] = $1 }),
             currentRepositoryId: LauncherConfig.shared.currentRepositoryId
@@ -146,13 +146,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 Self.saveConfigQuietly()
             }
             .store(in: &cancellables)
-        
+
         NSApplication.shared.appearance = NSAppearance(named: .aqua)
         self.window = AppWindow(instanceManager: instanceManager)
         self.window.makeKeyAndOrderFront(nil)
         log("成功创建窗口")
         addEscapeMonitor()
-        
+
         if let loadError = LauncherConfig.loadError {
             MessageBoxManager.shared.showText(
                 title: "加载配置文件失败",
@@ -160,7 +160,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 level: .error
             )
         }
-        
+
         if !LauncherConfig.shared.hasEnteredLauncher {
             MessageBoxManager.shared.showText(
                 title: "欢迎使用 PCL.Mac！",
@@ -179,11 +179,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         UpdateService.shared.runInteractiveUpdateFlow()
     }
-    
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }
-    
+
     func applicationWillTerminate(_ notification: Notification) {
         executeTask("保存资源缓存") {
             try ResourceCache.shared.save()
@@ -197,7 +197,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         EasyTierManager.shared.terminateAll()
     }
-    
+
     private func addEscapeMonitor() {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
             // 弹窗打开时：回车触发主按钮，ESC 触发取消按钮

@@ -20,7 +20,7 @@ public enum FileUtils {
         }
         let handle: FileHandle = try .init(forReadingFrom: url)
         defer { try? handle.close() }
-        
+
         var hasher: H = .init()
         while try autoreleasepool(invoking: {
             if let data = try handle.read(upToCount: 1024 * 1024), !data.isEmpty {
@@ -33,22 +33,22 @@ public enum FileUtils {
         let digest: H.Digest = hasher.finalize()
         return digest.map { String(format: "%02x", $0) }.joined()
     }
-    
+
     /// SHA-1
     public static func sha1(of url: URL) throws -> String {
         try hash(of: url, using: Insecure.SHA1.self)
     }
-    
+
     /// SHA-256
     public static func sha256(of url: URL) throws -> String {
         try hash(of: url, using: SHA256.self)
     }
-    
+
     /// SHA-512
     public static func sha512(of url: URL) throws -> String {
         try hash(of: url, using: SHA512.self)
     }
-    
+
     public static func checkFile(at url: URL, with checksums: [String: String]) throws -> Bool {
         for (algorithm, value) in checksums {
             let hash: String? = switch algorithm {
@@ -62,12 +62,12 @@ public enum FileUtils {
         }
         return true
     }
-    
+
     public static func check(_ item: DownloadItem) throws -> Bool {
         guard let checksums = item.checksums else { return true }
         return try checkFile(at: item.destination, with: checksums)
     }
-    
+
     public static func isExecutable(at url: URL) -> Bool {
         return Architecture.architecture(of: url) != .unknown
     }

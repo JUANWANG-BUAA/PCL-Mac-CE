@@ -12,7 +12,7 @@ import ZIPFoundation
 /// Minecraft 安装任务生成器。
 public enum MinecraftInstallTask {
     private typealias SubTask = MyTask<Model>.SubTask
-    
+
     /// 创建一个 Minecraft 实例安装任务。
     /// - Parameters:
     ///   - name: 实例名。
@@ -21,6 +21,13 @@ public enum MinecraftInstallTask {
     ///   - modLoader: 需要附加的模组加载器。
     ///   - completion: 任务完成回调，会在主线程执行。
     /// - Returns: 实例安装任务。
+    /// 创建 Minecraft 安装任务。
+    /// - Parameters:
+    ///   - name: 实例名称。
+    ///   - version: 目标游戏版本。
+    ///   - repository: 所在仓库。
+    ///   - modLoader: 需要安装的 Mod 加载器（可选）。
+    ///   - completion: 安装完成回调。
     public static func create(
         name: String,
         version: MinecraftVersion,
@@ -33,7 +40,36 @@ public enum MinecraftInstallTask {
             version: version,
             repository: repository
         )
-        var subTasks: [SubTask] = [
+        var subTasks: [SubTask] = makeBaseSubTasks(
+            name: name,
+            version: version,
+            repository: repository,
+            modLoader: modLoader,
+            completion: completion
+        )
+        if let modLoader {
+            appendModLoaderSubTasks(
+                into: &subTasks,
+                modLoader: modLoader,
+                version: version,
+                repository: repository
+            )
+        }
+        return .init(name: "\(name) 安装", model: model, subTasks) { _ in
+            try? FileManager.default.removeItem(at: repository.versionsDirectory.appending(path: name))
+        }
+    }
+
+    /// 生成基础安装子任务：预创建目录、下载清单/资源/本体、映射与收尾。
+    /// 不包含 Mod 加载器相关子任务（由 `appendModLoaderSubTasks` 追加）。
+    private static func makeBaseSubTasks(
+        name: String,
+        version: MinecraftVersion,
+        repository: MinecraftRepository,
+        modLoader: Loader?,
+        completion: (@MainActor (MinecraftInstance) -> Void)?
+    ) -> [SubTask] {
+        return [
             .init(0, "__pre", display: false) { _, model in
                 try FileManager.default.createDirectory(at: model.runningDirectory, withIntermediateDirectories: true)
                 FileManager.default.createFile(atPath: model.runningDirectory.appending(path: ".incomplete").path, contents: nil)
@@ -73,10 +109,10 @@ public enum MinecraftInstallTask {
                     progressHandler: task.setProgress(_:)
                 )
             },
-            
+
             // Mod Loader
-            
-            .init(5, "__modify_manifest", display: false) { task, model in
+
+            .init(5, "__modify_manifest", display: false) { _, model in
                 let manifestURL: URL = model.runningDirectory.appending(path: "\(model.name).json")
                 if var dict: [String: Any] = try JSON(data: Data(contentsOf: manifestURL)).dictionaryObject {
                     dict["id"] = model.name
@@ -109,7 +145,7 @@ public enum MinecraftInstallTask {
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(8, "__completion", display: false) { _, _ in
+            .init(8, "__completion", display: false) { _, model in
                 let instance = MinecraftInstance(
                     id: .init(),
                     url: repository.versionsDirectory.appending(path: name),
@@ -120,70 +156,67 @@ public enum MinecraftInstallTask {
                 )
                 await repository.addInstance(instance)
                 try? FileManager.default.removeItem(at: model.runningDirectory.appending(path: ".incomplete"))
-                FileManager.default.createFile(atPath: model.runningDirectory.appending(path: "options.txt").path, contents: "lang:zh_cn".data(using: .utf8)!)
+                FileManager.default.createFile(atPath: model.runningDirectory.appending(path: "options.txt").path, contents: Data("lang:zh_cn".utf8))
                 await MainActor.run {
                     completion?(instance)
                 }
             }
         ]
-        
-        if let modLoader {
-            switch modLoader.type {
-            case .fabric:
-                subTasks.insert(
-                    .init(3, "安装 Fabric Loader") { task, model in
-                        let manifest: ClientManifest = try await downloadFabricManifest(
-                            version: version,
-                            repository: repository,
-                            runningDirectory: model.runningDirectory,
-                            loaderVersion: modLoader.version,
-                            progressHandler: task.setProgress(_:)
-                        )
-                        model.manifest = manifest.merge(to: model.manifest)
-                    },
-                    at: 4
-                )
-                
-            case .forge:
-                subTasks.insert(
-                    .init(3, "下载 Forge 安装器文件") { task, model in
-                        let service: ForgeInstallService = .init(minecraftVersion: model.version, version: modLoader.version, repository: model.repository, manifest: model.manifest, runningDirectory: model.runningDirectory)
-                        model.forgeInstallService = service
-                        try await service.downloadFiles(progressHandler: task.setProgress(_:))
-                    },
-                    at: 4
-                )
-                subTasks.insert(
-                    .init(4, "执行 Forge 安装器") { task, model in
-                        try await model.forgeInstallService!.executeProcessors(progressHandler: task.setProgress(_:))
-                        model.manifest = try MinecraftInstanceLoader.loadManifest(at: model.runningDirectory.appending(path: "\(model.name).json"))
-                    },
-                    at: 5
-                )
-            case .neoforge:
-                subTasks.insert(
-                    .init(3, "下载 NeoForge 安装器文件") { task, model in
-                        let service: NeoforgeInstallService = .init(minecraftVersion: model.version, version: modLoader.version, repository: model.repository, manifest: model.manifest, runningDirectory: model.runningDirectory)
-                        model.forgeInstallService = service
-                        try await service.downloadFiles(progressHandler: task.setProgress(_:))
-                    },
-                    at: 4
-                )
-                subTasks.insert(
-                    .init(4, "执行 NeoForge 安装器") { task, model in
-                        try await model.forgeInstallService!.executeProcessors(progressHandler: task.setProgress(_:))
-                        model.manifest = try MinecraftInstanceLoader.loadManifest(at: model.runningDirectory.appending(path: "\(model.name).json"))
-                    },
-                    at: 5
-                )
-            }
-        }
-        
-        return .init(name: "\(name) 安装", model: model, subTasks) { _ in
-            try? FileManager.default.removeItem(at: repository.versionsDirectory.appending(path: name))
+    }
+
+    /// 按加载器类型追加对应安装子任务（Fabric / Forge / NeoForge）。
+    private static func appendModLoaderSubTasks(
+        into subTasks: inout [SubTask],
+        modLoader: Loader,
+        version: MinecraftVersion,
+        repository: MinecraftRepository
+    ) {
+        switch modLoader.type {
+        case .fabric:
+            subTasks.append(
+                .init(3, "安装 Fabric Loader") { task, model in
+                    let manifest: ClientManifest = try await downloadFabricManifest(
+                        version: version,
+                        repository: repository,
+                        runningDirectory: model.runningDirectory,
+                        loaderVersion: modLoader.version,
+                        progressHandler: task.setProgress(_:)
+                    )
+                    model.manifest = manifest.merge(to: model.manifest)
+                }
+            )
+
+        case .forge:
+            subTasks.append(
+                .init(3, "下载 Forge 安装器文件") { task, model in
+                    let service: ForgeInstallService = .init(minecraftVersion: model.version, version: modLoader.version, repository: model.repository, manifest: model.manifest, runningDirectory: model.runningDirectory)
+                    model.forgeInstallService = service
+                    try await service.downloadFiles(progressHandler: task.setProgress(_:))
+                }
+            )
+            subTasks.append(
+                .init(4, "执行 Forge 安装器") { task, model in
+                    try await model.forgeInstallService!.executeProcessors(progressHandler: task.setProgress(_:))
+                    model.manifest = try MinecraftInstanceLoader.loadManifest(at: model.runningDirectory.appending(path: "\(model.name).json"))
+                }
+            )
+        case .neoforge:
+            subTasks.append(
+                .init(3, "下载 NeoForge 安装器文件") { task, model in
+                    let service: NeoforgeInstallService = .init(minecraftVersion: model.version, version: modLoader.version, repository: model.repository, manifest: model.manifest, runningDirectory: model.runningDirectory)
+                    model.forgeInstallService = service
+                    try await service.downloadFiles(progressHandler: task.setProgress(_:))
+                }
+            )
+            subTasks.append(
+                .init(4, "执行 NeoForge 安装器") { task, model in
+                    try await model.forgeInstallService!.executeProcessors(progressHandler: task.setProgress(_:))
+                    model.manifest = try MinecraftInstanceLoader.loadManifest(at: model.runningDirectory.appending(path: "\(model.name).json"))
+                }
+            )
         }
     }
-    
+
     /// 补全实例资源文件。
     /// - Parameters:
     ///   - repository: 实例所在的 `MinecraftRepository`。
@@ -196,7 +229,7 @@ public enum MinecraftInstallTask {
     ) async throws {
         let progressHandler: ConcurrentProgressHandler = await .init(totalHandler: progressHandler)
         await progressHandler.startCalculate(interval: 0.1)
-        
+
         if let downloads = manifest.downloads {
             try await downloadClient(
                 clientDownload: downloads.client,
@@ -207,7 +240,7 @@ public enum MinecraftInstallTask {
             warn("manifest.downloads 不存在")
             await progressHandler.handler(withMultiplier: 0.15)(1)
         }
-        
+
         if let assetIndex = manifest.assetIndex {
             let assetIndex = try await downloadAssetIndex(
                 assetIndex: assetIndex,
@@ -223,7 +256,7 @@ public enum MinecraftInstallTask {
             warn("manifest.assetIndex 不存在")
             await progressHandler.handler(withMultiplier: 0.55)(1)
         }
-        
+
         try await downloadLibraries(
             manifest: manifest,
             repository: repository,
@@ -235,10 +268,10 @@ public enum MinecraftInstallTask {
             repository: repository,
             progressHandler: progressHandler.handler(withMultiplier: 0.05)
         )
-        
+
         await progressHandler.stopCalculate()
     }
-    
+
     private static func downloadClientManifest(
         versionManifest: VersionManifest,
         versionId: String,
@@ -249,7 +282,7 @@ public enum MinecraftInstallTask {
             err("未找到版本：\(versionId)")
             throw TaskError.unknownError
         }
-        
+
         let destination: URL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
         try await FileDownloader.shared.download(
             url: version.url,
@@ -257,7 +290,7 @@ public enum MinecraftInstallTask {
         )
         return try JSONDecoder.shared.decode(ClientManifest.self, from: Data(contentsOf: destination))
     }
-    
+
     private static func downloadAssetIndex(
         assetIndex: ClientManifest.AssetIndex,
         repository: MinecraftRepository,
@@ -273,7 +306,7 @@ public enum MinecraftInstallTask {
         )
         return try JSONDecoder.shared.decode(AssetIndex.self, from: Data(contentsOf: destination))
     }
-    
+
     private static func downloadClient(
         clientDownload: ClientManifest.Downloads.Download,
         runningDirectory: URL,
@@ -286,13 +319,13 @@ public enum MinecraftInstallTask {
             progressHandler: progressHandler
         )
     }
-    
+
     private static func downloadAssets(
         assetIndex: AssetIndex,
         repository: MinecraftRepository,
         progressHandler: @MainActor @escaping (Double) -> Void
     ) async throws {
-        let root: URL = URL(string: "https://resources.download.minecraft.net")!
+        let root: URL = APIEndpoints.MojangResources.root
         let files: [DownloadItem] = autoreleasepool {
             assetIndex.objects.map { .init(
                 url: root.appending(path: "\($0.hash.prefix(2))/\($0.hash)"),
@@ -302,7 +335,7 @@ public enum MinecraftInstallTask {
         }
         try await FileDownloader.shared.download(files: files, preferMirror: false, maxConcurrency: 64, progressHandler: progressHandler)
     }
-    
+
     private static func downloadLibraries(
         manifest: ClientManifest,
         repository: MinecraftRepository,
@@ -313,7 +346,7 @@ public enum MinecraftInstallTask {
             .compactMap { $0.downloadItem(destinationDirectory: repository.librariesDirectory) }
         try await FileDownloader.shared.download(files: files, progressHandler: progressHandler)
     }
-    
+
     private static func extractNatives(
         manifest: ClientManifest,
         runningDirectory: URL,
@@ -331,7 +364,7 @@ public enum MinecraftInstallTask {
                 err("本地库 \(native.name) 似乎未被下载")
                 continue
             }
-            
+
             let nativesDirectory: URL = runningDirectory.appending(path: "natives")
             let archive: Archive = try .init(url: url, accessMode: .read)
             for entry in archive where entry.type == .file {
@@ -350,20 +383,20 @@ public enum MinecraftInstallTask {
             progressHandler(1)
         }
     }
-    
+
     /// MyTask 的共享可变载体，以 @unchecked 担保跨隔离传递（见 docs-book ADR-003）。
     public class Model: TaskModel, @unchecked Sendable {
         public let name: String
         public let version: MinecraftVersion
         public let runningDirectory: URL
         public let repository: MinecraftRepository
-        
+
         public var manifest: ClientManifest!
         public var mappedManifest: ClientManifest!
         public var assetIndex: AssetIndex?
-        
+
         public var forgeInstallService: ForgeInstallService?
-        
+
         public init(name: String, version: MinecraftVersion, repository: MinecraftRepository) {
             self.name = name
             self.version = version
@@ -371,11 +404,11 @@ public enum MinecraftInstallTask {
             self.repository = repository
         }
     }
-    
+
     public struct Loader {
         public let type: ModLoader
         public let version: String
-        
+
         public init(type: ModLoader, version: String) {
             self.type = type
             self.version = version

@@ -18,10 +18,10 @@ public struct ModrinthProject: Decodable, Identifiable, Hashable, Equatable, Sen
         case iconURL = "icon_url"
         case gameVersions = "game_versions"
         case dateModified = "date_modified"
-        
+
         case id, slug, title, description, downloads, updated, versions, categories, loaders
     }
-    
+
     public let id: String
     public let slug: String
     public let type: ResourceType
@@ -35,7 +35,7 @@ public struct ModrinthProject: Decodable, Identifiable, Hashable, Equatable, Sen
     public let versions: [String]?
     public let gameVersions: [String]?
     public let loaders: [ModLoader]?
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? container.decode(String.self, forKey: .projectId)
@@ -45,7 +45,7 @@ public struct ModrinthProject: Decodable, Identifiable, Hashable, Equatable, Sen
         self.description = try container.decode(String.self, forKey: .description)
         self.iconURL = try container.decodeIfPresent(String.self, forKey: .iconURL).flatMap(URL.init(string:))
         self.downloads = try container.decode(Int.self, forKey: .downloads)
-        
+
         self.lastUpdate = try decodeDate(from: container.decodeIfPresent(String.self, forKey: .dateModified) ?? container.decode(String.self, forKey: .updated), codingPath: container.codingPath)
         self.categories = try container.decode([String].self, forKey: .categories)
         self.clientCompatibility = try container.decode(ModrinthCompatibility.self, forKey: .clientSide)
@@ -64,16 +64,16 @@ public struct ModrinthVersion: Decodable, Identifiable {
     public enum VersionType: String, Decodable {
         case release, beta, alpha
     }
-    
+
     public struct Dependency: Decodable, Identifiable {
         private enum CodingKeys: String, CodingKey {
             case id = "version_id", projectId = "project_id", dependencyType = "dependency_type"
         }
-        
+
         public let id: String?
         public let projectId: String?
         public let isRequired: Bool
-        
+
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.id = try container.decodeIfPresent(String.self, forKey: .id)
@@ -81,18 +81,18 @@ public struct ModrinthVersion: Decodable, Identifiable {
             self.isRequired = try container.decode(String.self, forKey: .dependencyType) == "required"
         }
     }
-    
+
     public struct File: Decodable {
         private enum CodingKeys: String, CodingKey {
             case name = "filename"
             case hashes, url, primary
         }
-        
+
         public let name: String
         public let url: URL
         public let sha1: String?
         public let primary: Bool
-        
+
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.name = try container.decode(String.self, forKey: .name)
@@ -101,12 +101,12 @@ public struct ModrinthVersion: Decodable, Identifiable {
             self.primary = try container.decode(Bool.self, forKey: .primary)
         }
     }
-    
+
     private enum CodingKeys: String, CodingKey {
         case projectId = "project_id", versionNumber = "version_number", gameVersions = "game_versions", type = "version_type", datePublished = "date_published"
         case id, name, downloads, dependencies, loaders, files
     }
-    
+
     public let id: String
     public let projectId: String
     public let name: String
@@ -118,7 +118,7 @@ public struct ModrinthVersion: Decodable, Identifiable {
     public let gameVersions: [String]
     public let loaders: [ModLoader]
     public let files: [File]
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(String.self, forKey: .id)
@@ -135,7 +135,7 @@ public struct ModrinthVersion: Decodable, Identifiable {
     }
 }
 
-fileprivate func decodeDate(from string: String, codingPath: [any CodingKey]) throws -> Date {
+private func decodeDate(from string: String, codingPath: [any CodingKey]) throws -> Date {
     var string: String = string
     let endsWithZ: Bool = string.hasSuffix("Z")
     if string.count > (endsWithZ ? 20 : 25) {

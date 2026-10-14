@@ -10,7 +10,7 @@ import Foundation
 class HintManager: ObservableObject {
     public static let shared: HintManager = .init()
     @Published public var hints: [HintModel] = []
-    
+
     /// 弹出提示。
     /// - Parameters:
     ///   - text: 提示内容。
@@ -23,7 +23,7 @@ class HintManager: ObservableObject {
             self.hints.removeAll(where: { $0.id == hint.id })
         }
     }
-    
+
     private init() {}
 }
 

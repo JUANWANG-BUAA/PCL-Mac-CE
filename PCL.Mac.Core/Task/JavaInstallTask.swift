@@ -38,7 +38,7 @@ public enum JavaInstallTask {
                 }
                 try await FileDownloader.shared.download(files: downloadItems, progressHandler: task.setProgress(_:))
             },
-            .init(2, "__completion", display: false) { _, model in
+            .init(2, "__completion", display: false) { _, _ in
                 let bundleRoot: URL = try FileManager.default.contentsOfDirectory(at: tempDirectory, includingPropertiesForKeys: nil)[0]
                 try FileManager.default.createDirectory(at: bundleDestination.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try FileManager.default.moveItem(at: bundleRoot, to: bundleDestination)
@@ -48,11 +48,11 @@ public enum JavaInstallTask {
             try? FileManager.default.removeItem(at: tempDirectory)
         }
     }
-    
+
     /// MyTask 的共享可变载体，以 @unchecked 担保跨隔离传递（见 docs-book ADR-003）。
     public class Model: TaskModel, @unchecked Sendable {
         public var manifest: MojangJavaManifest!
-        
+
         public init() {}
     }
 }

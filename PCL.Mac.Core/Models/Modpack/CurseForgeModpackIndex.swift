@@ -14,21 +14,21 @@ public struct CurseForgeModpackIndex: Decodable {
         public let fileName: String?
         public let url: URL?
         public let required: Bool
-        
+
         private enum CodingKeys: String, CodingKey {
             case fileName, url, required
             case projectId = "projectID", fileId = "fileID"
         }
     }
-    
+
     private struct ModLoader: Decodable {
         public let id: String
         public let primary: Bool
     }
-    
+
     public let manifestType: String
     public let manifestVersion: Int
-    
+
     public let name: String
     public let version: String
     public let author: String?
@@ -36,15 +36,15 @@ public struct CurseForgeModpackIndex: Decodable {
     public let minecraftVersion: String
     public let modLoader: (String, String)?
     public let files: [File]
-    
+
     private enum CodingKeys: String, CodingKey {
         case manifestType, manifestVersion, name, version, author, minecraft, overrides, files
     }
-    
+
     private enum MinecraftCodingKeys: CodingKey {
         case version, modLoaders
     }
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.manifestType = try container.decode(String.self, forKey: .manifestType)
@@ -54,7 +54,7 @@ public struct CurseForgeModpackIndex: Decodable {
         self.author = try container.decodeIfPresent(String.self, forKey: .author)
         self.overridesDirectory = try container.decodeIfPresent(String.self, forKey: .overrides)
         self.files = try container.decodeIfPresent([File].self, forKey: .files) ?? []
-        
+
         let minecraftContainer = try container.nestedContainer(keyedBy: MinecraftCodingKeys.self, forKey: .minecraft)
         self.minecraftVersion = try minecraftContainer.decode(String.self, forKey: .version)
         self.modLoader = try minecraftContainer.decodeIfPresent([ModLoader].self, forKey: .modLoaders)?

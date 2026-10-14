@@ -10,9 +10,9 @@ import ZIPFoundation
 
 protocol ResourceParser {
     static var type: ResourceType { get }
-    
+
     static func canHandle(fileURL: URL, archive: Archive) -> Bool
-    
+
     static func parse(fileURL: URL, archive: Archive, remoteInfo: ResourceRemoteLookupService.RemoteResourceInfo?) -> ResourceParseResult?
 }
 

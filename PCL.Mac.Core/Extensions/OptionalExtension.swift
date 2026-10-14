@@ -18,7 +18,7 @@ public extension Optional {
         }
         return value
     }
-    
+
     /// 强制解包 `Optional` 并在值为空时 `fatalError`。
     /// 与 `unsafelyUnwrapped` 不同的是，`forceUnwrap()` 会提供文件名与行号。
     /// - Parameters:

@@ -11,14 +11,14 @@ import SwiftUI
 struct InstanceListSidebar: Sidebar {
     @StateObject private var instanceVM: InstanceViewModel
     @StateObject private var modpackViewModel: ModpackViewModel
-    
+
     init(instanceManager: InstanceManager) {
         self._instanceVM = .init(wrappedValue: InstanceViewModel(instanceManager: instanceManager))
         self._modpackViewModel = .init(wrappedValue: ModpackViewModel(instanceManager: instanceManager))
     }
-    
+
     let width: CGFloat = 300
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !instanceVM.repositories.isEmpty {
@@ -45,7 +45,7 @@ struct InstanceListSidebar: Sidebar {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     private func requestAddRepository() {
         let panel: NSOpenPanel = .init()
         panel.allowsMultipleSelection = false
@@ -68,10 +68,10 @@ struct InstanceListSidebar: Sidebar {
             }
         }
     }
-    
+
     private func onImportModpackClicked() {
         let repository = instanceVM.currentRepository
-        
+
         let panel: NSOpenPanel = .init()
         panel.allowsMultipleSelection = false
         panel.canChooseFiles = true
@@ -80,7 +80,7 @@ struct InstanceListSidebar: Sidebar {
             .zip,
             .init(filenameExtension: "mrpack")!
         ]
-        
+
         if panel.runModal() == .OK {
             guard let url = panel.url else { return }
             Task {
@@ -94,13 +94,13 @@ private struct ImportButton: View {
     private let icon: ImageResource
     private let label: String
     private let perform: () throws -> Void
-    
+
     public init(_ icon: ImageResource, _ label: String, perform: @escaping () throws -> Void) {
         self.icon = icon
         self.label = label
         self.perform = perform
     }
-    
+
     var body: some View {
         MyListItem {
             HStack {

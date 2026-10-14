@@ -13,31 +13,31 @@ public class ModpackImportService {
     private var modpackURL: URL
     private var index: ModpackIndex?
     private var tempDirectory: URL
-    
+
     public init(curseforgeClient: CurseForgeAPIClient? = nil, modpackURL: URL, index: ModpackIndex? = nil) {
         self.curseforgeClient = curseforgeClient
         self.modpackURL = modpackURL
         self.index = index
         self.tempDirectory = URLConstants.tempURL.appending(path: "modpack-import-\(modpackURL.lastPathComponent.sha1)")
     }
-    
+
     @discardableResult
     public func load() throws(LoadError) -> ModpackIndex {
         log("正在尝试加载整合包 \(modpackURL.lastPathComponent)")
-        
+
         do {
             try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         } catch {
             throw .failedToCreateDirectory(underlying: error)
         }
-        
+
         let archive: Archive
         do {
             archive = try .init(url: modpackURL, accessMode: .read)
         } catch {
             throw .extractFailed(underlying: error)
         }
-        
+
         if let modpackEntry = archive["modpack.mrpack"] ?? archive["modpack.zip"] { // 包含启动器的整合包
             let nestedModpackURL = tempDirectory.appending(path: modpackEntry.path)
             let nestedArchive: Archive
@@ -58,7 +58,7 @@ public class ModpackImportService {
         self.index = index
         return index
     }
-    
+
     public func createImportTask(
         name: String,
         repository: MinecraftRepository,
@@ -66,9 +66,9 @@ public class ModpackImportService {
     ) throws(ImportError) -> MyTask<ModpackImportTask.Model> {
         guard let index else { throw .notLoaded }
         guard index.format != .simple && index.minecraftVersion != nil else { throw .incorrectTaskType }
-        
+
         let (instanceName, modpackDirectory) = try prepareTask(name: name, repository: repository)
-        
+
         return ModpackImportTask.create(
             modpackDirectory: modpackDirectory,
             index: index,
@@ -77,7 +77,7 @@ public class ModpackImportService {
             completion: completion
         )
     }
-    
+
     public func createSimpleImportTask(
         name: String,
         repository: MinecraftRepository,
@@ -85,9 +85,9 @@ public class ModpackImportService {
     ) throws(ImportError) -> MyTask<SimpleModpackImportTask.Model> {
         guard let index else { throw .notLoaded }
         guard index.format == .simple else { throw .incorrectTaskType }
-        
+
         let (instanceName, modpackDirectory) = try prepareTask(name: name, repository: repository)
-        
+
         return SimpleModpackImportTask.create(
             modpackDirectory: modpackDirectory,
             index: index,
@@ -96,13 +96,12 @@ public class ModpackImportService {
             completion: completion
         )
     }
-    
-    
+
     private func loadIndex(from archive: Archive) throws(LoadError) -> ModpackIndex {
         if let modrinthIndexEntry = archive["modrinth.index.json"] {
             let index: ModrinthModpackIndex = try decodeIndex(from: modrinthIndexEntry, in: archive)
             let modLoader: (ModLoader, String)? = try index.dependencies.modLoader().map(parseModLoader(_:))
-            
+
             return .init(
                 format: .modrinth,
                 name: index.name,
@@ -119,10 +118,10 @@ public class ModpackImportService {
             )
         } else if let curseforgeIndexEntry = archive["manifest.json"] {
             guard let curseforgeClient else { throw .missingCurseforgeClient }
-            
+
             let index: CurseForgeModpackIndex = try decodeIndex(from: curseforgeIndexEntry, in: archive)
             let modLoader: (ModLoader, String)? = try index.modLoader.map(parseModLoader(_:))
-            
+
             return .init(
                 format: archive["mcbbs.metadata"] != nil ? .mcbbs : .curseforge,
                 name: index.name,
@@ -135,13 +134,13 @@ public class ModpackImportService {
                 overridesDirectories: index.overridesDirectory.map { [$0] } ?? []
             )
         }
-        
+
         for entry in archive where entry.path.hasSuffix("/") {
             guard let range = entry.path.range(of: ".minecraft/versions/") else { continue }
             let remaining = entry.path[range.upperBound...]
             let parts = remaining.split(separator: "/")
             guard !parts.isEmpty else { continue }
-            
+
             let instanceName = String(parts[0])
             let instancePath = String(entry.path[..<range.upperBound]) + instanceName
             return .init(
@@ -156,17 +155,17 @@ public class ModpackImportService {
                 overridesDirectories: [instancePath]
             )
         }
-        
+
         throw .unknownFormat
     }
-    
+
     private func parseModLoader(_ loader: (String, String)) throws(LoadError) -> (ModLoader, String) {
         guard let modLoader = ModLoader(rawValue: loader.0) else {
             throw .unsupportedModLoader(name: loader.0.capitalized)
         }
         return (modLoader, loader.1)
     }
-    
+
     private func decodeIndex<T: Decodable>(from entry: Entry, in archive: Archive) throws(LoadError) -> T {
         var data: Data
         do {
@@ -182,7 +181,7 @@ public class ModpackImportService {
             throw .failedToDecodeIndex(underlying: error)
         }
     }
-    
+
     private func prepareTask(name: String, repository: MinecraftRepository) throws(ImportError) -> (String, URL) {
         let instanceName: String
         do {
@@ -190,7 +189,7 @@ public class ModpackImportService {
         } catch {
             throw .invalidName(underlying: error)
         }
-        
+
         let modpackDirectory = tempDirectory.appending(path: "modpack")
         if !FileManager.default.fileExists(atPath: modpackDirectory.path) {
             do {
@@ -201,7 +200,7 @@ public class ModpackImportService {
         }
         return (instanceName, modpackDirectory)
     }
-    
+
     public enum LoadError: LocalizedError {
         case missingCurseforgeClient
         case failedToCreateDirectory(underlying: Error)
@@ -209,7 +208,7 @@ public class ModpackImportService {
         case failedToDecodeIndex(underlying: Error)
         case unsupportedModLoader(name: String)
         case unknownFormat
-        
+
         public var errorDescription: String? {
             switch self {
             case .missingCurseforgeClient:
@@ -227,13 +226,13 @@ public class ModpackImportService {
             }
         }
     }
-    
+
     public enum ImportError: LocalizedError {
         case notLoaded
         case incorrectTaskType
         case invalidName(underlying: MinecraftRepository.NameCheckError)
         case extractFailed(underlying: Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .notLoaded:
@@ -248,7 +247,6 @@ public class ModpackImportService {
         }
     }
 }
-
 
 public extension ModpackImportService {
     static func isModpack(_ url: URL) -> Bool {

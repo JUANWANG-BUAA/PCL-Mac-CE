@@ -7,20 +7,19 @@
 
 import SwiftUI
 
-
 struct MyTip: View {
     private let text: String
     private let theme: Theme
     private let actionLabel: String?
     private let action: (() -> Void)?
-    
+
     init(text: String, theme: Theme, actionLabel: String? = nil, action: (() -> Void)? = nil) {
         self.text = text
         self.theme = theme
         self.actionLabel = actionLabel
         self.action = action
     }
-    
+
     var body: some View {
         HStack(spacing: 0) {
             Rectangle()
@@ -42,10 +41,10 @@ struct MyTip: View {
         .clipShape(RoundedRectangle(cornerRadius: Radius.xs))
         .fixedSize(horizontal: false, vertical: true)
     }
-    
+
     enum Theme {
         case blue, red, yellow
-        
+
         var borderColor: Color {
             let hex: UInt = switch self {
             case .blue: 0x1172D4
@@ -54,7 +53,7 @@ struct MyTip: View {
             }
             return .init(hex)
         }
-        
+
         var backgroundColor: Color {
             let hex: UInt = switch self {
             case .blue: 0xD9ECFF
@@ -63,7 +62,7 @@ struct MyTip: View {
             }
             return .init(hex)
         }
-        
+
         var foregroundColor: Color {
             let hex: UInt = switch self {
             case .blue: 0x0F64B8

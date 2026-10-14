@@ -48,6 +48,16 @@ public enum APIEndpoints {
         public static let dataRoot: URL = .init(string: "https://piston-data.mojang.com")!
     }
 
+    /// Mojang 库文件 CDN。
+    public enum MojangLibraries {
+        public static let root: URL = .init(string: "https://libraries.minecraft.net/")!
+    }
+
+    /// Mojang 资源配置文件 CDN。
+    public enum MojangResources {
+        public static let root: URL = .init(string: "https://resources.download.minecraft.net")!
+    }
+
     // MARK: 微软登录链
 
     /// 微软设备授权流与令牌端点。

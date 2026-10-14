@@ -12,12 +12,12 @@ import Core
 @MainActor
 public class TaskManager: ObservableObject {
     public static let shared: TaskManager = .init()
-    
+
     @Published public private(set) var tasks: [AnyMyTask] = []
     @Published public private(set) var downloadSpeed: Int64 = 0
     private var executorTasks: [UUID: Task<Void, Error>] = [:]
     private var cancellables: [AnyCancellable] = []
-    
+
     /// 开始执行一个任务。
     /// - Parameters:
     ///   - task: 待执行的任务。
@@ -59,7 +59,7 @@ public class TaskManager: ObservableObject {
         executorTasks[id] = executorTask
         return executorTask
     }
-    
+
     /// 取消执行正在执行的任务.
     /// - Parameter id: 任务的 `id`。
     public func cancel(_ id: UUID) {
@@ -69,17 +69,17 @@ public class TaskManager: ObservableObject {
             clean(for: id)
         }
     }
-    
+
     @MainActor
     private func clean(for id: UUID) {
         tasks.removeAll(where: { $0.id == id })
         executorTasks.removeValue(forKey: id)
-        
+
         if tasks.isEmpty, AppRouter.shared.last == .tasks {
             AppRouter.shared.removeLast()
         }
     }
-    
+
     private init() {
         DownloadSpeedManager.shared.$currentSpeed
             .receive(on: DispatchQueue.main)

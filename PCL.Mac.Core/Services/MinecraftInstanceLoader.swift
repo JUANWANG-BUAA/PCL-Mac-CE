@@ -13,7 +13,7 @@ public enum MinecraftInstanceLoader {
     private static let maxManifestInheritanceDepth: Int = 5
     private static let configFileName: String = ".clconfig.json"
     private static let metadataFileName: String = ".clmetadata.json"
-    
+
     /// 从磁盘加载实例。
     /// - Parameter runningDirectory: 实例运行目录。
     /// - Returns: `MinecraftInstance` 结构体。
@@ -22,10 +22,10 @@ public enum MinecraftInstanceLoader {
         if FileManager.default.fileExists(atPath: runningDirectory.appending(path: ".incomplete").path) {
             throw .incomplete
         }
-        
+
         let id: String = runningDirectory.lastPathComponent
         var dirty = false
-        
+
         let metadataURL = runningDirectory.appending(path: metadataFileName)
         let metadata: InstanceMetadata?
         if FileManager.default.fileExists(atPath: metadataURL.path) {
@@ -42,9 +42,9 @@ public enum MinecraftInstanceLoader {
             dirty = true
             metadata = nil
         }
-        
+
         let uuid = metadata?.uuid ?? UUID()
-        
+
         let manifestURL = runningDirectory.appending(path: "\(id).json")
         guard FileManager.default.fileExists(atPath: manifestURL.path) else {
             throw .missingManifest
@@ -55,7 +55,7 @@ public enum MinecraftInstanceLoader {
         } catch {
             throw .failedToLoadManifest(underlying: error)
         }
-        
+
         let version: MinecraftVersion?
         if let metaVersion = metadata?.version, VersionManifest.shared?.contains(metaVersion.id) ?? true {
             version = metaVersion
@@ -67,7 +67,7 @@ public enum MinecraftInstanceLoader {
         if version == nil {
             warn("获取实例版本失败")
         }
-        
+
         let config: MinecraftInstance.Config
         do {
             config = try loadConfig(runningDirectory: runningDirectory)
@@ -76,10 +76,10 @@ public enum MinecraftInstanceLoader {
             dirty = true
             config = .default
         }
-        
+
         try? JSONEncoder.shared.encode(InstanceMetadata(uuid: uuid, version: version))
             .write(to: metadataURL)
-        
+
         return .init(
             id: uuid,
             url: runningDirectory,
@@ -90,21 +90,21 @@ public enum MinecraftInstanceLoader {
             dirty: dirty
         )
     }
-    
+
     /// 从磁盘加载客户端清单，并递归加载父清单。
     /// - Parameter url: 清单文件的 `URL`。
     /// - Returns: `ClientManifest`
     /// - Throws: `ManifestLoadError`
     public static func loadManifest(at url: URL, recursionDepth: Int = 0) throws(ManifestLoadError) -> ClientManifest {
         guard recursionDepth < maxManifestInheritanceDepth else { throw ManifestLoadError.tooManyRecursions }
-        
+
         let data: Data
         do {
             data = try .init(contentsOf: url)
         } catch {
             throw .failedToRead(underlying: error)
         }
-        
+
         let manifest: ClientManifest
         do {
             manifest = try JSONDecoder.shared.decode(ClientManifest.self, from: data)
@@ -115,16 +115,16 @@ public enum MinecraftInstanceLoader {
             debug("客户端清单 \(url) 加载失败：发生未知错误：\n\(error)")
             throw .unexpectedError(underlying: error)
         }
-        
+
         if let parentId: String = manifest.inheritsFrom {
             let versionsDirectory: URL = url.deletingLastPathComponent().deletingLastPathComponent()
             let id = url.deletingLastPathComponent().lastPathComponent
-            
+
             let parentURLs: [URL] = [
                 versionsDirectory.appending(path: "\(id)/.parent/\(parentId).json"),
                 versionsDirectory.appending(path: "\(parentId)/\(parentId).json")
             ]
-            
+
             for parentURL in parentURLs where FileManager.default.fileExists(atPath: parentURL.path) {
                 let parentManifest = try loadManifest(at: parentURL, recursionDepth: recursionDepth + 1)
                 return manifest.merge(to: parentManifest)
@@ -133,7 +133,7 @@ public enum MinecraftInstanceLoader {
         }
         return manifest
     }
-    
+
     /// 加载实例配置。
     /// - Parameter runningDirectory: 实例运行目录。
     /// - Returns: `MinecraftInstance.Config`
@@ -150,12 +150,12 @@ public enum MinecraftInstanceLoader {
             throw .failedToDecodeConfig(underlying: error)
         }
     }
-    
+
     private static func detectVersion(runningDirectory: URL, manifest: ClientManifest) async -> MinecraftVersion? {
         if let clVersion = manifest.version {
             return .init(clVersion)
         }
-        
+
         let id = runningDirectory.lastPathComponent
         let jarURL = runningDirectory.appending(path: "\(id).jar")
         if FileManager.default.fileExists(atPath: jarURL.path) {
@@ -167,17 +167,17 @@ public enum MinecraftInstanceLoader {
                     return .init(versionInfo["id"].stringValue)
                 }
             } catch {}
-            
+
             do {
                 let sha1 = try FileUtils.sha1(of: jarURL)
                 let lookupResult = try await HTTPClient.shared.get(APIEndpoints.CylorineSite.versionLookup(sha1: sha1)).json()
                 return .init(lookupResult["version"].stringValue)
             } catch {}
         }
-        
+
         return nil
     }
-    
+
     private static func detectModLoader(runningDirectory: URL) -> ModLoader? {
         let manifestURL = runningDirectory.appending(path: "\(runningDirectory.lastPathComponent).json")
         do {
@@ -194,22 +194,22 @@ public enum MinecraftInstanceLoader {
             }
         } catch { return nil }
     }
-    
+
     private struct InstanceMetadata: Codable {
         public let uuid: UUID
         public let version: MinecraftVersion?
     }
-    
+
     public enum LoadError: LocalizedError {
         /// 实例未完成安装（有 `.incomplete` 标记）。
         case incomplete
-        
+
         /// 未找到客户端清单。
         case missingManifest
-        
+
         /// 客户端清单加载失败。
         case failedToLoadManifest(underlying: Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .incomplete:
@@ -221,24 +221,24 @@ public enum MinecraftInstanceLoader {
             }
         }
     }
-    
+
     public enum ManifestLoadError: LocalizedError {
         /// 读取清单文件失败。
         case failedToRead(underlying: Error)
-        
+
         /// 清单解析失败。
         /// - Parameter underlying: `DecodingError`
         case manifestDecodingError(underlying: Error)
-        
+
         /// 解析清单时抛出了 `DecodingError` 外的错误。
         case unexpectedError(underlying: Error)
-        
+
         /// 未找到父清单（`inheritsFrom`）文件。
         case missingParentManifest
-        
+
         /// 清单继承深度超限。
         case tooManyRecursions
-        
+
         public var errorDescription: String? {
             switch self {
             case .failedToRead(let underlying):
@@ -254,14 +254,14 @@ public enum MinecraftInstanceLoader {
             }
         }
     }
-    
+
     public enum ConfigLoadError: LocalizedError {
         /// 配置文件不存在。
         case fileDoesNotExist
-        
+
         /// 解析配置文件失败。
         case failedToDecodeConfig(underlying: Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .fileDoesNotExist:
@@ -289,7 +289,7 @@ public extension MinecraftInstanceLoader {
         } catch {
             throw .failedToWriteFile(underlying: error)
         }
-        
+
         let metadataData: Data
         let metadata = InstanceMetadata(uuid: instance.id, version: instance.version)
         do {
@@ -303,20 +303,20 @@ public extension MinecraftInstanceLoader {
             throw .failedToWriteFile(underlying: error)
         }
     }
-    
+
     enum SaveError: LocalizedError {
         /// 配置文件序列化失败。
         /// - Parameter underlying: 序列化时抛出的 `EncodingError`。
         case failedToEncodeConfig(underlying: Error)
-        
+
         /// 元数据序列化失败。
         /// - Parameter underlying: 序列化时抛出的 `EncodingError`。
         case failedToEncodeMetadata(underlying: Error)
-        
+
         /// 写入文件失败。
         /// - Parameter underlying: 写入时抛出的实际错误。
         case failedToWriteFile(underlying: Error)
-        
+
         public var errorDescription: String? {
             switch self {
             case .failedToEncodeConfig(let underlying):
