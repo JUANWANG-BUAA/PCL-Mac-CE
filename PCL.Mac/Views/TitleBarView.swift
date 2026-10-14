@@ -48,7 +48,7 @@ struct TitleBarView: View {
                             .scaledToFit()
                             .foregroundStyle(isNative ? Color.primary : .white)
                             .frame(height: 19)
-                        MyTag("Mac", labelColor: isNative ? .primary : .color2, backgroundColor: isNative ? Color.primary.opacity(0.08) : .white)
+                        MyTag("Mac", labelColor: isNative ? .primary : .color2, backgroundColor: isNative ? Color.primary.opacity(0.22) : .white)
 
                         if Metadata.debugMode {
                             MyTag("Debug", backgroundColor: Color(0x9BF00B))
@@ -89,6 +89,7 @@ private struct PageButton: View {
     }
 
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack {
             RoundedRectangle(cornerRadius: 13)
                 .fill(backgroundColor)
@@ -120,14 +121,16 @@ private struct PageButton: View {
 
     private var foregroundColor: Color {
         if ThemeManager.shared.theme.isNativeStyle {
-            return isRoot ? .primary : Color.primary.opacity(0.75)
+            // 选中项加粗，未选中为次级色
+            return isRoot ? .primary : Color.primary.opacity(0.7)
         }
         return isRoot ? .color2 : .white
     }
 
     private var backgroundColor: Color {
         if ThemeManager.shared.theme.isNativeStyle {
-            return isRoot ? Color.primary.opacity(0.1) : (hovered ? Color.primary.opacity(0.05) : .clear)
+            // 可见的灰填充胶囊（浅色背景下玻璃效果过弱）
+            return isRoot ? Color.primary.opacity(0.1) : (hovered ? Color.primary.opacity(0.06) : .clear)
         }
         return .white.opacity(isRoot ? 1 : hovered ? 0.25 : 0)
     }

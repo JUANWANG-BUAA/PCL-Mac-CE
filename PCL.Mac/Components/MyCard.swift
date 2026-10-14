@@ -186,7 +186,9 @@ struct MyCard<Content: View, Action: View>: View {
                     }
                 }
                 .shadow(
-                    color: showHovered ? ShadowToken.cardHover : ShadowToken.card,
+                    color: theme.isNativeStyle
+                        ? .black.opacity(showHovered ? 0.16 : 0.08)
+                        : (showHovered ? ShadowToken.cardHover : ShadowToken.card),
                     radius: showHovered ? theme.cardHoverShadowRadius : theme.cardShadowRadius
                 )
         }

@@ -42,8 +42,12 @@ struct LaunchSidebar: Sidebar {
     }
 
     private var normalBody: some View {
-        VStack {
-            Spacer()
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        return VStack {
+            // 原生风格：账号区靠上，避免上下均分留白导致的“中部空旷”
+            if !isNative {
+                Spacer()
+            }
             Group {
                 switch accountVM.currentPanel {
                 case .normal:
@@ -56,39 +60,46 @@ struct LaunchSidebar: Sidebar {
                     addYggdrasilAccountPanel
                 }
             }
+            .padding(.top, isNative ? 32 : 0)
             .transition(insertTransition)
 
             Spacer()
             VStack(spacing: 11) {
-                Group {
-                    if let instance = instanceVM.currentInstance {
-                        MyButton("启动游戏", subLabel: instance.name, type: .highlight) {
-                            guard !launchVM.isRunning && !launchVM.isLaunching else {
-                                hint("已有一个游戏实例正在运行！", type: .critical)
-                                return
+                // 注意：glass 按钮会填满单边 .frame 约束，故用 ZStack 容器包裹，
+                // 让按钮保持自然尺寸并在容器内居中（与经典主题的按钮尺寸语义一致）。
+                ZStack {
+                    Group {
+                        if let instance = instanceVM.currentInstance {
+                            MyButton("启动游戏", subLabel: instance.name, type: .highlight) {
+                                guard !launchVM.isRunning && !launchVM.isLaunching else {
+                                    hint("已有一个游戏实例正在运行！", type: .critical)
+                                    return
+                                }
+                                if let account = accountVM.currentAccount {
+                                    launchVM.launch(instance, using: account, in: instanceVM.currentRepository)
+                                } else {
+                                    hint("请先添加一个账号！", type: .critical)
+                                }
                             }
-                            if let account = accountVM.currentAccount {
-                                launchVM.launch(instance, using: account, in: instanceVM.currentRepository)
-                            } else {
-                                hint("请先添加一个账号！", type: .critical)
+                        } else if instanceVM.loading {
+                            MyButton("加载中", subLabel: "正在加载实例列表", disabled: true) {}
+                        } else {
+                            MyButton("下载游戏", subLabel: "未找到可用的游戏实例", type: .normal) {
+                                AppRouter.shared.setRoot(.download)
                             }
-                        }
-                    } else if instanceVM.loading {
-                        MyButton("加载中", subLabel: "正在加载实例列表", disabled: true) {}
-                    } else {
-                        MyButton("下载游戏", subLabel: "未找到可用的游戏实例", type: .normal) {
-                            AppRouter.shared.setRoot(.download)
                         }
                     }
                 }
                 .frame(height: 50)
-                HStack(spacing: 11) {
-                    MyButton("实例选择") {
-                        AppRouter.shared.append(.instanceList(repositoryId: instanceVM.currentRepository.id))
-                    }
-                    if let instance = instanceVM.currentInstance {
-                        MyButton("实例设置") {
-                            AppRouter.shared.append(.instanceSettings(id: instance.name))
+                ZStack {
+                    HStack(spacing: 11) {
+                        MyButton("实例选择") {
+                            AppRouter.shared.append(.instanceList(repositoryId: instanceVM.currentRepository.id))
+                        }
+                        if let instance = instanceVM.currentInstance {
+                            MyButton("实例设置") {
+                                AppRouter.shared.append(.instanceSettings(id: instance.name))
+                            }
                         }
                     }
                 }
@@ -335,8 +346,10 @@ struct LaunchSidebar: Sidebar {
             .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
-            MyButton("取消", launchVM.cancel)
-                .frame(height: 32)
+            ZStack {
+                MyButton("取消", launchVM.cancel)
+            }
+            .frame(height: 32)
                 .padding(21)
         }
         .animation(.easeOut(duration: 0.2), value: launchVM.progress)

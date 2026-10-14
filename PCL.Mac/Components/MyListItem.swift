@@ -65,7 +65,10 @@ struct MyListItem<Content: View>: View {
                     .allowsHitTesting(false)
             }
             .onHover { hovered in
-                withAnimation(.spring(response: 0.2)) {
+                let animation: Animation = ThemeManager.shared.theme.isNativeStyle
+                    ? .easeOut(duration: 0.1)
+                    : .spring(response: 0.2)
+                withAnimation(animation) {
                     self.hovered = hovered
                     if hovered || ThemeManager.shared.theme.isNativeStyle {
                         backgroundScale = 1

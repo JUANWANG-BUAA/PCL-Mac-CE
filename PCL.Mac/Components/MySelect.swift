@@ -156,9 +156,16 @@ private struct PopupView<Entry: Hashable & CustomStringConvertible>: View {
     }
 
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(.white)
+            if isNative {
+                // 原生风格：Acrylic 弹层
+                Color.clear
+                    .acrylicBackground(in: RoundedRectangle(cornerRadius: 8))
+            } else {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(.white)
+            }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {

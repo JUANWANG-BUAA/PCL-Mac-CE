@@ -21,6 +21,7 @@ struct LauncherSettingsPage: View {
                         $downloadSourcePolicy,
                         entries: [.officialFirst, .mirrorFirst]
                     )
+                    .frame(width: 250)
                 }
                 .onChange(of: downloadSourcePolicy) { newValue in
                     DownloadSourceManager.shared.policy = newValue
@@ -34,6 +35,7 @@ struct LauncherSettingsPage: View {
                         $theme,
                         entries: AppTheme.allCases
                     )
+                    .frame(width: 250)
                 }
                 .onChange(of: theme) { newValue in
                     ThemeManager.shared.switchTo(newValue)
@@ -47,6 +49,7 @@ struct LauncherSettingsPage: View {
                         $homepageType,
                         entries: [.empty, .demo]
                     )
+                    .frame(width: 250)
                 }
                 .onChange(of: homepageType) { newValue in
                     LauncherConfig.shared.homepageType = newValue

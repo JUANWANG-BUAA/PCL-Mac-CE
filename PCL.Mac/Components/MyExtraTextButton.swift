@@ -24,7 +24,7 @@ struct MyExtraTextButton: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 1000)
+            RoundedRectangle(cornerRadius: ThemeManager.shared.theme.isNativeStyle ? 10 : 1000)
                 .fill(hovered ? Color.color4 : .color3)
             HStack(spacing: 12) {
                 Image(icon)
@@ -48,8 +48,8 @@ struct MyExtraTextButton: View {
                 }
         )
         .onHover { hovered = $0 }
-        .scaleEffect(pressed ? 0.85 : 1, anchor: .center)
-        .animation(.linear(duration: 0.15), value: hovered)
-        .animation(.easeOut(duration: 0.15), value: pressed)
+        .scaleEffect(pressed ? (ThemeManager.shared.theme.isNativeStyle ? 0.98 : 0.85) : 1, anchor: .center)
+        .animation(.easeOut(duration: 0.1), value: hovered)
+        .animation(.easeOut(duration: 0.1), value: pressed)
     }
 }

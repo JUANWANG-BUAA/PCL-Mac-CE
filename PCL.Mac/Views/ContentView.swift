@@ -73,18 +73,36 @@ private struct HintView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            RightRoundedRectangle(cornerRadius: 5)
-                .fill(color)
-                .frame(height: 22)
-            MyText(model.text, color: .white)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        Group {
+            if isNative {
+                // 原生风格：玻璃胶囊提示
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 8, height: 8)
+                    Text(model.text)
+                        .font(.app(13))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .acrylicBackground(in: Capsule(), tintOpacity: 0.3)
+            } else {
+                ZStack(alignment: .leading) {
+                    RightRoundedRectangle(cornerRadius: 5)
+                        .fill(color)
+                        .frame(height: 22)
+                    MyText(model.text, color: .white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 4)
+                }
+            }
         }
         .opacity(appeared ? 1 : 0)
-        .offset(x: appeared ? 0 : -50)
+        .offset(x: appeared ? 0 : -30)
         .fixedSize(horizontal: true, vertical: false)
-        .animation(.spring(duration: 0.2, bounce: 0), value: appeared)
+        .animation(.easeOut(duration: isNative ? 0.15 : 0.2), value: appeared)
         .onAppear {
             appeared = true
         }
@@ -112,8 +130,8 @@ private struct MessageBoxOverlay: View {
     @State private var messageBox: MessageBoxModel?
 
     @State private var opacity: CGFloat = 0
-    @State private var rotation: CGFloat = 4
-    @State private var offsetY: CGFloat = 40
+    @State private var scale: CGFloat = 0.92
+    private var isNative: Bool { ThemeManager.shared.theme.isNativeStyle }
 
     @State private var animationHideWorkItem: DispatchWorkItem?
 
@@ -124,38 +142,30 @@ private struct MessageBoxOverlay: View {
                     Rectangle()
                         .fill(messageBox.level == .error ? Color(0xFF0000).opacity(0.5) : .black.opacity(0.35))
                     MessageBoxView(model: messageBox)
-                        .rotationEffect(.degrees(rotation))
-                        .offset(y: offsetY)
+                        .scaleEffect(isNative ? scale : 1)
                 }
                 .opacity(opacity)
             }
         }
         .onChange(of: messageBoxManager.currentMessageBox) { newValue in
-            if newValue != nil { // 移入
+            if newValue != nil { // 移入：原生弹窗的缩放淡入（无旋转与弹跳）
                 animationHideWorkItem?.cancel()
                 messageBox = newValue
-                withAnimation(.spring(duration: 0.3, bounce: 0.3)) {
-                    offsetY = 0
-                }
-                withAnimation(.easeOut(duration: 0.3)) {
+                withAnimation(.easeOut(duration: 0.18)) {
                     opacity = 1
-                    rotation = 0
+                    scale = 1
                 }
             } else { // 移出
                 let workItem: DispatchWorkItem = .init {
                     self.messageBox = nil
-                    self.rotation = 4
-                    self.offsetY = 40
+                    self.scale = 0.92
                 }
                 animationHideWorkItem = workItem
-                let duration: CGFloat = 0.15
+                let duration: CGFloat = 0.12
                 DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: workItem)
                 withAnimation(.easeOut(duration: duration)) {
                     opacity = 0
-                    offsetY = 60
-                }
-                withAnimation(.easeIn(duration: duration)) {
-                    rotation = 6
+                    scale = 0.96
                 }
             }
         }
@@ -205,16 +215,18 @@ private struct ExtraButtonsOverlay: View {
         }
 
         var body: some View {
+            let isNative = ThemeManager.shared.theme.isNativeStyle
             Circle()
-                .fill(hovered ? Color.color4 : .color3)
+                .fill(isNative ? .clear : (hovered ? Color.color4 : .color3))
                 .frame(width: show ? 40 : 1)
                 .overlay {
                     Image(icon)
                         .resizable()
                         .scaledToFit()
                         .padding(10)
-                        .foregroundStyle(Color.color8)
+                        .foregroundStyle(isNative ? Color.primary : Color.color8)
                 }
+                .acrylicHighlight(isNative && show, in: Circle(), tintOpacity: 0.25)
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { _ in pressed = true }

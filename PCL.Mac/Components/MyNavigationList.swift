@@ -103,7 +103,7 @@ private struct RouteView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             isNative
-                ? (selected ? Color.primary.opacity(0.1) : (hovered ? Color.primary.opacity(0.05) : .clear))
+                ? (selected ? Color.clear : (hovered ? Color.primary.opacity(0.05) : .clear))
                 : (hovered ? Color.color2.opacity(0.1) : .clear)
         )
         .clipShape(RoundedRectangle(cornerRadius: isNative ? 6 : 0))
@@ -114,11 +114,14 @@ private struct RouteView: View {
         )
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
-        .animation(.easeInOut(duration: 0.2), value: hovered)
-        .animation(.spring(response: 0.2), value: selected)
+        .animation(.easeOut(duration: 0.1), value: hovered)
+        .animation(.easeOut(duration: 0.15), value: selected)
         .onChange(of: router.last) { newValue in
             selected = newValue == route
         }
+        .glassHighlight(isNative && selected, in: RoundedRectangle(cornerRadius: 6))
+        // 外层留白：选中胶囊在侧栏内缩，不贴窗口边缘
+        .padding(.horizontal, isNative ? 8 : 0)
     }
 }
 

@@ -33,8 +33,10 @@ struct MyTip: View {
                 .padding(.vertical, 9)
             Spacer(minLength: 0)
             if let actionLabel, let action {
-                MyButton(actionLabel, textPadding: .init(top: -1, leading: 6, bottom: -1, trailing: 6)) {
-                    action()
+                ZStack {
+                    MyButton(actionLabel, textPadding: .init(top: -1, leading: 6, bottom: -1, trailing: 6)) {
+                        action()
+                    }
                 }
                 .frame(height: 22)
                 .padding(.trailing, 10)

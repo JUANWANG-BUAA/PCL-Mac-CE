@@ -19,9 +19,16 @@ struct MessageBoxView: View {
     var body: some View {
         let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack {
-            RoundedRectangle(cornerRadius: isNative ? 10 : 7)
-                .fill(.white)
-                .shadow(color: .black.opacity(isNative ? 0.25 : 0.5), radius: isNative ? 24 : 20)
+            if isNative {
+                // 原生风格：WinUI 风格 Acrylic 玻璃浮层（高模糊 + 色调 + 噪点 + 高光边）
+                Color.clear
+                    .acrylicBackground(in: RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: .black.opacity(0.2), radius: 26)
+            } else {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(.white)
+                    .shadow(color: .color1.opacity(0.8), radius: 20)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 Text(model.title)
                     .font(isNative ? .system(size: 17, weight: .semibold) : .custom("PCLEnglish", size: 23))

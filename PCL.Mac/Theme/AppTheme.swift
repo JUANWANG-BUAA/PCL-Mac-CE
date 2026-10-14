@@ -81,8 +81,8 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
         case .classic:
             AnyShapeStyle(Color(0xC0DEF5))
         case .liquidGlass:
-            // 原生风格：浅灰分组背景，使白色卡片有层次（对应 macOS 的 underPageBackground 色）
-            AnyShapeStyle(Color(nsColor: NSColor(calibratedRed: 0.949, green: 0.949, blue: 0.965, alpha: 1)))
+            // 原生风格：轻磨砂玻璃（材质层再叠加透明度，减少白雾感、更透出壁纸）
+            AnyShapeStyle(.ultraThinMaterial.opacity(0.72))
         }
     }
 
