@@ -40,7 +40,13 @@ struct ContentView: View {
             .animation(.easeOut(duration: 0.2), value: hintManager.hints)
             .padding(.bottom, 100)
         }
-        .background(ThemeManager.shared.theme.pageBackground)
+        .background {
+            if ThemeManager.shared.theme.isNativeStyle {
+                GlassPageBackground()
+            } else {
+                Rectangle().fill(ThemeManager.shared.theme.pageBackground)
+            }
+        }
         .rotation3DEffect(easterEggManager.rotationAngle, axis: easterEggManager.rotationAxis)
         .contrast(easterEggManager.modifyColor ? -1 : 1)
         .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in

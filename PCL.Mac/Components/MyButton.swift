@@ -81,6 +81,7 @@ struct MyButton: View {
             // 可扩展的透明形状：与经典主题一致地填满调用点的 frame 约束
             RoundedRectangle(cornerRadius: Radius.md)
                 .fill(.clear)
+            materialSheenRect
             nativeLabel
         }
         .acrylicBackground(
@@ -103,7 +104,7 @@ struct MyButton: View {
         Button(action: action) {
             nativeLabel
         }
-        .buttonStyle(GlassStyle(tint: materialTint, disabled: disabled, hovered: hovered))
+        .buttonStyle(GlassStyle(tint: materialTint, sheen: materialSheen, disabled: disabled, hovered: hovered))
         .disabled(disabled)
     }
 
@@ -139,7 +140,35 @@ struct MyButton: View {
         switch type {
         case .normal: nil
         case .highlight: .accentColor
-        case .red: .red
+        case .red: .danger
+        }
+    }
+
+    /// 危险按钮的玻璃光影。
+    ///
+    /// 系统红色在玻璃上接近纯色平涂（白底/蓝底自带细微渐变与透光），单独看会显得
+    /// 死板；叠加纵向光影后与官方玻璃材质一样有厚度，质感接近普通与高亮按钮。
+    private var materialSheen: LinearGradient? {
+        guard type == .red, !disabled else { return nil }
+        return LinearGradient(
+            stops: [
+                .init(color: .white.opacity(0.18), location: 0),
+                .init(color: .white.opacity(0.03), location: 0.45),
+                .init(color: .clear, location: 0.55),
+                .init(color: .black.opacity(0.09), location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    /// 光影层（位于材质之上、文字之下）。
+    @ViewBuilder
+    private var materialSheenRect: some View {
+        if let materialSheen {
+            RoundedRectangle(cornerRadius: Radius.md)
+                .fill(materialSheen)
+                .allowsHitTesting(false)
         }
     }
 
@@ -178,6 +207,8 @@ struct MyButton: View {
     private struct GlassStyle: ButtonStyle {
         /// 玻璃色调（nil 为中性玻璃）。
         let tint: Color?
+        /// 叠加在材质之上的光影（位于文字之下，nil 为不加）。
+        let sheen: LinearGradient?
         /// 禁用时保持中性玻璃并关闭交互反馈。
         let disabled: Bool
         /// 悬停时叠加轻微高光。
@@ -188,6 +219,11 @@ struct MyButton: View {
                 // 可扩展的透明形状：给按钮一个能填满可用空间的尺寸来源
                 RoundedRectangle(cornerRadius: Radius.md)
                     .fill(.clear)
+                if let sheen {
+                    RoundedRectangle(cornerRadius: Radius.md)
+                        .fill(sheen)
+                        .allowsHitTesting(false)
+                }
                 configuration.label
             }
             .contentShape(RoundedRectangle(cornerRadius: Radius.md))

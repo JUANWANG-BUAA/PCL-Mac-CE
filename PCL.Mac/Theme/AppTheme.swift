@@ -75,7 +75,7 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
         isNativeStyle ? 4 : 8
     }
 
-    /// 页面背景。
+    /// 页面背景（经典主题使用；Liquid Glass 的原生玻璃层见 `GlassPageBackground`）。
     var pageBackground: AnyShapeStyle {
         switch self {
         case .classic:
@@ -86,7 +86,7 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
         }
     }
 
-    /// 侧边栏背景。
+    /// 侧栏背景（经典主题使用；Liquid Glass 的原生玻璃层见 `GlassSidebarBackground`）。
     var sidebarBackground: AnyShapeStyle {
         switch self {
         case .classic: AnyShapeStyle(.white)

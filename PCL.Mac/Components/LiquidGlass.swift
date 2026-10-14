@@ -51,6 +51,51 @@ extension View {
     }
 }
 
+// MARK: - 页面级玻璃背景
+
+/// 页面级玻璃背景：承载整个窗口的材质层。
+///
+/// macOS 26+ 使用官方 `glassEffect(.clear)`——相比普通材质，clear 玻璃的白色雾面极轻、
+/// 透光性高，能让桌面壁纸以强模糊的形式透出（而非一层白色高斯模糊）；
+/// 低版本回退为轻材质。
+struct GlassPageBackground: View {
+    var body: some View {
+        if #available(macOS 26.0, *) {
+            Rectangle()
+                .fill(.clear)
+                .glassEffect(.clear, in: Rectangle())
+                .overlay {
+                    // 轻微提亮：clear 玻璃在暗色壁纸上对比偏低，5% 白色保证前景文字可读
+                    Rectangle()
+                        .fill(.white.opacity(0.05))
+                        .allowsHitTesting(false)
+                }
+        } else {
+            Rectangle()
+                .fill(AppTheme.liquidGlass.pageBackground)
+        }
+    }
+}
+
+/// 侧栏玻璃背景：在页面玻璃之上再叠一层 clear 玻璃，并施加额外的模糊。
+///
+/// 侧栏需要比内容区更重的模糊以区分层次，但依然要保持透光（可以辨认壁纸轮廓）。
+/// 实测直接叠加多层 clear 玻璃不会进一步模糊（每层都采样窗口背后的壁纸），
+/// 因此在 clear 玻璃之上再应用一次 `blur`，用极低的白色代价换取更强磨砂感。
+struct GlassSidebarBackground: View {
+    var body: some View {
+        if #available(macOS 26.0, *) {
+            Rectangle()
+                .fill(.clear)
+                .glassEffect(.clear, in: Rectangle())
+                .blur(radius: 5, opaque: true)
+        } else {
+            Rectangle()
+                .fill(AppTheme.liquidGlass.sidebarBackground)
+        }
+    }
+}
+
 // MARK: - WinUI 风格 Acrylic
 
 /// WinUI Acrylic 材质：高模糊玻璃 + 色调层 + 细噪点 + 高光描边。

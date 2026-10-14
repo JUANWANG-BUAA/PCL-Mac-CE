@@ -204,19 +204,25 @@ struct AppSidebarView: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Rectangle()
-                .fill(ThemeManager.shared.theme.sidebarBackground)
-                .frame(width: width)
-                .shadow(radius: ThemeManager.shared.theme.isNativeStyle ? 0 : 2)
-                .overlay(alignment: .trailing) {
-                    // 原生风格：侧栏与内容区的细分隔线（材质色差微弱时提供明确分界）
-                    if ThemeManager.shared.theme.isNativeStyle {
-                        Rectangle()
-                            .fill(Color.black.opacity(0.07))
-                            .frame(width: 0.5)
-                    }
+            Group {
+                if ThemeManager.shared.theme.isNativeStyle {
+                    GlassSidebarBackground()
+                } else {
+                    Rectangle()
+                        .fill(ThemeManager.shared.theme.sidebarBackground)
                 }
-                .zIndex(10)
+            }
+            .frame(width: width)
+            .shadow(radius: ThemeManager.shared.theme.isNativeStyle ? 0 : 2)
+            .overlay(alignment: .trailing) {
+                // 原生风格：侧栏与内容区的细分隔线（材质色差微弱时提供明确分界）
+                if ThemeManager.shared.theme.isNativeStyle {
+                    Rectangle()
+                        .fill(Color.black.opacity(0.07))
+                        .frame(width: 0.5)
+                }
+            }
+            .zIndex(10)
 
             AnyView(sidebar)
                 .opacity(animationProgress)

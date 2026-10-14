@@ -22,8 +22,7 @@ struct TitleBarView: View {
                 // 原生风格：左侧绘制侧栏材质（侧栏延伸到顶），
                 // 右侧透明（透出内容背景，顶栏与内容区连成一体）
                 HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(ThemeManager.shared.theme.sidebarBackground)
+                    GlassSidebarBackground()
                         .frame(width: AppSidebarView.sidebarWidth(for: router.last))
                         .overlay(alignment: .trailing) {
                             Rectangle()
