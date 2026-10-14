@@ -21,8 +21,6 @@ struct LaunchSidebar: Sidebar {
         self._instanceVM = StateObject(wrappedValue: InstanceViewModel(instanceManager: instanceManager))
     }
 
-    let width: CGFloat = 285
-
     private let insertTransition: AnyTransition =
         .asymmetric(
             insertion: .modifier(
@@ -114,7 +112,7 @@ struct LaunchSidebar: Sidebar {
                 PlayerAvatar(account)
                 VStack(spacing: 4) {
                     MyText(account.profile.name, size: 16)
-                    MyText(account.localizedTypeName, size: 12, color: .colorGray4)
+                    MyText(account.localizedTypeName, size: 12, color: ThemeManager.shared.theme.isNativeStyle ? .secondary : .colorGray4)
                 }
             }
             .padding(4)
@@ -135,7 +133,8 @@ struct LaunchSidebar: Sidebar {
     }
 
     private var toolbarView: some View {
-        HStack(spacing: 16) {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        return HStack(spacing: 16) {
             Image(systemName: "tshirt.fill")
                 .resizable()
                 .scaledToFit()
@@ -165,14 +164,14 @@ struct LaunchSidebar: Sidebar {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.colorGray8)
                 .shadow(
-                    color: toolbarHovered ? .color3.opacity(0.6) : .black.opacity(0.15),
-                    radius: toolbarHovered ? 6 : 8
+                    color: isNative ? .black.opacity(0.18) : (toolbarHovered ? .color3.opacity(0.6) : .black.opacity(0.15)),
+                    radius: isNative ? 6 : (toolbarHovered ? 6 : 8)
                 )
         }
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(
-                    toolbarHovered ? Color.color3.opacity(0.45) : Color.colorGray2.opacity(0.35),
+                    isNative ? Color.black.opacity(0.12) : (toolbarHovered ? Color.color3.opacity(0.45) : Color.colorGray2.opacity(0.35)),
                     lineWidth: 1
                 )
         }
@@ -218,7 +217,7 @@ struct LaunchSidebar: Sidebar {
                         PlayerAvatar(account, length: 36)
                         VStack(alignment: .leading) {
                             MyText(account.profile.name)
-                            MyText(account.localizedTypeName, color: .colorGray3)
+                            MyText(account.localizedTypeName, color: ThemeManager.shared.theme.isNativeStyle ? .secondary : .colorGray3)
                         }
                         Spacer()
                         if hovered {

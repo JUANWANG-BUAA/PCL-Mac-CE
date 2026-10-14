@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct InstanceSettingsSidebar: Sidebar {
-    let width: CGFloat = 140
     private let id: String
 
     init(id: String) {

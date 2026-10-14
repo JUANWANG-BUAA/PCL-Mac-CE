@@ -17,12 +17,11 @@ struct InstanceListSidebar: Sidebar {
         self._modpackViewModel = .init(wrappedValue: ModpackViewModel(instanceManager: instanceManager))
     }
 
-    let width: CGFloat = 300
-
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         VStack(alignment: .leading, spacing: 8) {
             if !instanceVM.repositories.isEmpty {
-                MyText("目录列表", size: 12, color: .colorGray3)
+                MyText("目录列表", size: 12, color: isNative ? .secondary : .colorGray3)
                     .padding(.leading, 13)
                     .padding(.top, 18)
                 MyNavigationList(
@@ -34,7 +33,7 @@ struct InstanceListSidebar: Sidebar {
                     instanceVM.reload(repository: instanceVM.currentRepository)
                 }
             }
-            MyText("添加或导入", size: 12, color: .colorGray3)
+            MyText("添加或导入", size: 12, color: isNative ? .secondary : .colorGray3)
                 .padding(.leading, 13)
                 .padding(.top, 18)
             VStack(spacing: 0) {
@@ -108,7 +107,7 @@ private struct ImportButton: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 22)
-                    .foregroundStyle(Color.color1)
+                    .foregroundStyle(ThemeManager.shared.theme.isNativeStyle ? Color.primary : Color.color1)
                     .padding(.leading, 10)
                 MyText(label)
                 Spacer()

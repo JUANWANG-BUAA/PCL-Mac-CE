@@ -17,28 +17,60 @@ extension View {
     /// - Parameters:
     ///   - shape: 裁剪形状（圆角矩形/胶囊/圆形）。
     ///   - interactive: 是否响应交互（触摸时玻璃有动态反馈），用于按钮类元素。
+    ///   - tint: 玻璃色调（用于深色悬浮控件等需要与浅色底拉开对比的场景），`nil` 为中性玻璃。
     @ViewBuilder
-    func glassBackground<S: Shape>(in shape: S, interactive: Bool = false) -> some View {
+    func glassBackground<S: Shape>(in shape: S, interactive: Bool = false, tint: Color? = nil) -> some View {
         if #available(macOS 26.0, *) {
-            if interactive {
-                self.glassEffect(.regular.interactive(), in: shape)
-            } else {
-                self.glassEffect(.regular, in: shape)
-            }
+            self.glassEffect(makeGlass(tint: tint, interactive: interactive), in: shape)
         } else {
-            self.background(.regularMaterial, in: shape)
+            self.background {
+                ZStack {
+                    shape.fill(.regularMaterial)
+                    if let tint {
+                        shape.fill(tint)
+                    }
+                }
+            }
         }
     }
+}
+
+/// 组装 `Glass` 参数（ViewBuilder 内不允许声明变量，故独立成函数）。
+@available(macOS 26.0, *)
+private func makeGlass(tint: Color?, interactive: Bool) -> Glass {
+    var glass: Glass = .regular
+    if let tint {
+        glass = glass.tint(tint)
+    }
+    if interactive {
+        glass = glass.interactive()
+    }
+    return glass
 }
 
 /// 选中态/常显的玻璃高亮（导航项、工具栏按钮、悬浮按钮）。
 struct GlassHighlightModifier<S: Shape>: ViewModifier {
     let isEnabled: Bool
     let shape: S
+    /// 官方玻璃的色调（macOS 26+，用于深色悬浮胶囊等需要白色前景的场景）。
+    let tint: Color?
+    /// macOS 26 以下无官方玻璃，回退材质可叠加的色调（用于保证白色前景的对比度）。
+    let fallbackTint: Color?
 
     func body(content: Content) -> some View {
         if isEnabled {
-            content.glassBackground(in: shape, interactive: true)
+            if #available(macOS 26.0, *) {
+                content.glassEffect(makeGlass(tint: tint, interactive: true), in: shape)
+            } else {
+                content.background {
+                    ZStack {
+                        shape.fill(.regularMaterial)
+                        if let fallbackTint {
+                            shape.fill(fallbackTint)
+                        }
+                    }
+                }
+            }
         } else {
             content
         }
@@ -47,8 +79,11 @@ struct GlassHighlightModifier<S: Shape>: ViewModifier {
 
 extension View {
     /// 在启用时给视图叠加交互式玻璃高亮。
-    func glassHighlight<S: Shape>(_ isEnabled: Bool, in shape: S) -> some View {
-        modifier(GlassHighlightModifier(isEnabled: isEnabled, shape: shape))
+    /// - Parameters:
+    ///   - tint: 官方玻璃的色调（macOS 26+）。
+    ///   - fallbackTint: macOS 26 以下回退材质的色调，默认无。
+    func glassHighlight<S: Shape>(_ isEnabled: Bool, in shape: S, tint: Color? = nil, fallbackTint: Color? = nil) -> some View {
+        modifier(GlassHighlightModifier(isEnabled: isEnabled, shape: shape, tint: tint, fallbackTint: fallbackTint))
     }
 }
 
@@ -79,13 +114,12 @@ private struct NativeGlassEffectView: NSViewRepresentable {
 
 /// 页面级玻璃背景：承载整个窗口的材质层。
 ///
-/// macOS 26+ 使用官方 clear 玻璃——相比普通材质，clear 玻璃的白色雾面极轻、
-/// 透光性高，能让桌面壁纸以强模糊的形式透出（而非一层白色高斯模糊）；
+/// macOS 26+ 使用官方 clear 玻璃——不加额外色调，尽量让桌面壁纸以强模糊的形式透出；
 /// 低版本回退为轻材质。
 struct GlassPageBackground: View {
     var body: some View {
         if #available(macOS 26.0, *) {
-            NativeGlassEffectView(style: .clear, tint: NSColor.white.withAlphaComponent(0.05))
+            NativeGlassEffectView(style: .clear, tint: nil)
         } else {
             Rectangle()
                 .fill(AppTheme.liquidGlass.pageBackground)
@@ -93,16 +127,33 @@ struct GlassPageBackground: View {
     }
 }
 
-/// 侧栏玻璃背景：在页面玻璃之上再叠一层 clear 玻璃，并施加额外的模糊。
+/// 侧栏/顶栏玻璃背景：在页面玻璃之上再叠一层 clear 玻璃，并施加额外的模糊。
 ///
-/// 侧栏需要比内容区更重的模糊以区分层次，但依然要保持透光（可以辨认壁纸轮廓）。
+/// 需要比内容区更重的模糊以区分层次，但依然保持透光（可以辨认壁纸轮廓）。
 /// 实测直接叠加多层 clear 玻璃不会进一步模糊（每层都采样窗口背后的壁纸），
 /// 因此在 clear 玻璃之上再应用一次 `blur`，用极低的白色代价换取更强磨砂感。
+///
+/// - Parameter dark: 深色侧栏（原生风格）：加黑色色调以承载白色文字，
+///   同时保持半透明，让壁纸以磨砂形式透出。
 struct GlassSidebarBackground: View {
+    var dark: Bool = false
+
     var body: some View {
         if #available(macOS 26.0, *) {
-            NativeGlassEffectView(style: .clear, tint: nil)
-                .blur(radius: 5, opaque: true)
+            NativeGlassEffectView(
+                style: .clear,
+                // 顶栏：一层轻而均匀的浅色底，保证标题区不受背后壁纸明暗影响；
+                // 侧栏：深色调，承载白色文字
+                tint: dark
+                    ? NSColor.black.withAlphaComponent(0.38)
+                    : NSColor.windowBackgroundColor.withAlphaComponent(0.35)
+            )
+            .blur(radius: 5, opaque: true)
+        } else if dark {
+            // macOS 26 以下：用暗色材质模拟深色玻璃
+            Rectangle()
+                .fill(.regularMaterial)
+                .environment(\.colorScheme, .dark)
         } else {
             Rectangle()
                 .fill(AppTheme.liquidGlass.sidebarBackground)

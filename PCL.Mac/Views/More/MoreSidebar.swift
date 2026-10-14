@@ -8,8 +8,6 @@
 import SwiftUI
 
 struct MoreSidebar: Sidebar {
-    let width: CGFloat = 140
-
     var body: some View {
         VStack {
             MyNavigationList(

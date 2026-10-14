@@ -25,9 +25,10 @@ class AppWindow: NSWindow, NSWindowDelegate {
         )
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
-        // 窗口透明：使侧栏/顶栏的 Material 能透出桌面壁纸，呈现真正的毛玻璃质感
+        // 窗口透明：使侧栏/顶栏的 Material 能透出桌面壁纸，呈现真正的毛玻璃质感。
+        // 背景只保留极轻的半透明浅色底：既避免首帧/玻璃未就绪时闪黑，又尽量不影响壁纸透光。
         self.isOpaque = false
-        self.backgroundColor = .clear
+        self.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.25)
         // 允许在自绘顶栏的空白区域拖动窗口（原生体验）
         self.isMovableByWindowBackground = true
 

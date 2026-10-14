@@ -8,9 +8,19 @@
 import SwiftUI
 import Core
 
+/// 原生风格顶栏导航按钮的尺寸（选中胶囊按同一套常量计算滑动位置）。
+private enum NavigationButtonMetrics {
+    static let width: CGFloat = 88
+    static let height: CGFloat = 30
+    static let spacing: CGFloat = 2
+    static let padding: CGFloat = 4
+}
+
 struct TitleBarView: View {
     @ObservedObject private var router: AppRouter = .shared
     @ObservedObject private var flagsManager: FlagsManager = .shared
+    /// 侧栏宽度（含切页动画中间值）：与侧栏玻璃共享同一数值，保证分界线始终贴合玻璃边缘。
+    @ObservedObject private var layoutState: SidebarLayoutState = .shared
 
     var body: some View {
         let isNative = ThemeManager.shared.theme.isNativeStyle
@@ -19,18 +29,20 @@ struct TitleBarView: View {
                 Rectangle()
                     .fill(.blue)
             } else {
-                // 原生风格：左侧绘制侧栏材质（侧栏延伸到顶），
-                // 右侧透明（透出内容背景，顶栏与内容区连成一体）
-                HStack(spacing: 0) {
-                    GlassSidebarBackground()
-                        .frame(width: AppSidebarView.sidebarWidth(for: router.last))
-                        .overlay(alignment: .trailing) {
+                // 原生风格：整条顶栏统一使用侧栏同款玻璃材质（侧栏延伸到顶，顶栏与侧栏连成一体）。
+                // 不再"左侧材质 + 右侧透明"地分层：右侧按钮区也有稳定的磨砂底，
+                // 文字在任何壁纸上都保持可读；同时避免路由切换时材质宽度变化导致的重绘闪烁。
+                GlassSidebarBackground()
+                    .overlay(alignment: .leading) {
+                        // 侧栏 / 内容区分界线在顶栏中的延续
+                        HStack(spacing: 0) {
+                            Color.clear
+                                .frame(width: layoutState.width)
                             Rectangle()
                                 .fill(Color.black.opacity(0.07))
                                 .frame(width: 0.5)
                         }
-                    Spacer(minLength: 0)
-                }
+                    }
             }
             Group {
                 if router.isSubPage {
@@ -55,13 +67,14 @@ struct TitleBarView: View {
                     }
                     HStack {
                         Spacer()
-                        PageButton("启动", .iconLaunchPage, .launch)
-                        PageButton("下载", .iconDownloadPage, .download)
-                        if flagsManager.isEnabled(.multiplayer) {
-                            PageButton("联机", .iconMultiplayerPage, .multiplayer)
+                        if isNative {
+                            // 悬停/选中态用整组深色玻璃胶囊承载：白色标签在任何壁纸上都清晰可读；
+                            // PCL 经典主题保持原有设计（蓝条 + 按钮自身底色），不加胶囊。
+                            navigationButtons
+                                .glassBackground(in: Capsule(), tint: .black.opacity(0.38))
+                        } else {
+                            navigationButtons
                         }
-                        PageButton("设置", .iconSettingsPage, .settings)
-                        PageButton("更多", .iconMorePage, .more)
                         Spacer()
                     }
                 }
@@ -70,6 +83,65 @@ struct TitleBarView: View {
             .padding(.leading, isNative ? 84 : 65)
         }
         .frame(height: 48)
+    }
+
+    /// 导航项定义（数组顺序即选中胶囊的滑动位置）。
+    private var navigationItems: [NavigationItem] {
+        var items: [NavigationItem] = [
+            .init("启动", .iconLaunchPage, .launch),
+            .init("下载", .iconDownloadPage, .download)
+        ]
+        if flagsManager.isEnabled(.multiplayer) {
+            items.append(.init("联机", .iconMultiplayerPage, .multiplayer))
+        }
+        items.append(.init("设置", .iconSettingsPage, .settings))
+        items.append(.init("更多", .iconMorePage, .more))
+        return items
+    }
+
+    /// 当前选中项在导航组中的位置。
+    private var selectedIndex: Int? {
+        navigationItems.firstIndex { $0.route == router.root }
+    }
+
+    /// 顶栏导航按钮组。
+    ///
+    /// 原生风格的选中胶囊是组内唯一的一层玻璃：按索引做 `offset` 位移并挂 spring 动画
+    /// （不依赖匹配几何，动画稳定、也不随路由重建）；经典主题保持按钮各自的白底胶囊。
+    private var navigationButtons: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        return HStack(spacing: isNative ? NavigationButtonMetrics.spacing : 8) {
+            ForEach(navigationItems, id: \.route) { item in
+                PageButton(item.label, item.icon, item.route)
+            }
+        }
+        .padding(isNative ? NavigationButtonMetrics.padding : 0)
+        .background(alignment: .topLeading) {
+            if isNative, let selectedIndex {
+                Capsule()
+                    .fill(.clear)
+                    .glassHighlight(true, in: Capsule(), fallbackTint: .black.opacity(0.15))
+                    .frame(width: NavigationButtonMetrics.width, height: NavigationButtonMetrics.height)
+                    .offset(
+                        x: NavigationButtonMetrics.padding
+                            + CGFloat(selectedIndex) * (NavigationButtonMetrics.width + NavigationButtonMetrics.spacing),
+                        y: NavigationButtonMetrics.padding
+                    )
+                    .animation(.spring(response: 0.36, dampingFraction: 0.6), value: selectedIndex)
+            }
+        }
+    }
+
+    private struct NavigationItem {
+        let label: String
+        let icon: ImageResource
+        let route: AppRoute
+
+        init(_ label: String, _ icon: ImageResource, _ route: AppRoute) {
+            self.label = label
+            self.icon = icon
+            self.route = route
+        }
     }
 }
 
@@ -90,18 +162,27 @@ private struct PageButton: View {
     var body: some View {
         let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack {
-            RoundedRectangle(cornerRadius: 13)
-                .fill(backgroundColor)
+            if isNative {
+                // 选中背景由导航组统一的滑动胶囊承载，这里只画悬停反馈
+                Capsule()
+                    .fill(hovered && !isRoot ? Color.white.opacity(0.1) : .clear)
+            } else {
+                RoundedRectangle(cornerRadius: 13)
+                    .fill(backgroundColor)
+            }
             HStack(spacing: 7) {
                 Image(icon)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 16)
+                    .frame(width: isNative ? 17 : 16)
                     .foregroundStyle(foregroundColor)
-                MyText(label, color: foregroundColor)
+                MyText(label, size: isNative ? 15 : 14, color: foregroundColor)
             }
         }
-        .frame(width: 78, height: 27)
+        .frame(
+            width: isNative ? NavigationButtonMetrics.width : 78,
+            height: isNative ? NavigationButtonMetrics.height : 27
+        )
         .contentShape(Rectangle())
         .onHover { hovered in
             self.hovered = hovered
@@ -114,23 +195,21 @@ private struct PageButton: View {
                     }
                 }
         )
-        .animation(.easeInOut(duration: 0.2), value: isRoot)
+        .animation(isNative ? nil : .easeInOut(duration: 0.2), value: isRoot)
         .animation(.easeInOut(duration: 0.2), value: hovered)
     }
 
     private var foregroundColor: Color {
         if ThemeManager.shared.theme.isNativeStyle {
-            // 选中项加粗，未选中为次级色
-            return isRoot ? .primary : Color.primary.opacity(0.7)
+            // 深色玻璃胶囊上统一使用白色字体（选中为纯白，未选中略降透明度，悬停提亮）
+            if isRoot { return .white }
+            return hovered ? .white : Color.white.opacity(0.85)
         }
         return isRoot ? .color2 : .white
     }
 
     private var backgroundColor: Color {
-        if ThemeManager.shared.theme.isNativeStyle {
-            // 可见的灰填充胶囊（浅色背景下玻璃效果过弱）
-            return isRoot ? Color.primary.opacity(0.1) : (hovered ? Color.primary.opacity(0.06) : .clear)
-        }
-        return .white.opacity(isRoot ? 1 : hovered ? 0.25 : 0)
+        // 经典主题：选中为白色胶囊，悬停半透明白
+        .white.opacity(isRoot ? 1 : hovered ? 0.25 : 0)
     }
 }

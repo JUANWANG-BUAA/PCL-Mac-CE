@@ -163,16 +163,42 @@ struct AppRouterView: View {
     }
 }
 
+/// 侧栏布局状态：顶栏分界线与侧栏玻璃共用的"当前侧栏宽度"。
+///
+/// 侧栏宽度随路由切换做动画；若顶栏各自读取静态宽度，动画期间分界线会与玻璃边缘错位。
+/// 共享同一数值后，`withAnimation` 事务会同时驱动两处动画，分界线始终贴合玻璃边缘。
+@MainActor
+final class SidebarLayoutState: ObservableObject {
+    static let shared: SidebarLayoutState = .init()
+
+    @Published private(set) var width: CGFloat = AppSidebarView.sidebarWidth(for: .launch)
+
+    private init() {}
+
+    /// 更新宽度；`animated` 为 `false` 用于首次出现（避免从 0 滑出）。
+    func updateWidth(_ newWidth: CGFloat, animated: Bool = true) {
+        guard animated else {
+            width = newWidth
+            return
+        }
+        withAnimation(ThemeManager.shared.theme.isNativeStyle
+            ? .spring(response: 0.28, dampingFraction: 0.9)
+            : .spring(response: 0.16, dampingFraction: 1.0)) {
+            width = newWidth
+        }
+    }
+}
+
 struct AppSidebarView: View {
     @EnvironmentObject private var instanceManager: InstanceManager
     @ObservedObject private var router: AppRouter = .shared
-    @State private var width: CGFloat = 0
+    @ObservedObject private var layoutState: SidebarLayoutState = .shared
     @State private var animationProgress: Double = 0
 
     init() {}
 
     /// 当前路由对应的侧栏宽度。
-    /// 供顶栏绘制"侧栏延伸到顶"的分层背景使用，需与 `sidebar` 的映射保持一致。
+    /// 侧栏宽度的单一事实来源：顶栏绘制"侧栏延伸到顶"的分层背景也读取本映射。
     static func sidebarWidth(for route: AppRoute) -> CGFloat {
         switch route {
         case .launch: 285
@@ -188,7 +214,12 @@ struct AppSidebarView: View {
         }
     }
 
-    var sidebar: any Sidebar {
+    /// 当前路由对应的侧栏视图。
+    ///
+    /// 使用 `@ViewBuilder` 而非 `AnyView`：避免类型擦除导致侧栏子树在每次求值时被整体重建，
+    /// 同时不再为了读取宽度而重复实例化侧栏。
+    @ViewBuilder
+    private var sidebar: some View {
         switch router.last {
         case .launch: LaunchSidebar(instanceManager: instanceManager)
         case .instanceList: InstanceListSidebar(instanceManager: instanceManager)
@@ -203,50 +234,50 @@ struct AppSidebarView: View {
     }
 
     var body: some View {
+        let sidebarWidth = Self.sidebarWidth(for: router.last)
         ZStack(alignment: .leading) {
             Group {
                 if ThemeManager.shared.theme.isNativeStyle {
-                    GlassSidebarBackground()
+                    // 原生风格：深色玻璃侧栏（承载白色文字）
+                    GlassSidebarBackground(dark: true)
                 } else {
                     Rectangle()
                         .fill(ThemeManager.shared.theme.sidebarBackground)
                 }
             }
-            .frame(width: width)
+            .frame(width: layoutState.width)
             .shadow(radius: ThemeManager.shared.theme.isNativeStyle ? 0 : 2)
             .overlay(alignment: .trailing) {
                 // 原生风格：侧栏与内容区的细分隔线（材质色差微弱时提供明确分界）
                 if ThemeManager.shared.theme.isNativeStyle {
                     Rectangle()
-                        .fill(Color.black.opacity(0.07))
+                        .fill(Color.white.opacity(0.12))
                         .frame(width: 0.5)
                 }
             }
             .zIndex(10)
 
-            AnyView(sidebar)
+            sidebar
+                // 原生风格：侧栏为深色玻璃，强制深色外观使语义色（.primary/.secondary）与材质白字适配
+                .environment(\.colorScheme, ThemeManager.shared.theme.isNativeStyle ? .dark : .light)
                 .opacity(animationProgress)
                 .scaleEffect(animationProgress * 0.04 + 0.96)
                 .zIndex(11)
-                .frame(width: sidebar.width)
+                // 内容按最终宽度布局，外层用动画中的宽度从左向右显示（避免文字重排导致的跳动）
+                .frame(width: sidebarWidth, alignment: .leading)
+                .frame(width: layoutState.width, alignment: .leading)
+                .clipped()
         }
         .onAppear {
-            width = sidebar.width
+            layoutState.updateWidth(sidebarWidth, animated: false)
             // 当前一定是启动页面，直接开始动画
             withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                 animationProgress = 1.0
             }
         }
-        .onChange(of: sidebar.width) { newWidth in
-            // 原生玻璃层不做尺寸动画：glass 在连续重绘时会短暂不渲染（闪黑/透底），
-            // 侧栏内容本身也是瞬时切换的，直接对齐即可保持观感一致。
-            if ThemeManager.shared.theme.isNativeStyle {
-                width = newWidth
-            } else {
-                withAnimation(.spring(response: 0.16, dampingFraction: 1.0)) {
-                    width = newWidth
-                }
-            }
+        .onChange(of: router.last) { _ in
+            // 侧栏宽度平滑过渡（顶栏分界线读取同一共享值，保持一致）
+            layoutState.updateWidth(Self.sidebarWidth(for: router.last))
             switch router.last {
             case .launch, .tasks:
                 animationProgress = 0.0

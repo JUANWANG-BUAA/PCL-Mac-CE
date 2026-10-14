@@ -9,7 +9,6 @@ import SwiftUI
 
 struct TasksSidebar: Sidebar {
     @ObservedObject private var taskManager: TaskManager = .shared
-    let width: CGFloat = 220
 
     var body: some View {
         VStack(spacing: 40) {

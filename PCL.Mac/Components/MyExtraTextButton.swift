@@ -25,7 +25,7 @@ struct MyExtraTextButton: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: ThemeManager.shared.theme.isNativeStyle ? 10 : 1000)
-                .fill(hovered ? Color.color4 : .color3)
+                .fill(fillColor)
             HStack(spacing: 12) {
                 Image(icon)
                     .resizable()
@@ -51,5 +51,13 @@ struct MyExtraTextButton: View {
         .scaleEffect(pressed ? (ThemeManager.shared.theme.isNativeStyle ? 0.98 : 0.85) : 1, anchor: .center)
         .animation(.easeOut(duration: 0.1), value: hovered)
         .animation(.easeOut(duration: 0.1), value: pressed)
+    }
+
+    /// 原生风格的填充式按钮悬停时略微加深（macOS 语言），经典主题悬停变浅（PCL 语言）。
+    private var fillColor: Color {
+        if ThemeManager.shared.theme.isNativeStyle {
+            return hovered ? Color.accentColor.opacity(0.88) : .accentColor
+        }
+        return hovered ? .color4 : .color3
     }
 }

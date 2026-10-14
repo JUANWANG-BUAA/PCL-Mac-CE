@@ -84,15 +84,19 @@ struct MyCard<Content: View, Action: View>: View {
                             .frame(width: 10, height: 6)
                             .rotationEffect(.degrees(folded ? 0 : -180), anchor: .center)
                             .foregroundStyle(
-                                appearFinished && !disableHoverAnimation && showHovered
-                                    ? Color.color2
-                                    : (ThemeManager.shared.theme.isNativeStyle ? Color.primary.opacity(0.55) : Color.color1)
+                                ThemeManager.shared.theme.isNativeStyle
+                                    ? Color.primary.opacity(0.55)
+                                    : (appearFinished && !disableHoverAnimation && showHovered ? Color.color2 : Color.color1)
                             )
                     } else {
                         action()
                     }
                 }
-                .foregroundStyle(appearFinished && !disableHoverAnimation && showHovered ? Color.color2 : .color1)
+                .foregroundStyle(
+                    ThemeManager.shared.theme.isNativeStyle
+                        ? Color.primary
+                        : (appearFinished && !disableHoverAnimation && showHovered ? Color.color2 : .color1)
+                )
                 .frame(height: 12)
                 .padding(Spacing.md)
                 .contentShape(Rectangle())

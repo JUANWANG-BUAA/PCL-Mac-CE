@@ -23,10 +23,18 @@ struct MyComboBox: View {
     }
 
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         HStack(spacing: 8) {
             ZStack(alignment: .center) {
                 RoundedRectangle(cornerRadius: 3)
-                    .strokeBorder(hovered ? Color.color3 : checked ? .color2 : .color1, lineWidth: 1.1)
+                    .strokeBorder(borderColor, lineWidth: 1.1)
+                    .background {
+                        // 原生风格：选中时填充强调色（与系统复选框一致）
+                        if isNative && checked {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.accentColor)
+                        }
+                    }
                     .frame(width: 18, height: 18)
                     .scaleEffect(scale, anchor: .center)
 
@@ -35,9 +43,9 @@ struct MyComboBox: View {
                     .scaledToFit()
                     .frame(width: 12)
                     .scaleEffect(checkedScale)
-                    .foregroundStyle(hovered ? Color.color3 : .color2)
+                    .foregroundStyle(checkColor)
             }
-            MyText(text, color: hovered ? .color3 : .color1)
+            MyText(text, color: textColor)
         }
         .frame(minWidth: 20, minHeight: 20)
         .fixedSize()
@@ -89,6 +97,24 @@ struct MyComboBox: View {
                 checkedScale = newValue ? 1 : 0
             }
         }
+    }
+
+    /// 原生风格使用系统复选框语言：未选中为灰色描边（悬停加深），选中为强调色填充；
+    /// 经典主题保留悬停变蓝的 PCL 风格。
+    private var borderColor: Color {
+        if ThemeManager.shared.theme.isNativeStyle {
+            if checked { return .accentColor }
+            return Color.primary.opacity(hovered ? 0.5 : 0.32)
+        }
+        return hovered ? .color3 : checked ? .color2 : .color1
+    }
+
+    private var checkColor: Color {
+        ThemeManager.shared.theme.isNativeStyle ? .white : (hovered ? .color3 : .color2)
+    }
+
+    private var textColor: Color {
+        ThemeManager.shared.theme.isNativeStyle ? .primary : (hovered ? .color3 : .color1)
     }
 }
 

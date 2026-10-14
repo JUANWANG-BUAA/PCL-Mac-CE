@@ -110,7 +110,11 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
     }
 
     private var foregroundColor: Color {
-        hovered ? .color4 : .color5
+        if ThemeManager.shared.theme.isNativeStyle {
+            // 原生风格的箭头使用正文色降透明度，不再悬停变蓝
+            return Color.primary.opacity(hovered ? 0.7 : 0.55)
+        }
+        return hovered ? .color4 : .color5
     }
 
     private var backgroundColor: Color {
@@ -171,13 +175,13 @@ private struct PopupView<Entry: Hashable & CustomStringConvertible>: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(entries, id: \.self) { entry in
                         Group {
-                            MyText(entry.description)
+                            MyText(entry.description, color: entryForeground(entry))
                                 .padding(.leading, 6)
                         }
                         .frame(height: 26)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(.rect)
-                        .background(selectedEntry == entry ? Color.color6 : hoveredEntry == entry ? .color7 : .clear)
+                        .background(entryBackground(entry))
                         .onTapGesture {
                             onSelect(entry)
                         }
@@ -193,11 +197,27 @@ private struct PopupView<Entry: Hashable & CustomStringConvertible>: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 4))
 
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(Color.color4, lineWidth: 1.5, antialiased: false)
+            if !isNative {
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(Color.color4, lineWidth: 1.5, antialiased: false)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.easeInOut(duration: 0.2), value: hoveredEntry)
+    }
+
+    /// 原生风格使用系统下拉菜单语言：选中 = 强调色底 + 白字，悬停 = 浅灰底；
+    /// 经典主题保留 PCL 蓝色系。
+    private func entryForeground(_ entry: Entry) -> Color {
+        ThemeManager.shared.theme.isNativeStyle && selectedEntry == entry ? .white : .color1
+    }
+
+    private func entryBackground(_ entry: Entry) -> Color {
+        if ThemeManager.shared.theme.isNativeStyle {
+            if selectedEntry == entry { return .accentColor }
+            return hoveredEntry == entry ? Color.primary.opacity(0.08) : .clear
+        }
+        return selectedEntry == entry ? .color6 : hoveredEntry == entry ? .color7 : .clear
     }
 }
 

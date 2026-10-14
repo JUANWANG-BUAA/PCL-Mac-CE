@@ -96,7 +96,7 @@ struct ListItemButton: View {
         icon.makeView()
             .scaledToFit()
             .frame(height: 16)
-            .foregroundStyle(Color.color3)
+            .foregroundStyle(ThemeManager.shared.theme.isNativeStyle ? Color.accentColor : Color.color3)
             .contentShape(.rect)
             .gesture(
                 DragGesture(minimumDistance: 0)
