@@ -68,7 +68,9 @@ struct InstanceListPage: View {
                 MyCard("错误的实例") {
                     VStack(spacing: 0) {
                         ForEach(errorInstances, id: \.name) { instance in
-                            MyListItem(.init(image: .iconRedstoneBlock, name: instance.name, description: instance.message))
+                            ErrorInstanceView(instance: instance, repository: viewModel.repository) {
+                                viewModel.reload()
+                            }
                         }
                     }
                 }
@@ -120,6 +122,70 @@ struct InstanceListPage: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 1)
+    }
+}
+
+private struct ErrorInstanceView: View {
+    private let instance: ErrorInstance
+    private let directory: URL
+    private let onDeleted: () -> Void
+    
+    init(instance: ErrorInstance, repository: MinecraftRepository, onDeleted: @escaping () -> Void) {
+        self.instance = instance
+        self.directory = repository.versionsDirectory.appending(path: instance.name)
+        self.onDeleted = onDeleted
+    }
+    
+    var body: some View {
+        MyListItem { hovered in
+            HStack {
+                Image(.iconRedstoneBlock)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 36, height: 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                
+                VStack(alignment: .leading) {
+                    MyText(instance.name)
+                    MyText(instance.message, size: 12, color: .colorGray3)
+                }
+                .lineLimit(1)
+                
+                Spacer(minLength: 0)
+                
+                HStack {
+                    ListItemButton(.resource(.btnOpen)) {
+                        NSWorkspace.shared.activateFileViewerSelecting([directory])
+                    }
+                    ListItemButton(.system("trash"), clickPerform: deleteInstance)
+                }
+                .padding(.horizontal, 4)
+                .allowsHitTesting(hovered)
+                .opacity(hovered ? 1 : 0)
+            }
+        }
+    }
+    
+    private func deleteInstance() {
+        MessageBoxManager.shared.showText(
+            title: "删除错误的实例",
+            content: "确定要删除「\(instance.name)」吗？\n这个实例无法被启动器正常加载，删除后将移入废纸篓。",
+            level: .error,
+            .no(),
+            .yes(label: "删除", type: .red)
+        ) { result in
+            guard result == 1 else { return }
+            Task { @MainActor in
+                do {
+                    try await NSWorkspace.shared.recycle([directory])
+                    hint("已删除「\(instance.name)」", type: .finish)
+                    onDeleted()
+                } catch {
+                    err("删除错误的实例失败：\(error.localizedDescription)")
+                    hint("删除失败：\(error.localizedDescription)", type: .critical)
+                }
+            }
+        }
     }
 }
 

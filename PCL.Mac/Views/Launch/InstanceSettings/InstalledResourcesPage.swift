@@ -98,13 +98,7 @@ struct InstalledResourcesPage: View {
             }
         }
         .task {
-            loadingVM.reset()
-            do {
-                try await viewModel.load()
-            } catch {
-                err("加载资源列表失败：\(error.localizedDescription)")
-                loadingVM.fail(with: "加载资源列表失败：\(error.localizedDescription)")
-            }
+            await loadResources()
         }
         .onChange(of: viewModel.resources) { newValue in
             if let newValue, newValue.isEmpty {
@@ -117,6 +111,19 @@ struct InstalledResourcesPage: View {
         }
         .onDisappear {
             viewModel.resources = nil
+        }
+    }
+    
+    /// 加载已安装资源列表；失败时提供重试入口。
+    private func loadResources() async {
+        loadingVM.reset()
+        do {
+            try await viewModel.load()
+        } catch {
+            err("加载资源列表失败：\(error.localizedDescription)")
+            loadingVM.fail(with: "加载资源列表失败：\(error.localizedDescription)") {
+                Task { await loadResources() }
+            }
         }
     }
     

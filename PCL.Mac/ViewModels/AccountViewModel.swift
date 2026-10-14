@@ -67,6 +67,8 @@ class AccountViewModel: ObservableObject {
     /// 切换当前账号。
     public func switchAccount(to account: Account) {
         currentAccountId = account.id
+        // 立即落盘：账号与选中状态属于关键数据，不应等到退出才保存
+        try? LauncherConfig.save()
     }
     
     /// 移除账号。
@@ -80,6 +82,7 @@ class AccountViewModel: ObservableObject {
                 currentAccountId = nil
             }
         }
+        try? LauncherConfig.save()
     }
     
     /// 获取账号皮肤数据。
@@ -324,6 +327,7 @@ class AccountViewModel: ObservableObject {
     private func addAccount(_ account: Account) {
         accounts.append(account)
         switchAccount(to: account)
+        try? LauncherConfig.save()
     }
     
     enum PanelType {

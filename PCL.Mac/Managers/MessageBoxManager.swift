@@ -297,6 +297,20 @@ extension MessageBoxManager {
 }
 
 extension MessageBoxManager {
+    /// 键盘快捷键通知：回车（确认）/ ESC（取消）。
+    /// 由 `AppDelegate` 的全局键盘监控发出，`MessageBoxView` 响应后走与点击相同的按钮逻辑。
+    public static let messageBoxConfirmNotification: Notification.Name = .messageBoxConfirm
+    public static let messageBoxCancelNotification: Notification.Name = .messageBoxCancel
+}
+
+extension Notification.Name {
+    /// 回车触发弹窗主按钮。
+    static let messageBoxConfirm: Notification.Name = .init("PCLMac.MessageBoxConfirm")
+    /// ESC 触发弹窗取消按钮。
+    static let messageBoxCancel: Notification.Name = .init("PCLMac.MessageBoxCancel")
+}
+
+extension MessageBoxManager {
     public func showTextAsync(
         title: String,
         content: String,

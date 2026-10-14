@@ -225,8 +225,17 @@ struct LaunchSidebar: Sidebar {
                                 .padding(.trailing, 8)
                                 .contentShape(.rect)
                                 .onTapGesture {
-                                    accountVM.remove(account: account)
-                                    hint("移除成功！", type: .finish)
+                                    MessageBoxManager.shared.showText(
+                                        title: "移除账号",
+                                        content: "确定要移除账号「\(account.profile.name)」吗？\n移除后需要重新登录才能再次使用。（本地配置不会被删除）",
+                                        level: .info,
+                                        .no(),
+                                        .yes(label: "移除", type: .red)
+                                    ) { result in
+                                        guard result == 1 else { return }
+                                        accountVM.remove(account: account)
+                                        hint("已移除账号「\(account.profile.name)」", type: .finish)
+                                    }
                                 }
                         }
                     }

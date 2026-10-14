@@ -12,6 +12,15 @@ import SwiftScaffolding
 import Combine
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    /// 保存配置并忽略失败（用于关键数据变更后的立即落盘）。
+    static func saveConfigQuietly() {
+        do {
+            try LauncherConfig.save()
+        } catch {
+            err("保存配置失败：\(error.localizedDescription)")
+        }
+    }
+    
     private var window: AppWindow!
     private lazy var shouldInit: Bool = ProcessInfo.processInfo.environment["PCL_MAC_TESTING"] == nil && ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1"
     private var keyMonitor: Any?
@@ -127,12 +136,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: DispatchQueue.main)
             .sink { value in
                 LauncherConfig.shared.currentRepositoryId = value
+                Self.saveConfigQuietly()
             }
             .store(in: &cancellables)
         instanceManager.$repositories
             .receive(on: DispatchQueue.main)
             .sink { value in
                 LauncherConfig.shared.minecraftRepositories = Array(value.values)
+                Self.saveConfigQuietly()
             }
             .store(in: &cancellables)
         
@@ -189,9 +200,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func addEscapeMonitor() {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            // 弹窗打开时：回车触发主按钮，ESC 触发取消按钮
+            if MessageBoxManager.shared.currentMessageBox != nil {
+                switch event.keyCode {
+                case 36, 76: // Return / Enter（小键盘）
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .messageBoxConfirm, object: nil)
+                    }
+                    return nil
+                case 53: // Escape
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .messageBoxCancel, object: nil)
+                    }
+                    return nil
+                default:
+                    return event
+                }
+            }
             if event.keyCode == 53 {
                 DispatchQueue.main.async {
-                    guard AppRouter.shared.isSubPage, MessageBoxManager.shared.currentMessageBox == nil else { return }
+                    guard AppRouter.shared.isSubPage else { return }
                     AppRouter.shared.removeLast()
                 }
             } else {

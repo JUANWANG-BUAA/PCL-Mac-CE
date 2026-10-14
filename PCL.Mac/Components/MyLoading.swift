@@ -81,6 +81,11 @@ struct MyLoading: View {
             .foregroundStyle(viewModel.isFailed ? Color.red : Color.color2)
             .frame(width: 80, height: 80)
             MyText(viewModel.text, size: 16, color: viewModel.isFailed ? Color.red : Color.color2)
+            if viewModel.isFailed, let retryAction = viewModel.retryAction {
+                MyButton("重试", type: .highlight, retryAction)
+                    .frame(width: 90, height: 28)
+                    .padding(.top, 6)
+            }
         }
     }
     

@@ -36,17 +36,7 @@ struct ResourcesSearchPage: View {
             }
             MySearchBox(placeholder: "搜索\(viewModel.type.localizedName)") { query in
                 currentPage = 0
-                Task {
-                    do {
-                        try await viewModel.search(query)
-                    } catch let error where error.isCancellationError {
-                    } catch {
-                        err("搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
-                        await MainActor.run {
-                            viewModel.loadingVM.fail(with: "搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
-                        }
-                    }
-                }
+                Task { await search(query) }
             }
             
             if let searchResults = viewModel.searchResults {
@@ -63,31 +53,41 @@ struct ResourcesSearchPage: View {
                     }
                 }
                 .onChange(of: currentPage) { newValue in
-                    Task {
-                        do {
-                            try await viewModel.changePage(newValue)
-                        } catch let error where error.isCancellationError {
-                        } catch {
-                            err("搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
-                            await MainActor.run {
-                                viewModel.loadingVM.fail(with: "搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
-                            }
-                        }
-                    }
+                    Task { await changePage(newValue) }
                 }
             } else {
                 MyLoading(viewModel: viewModel.loadingVM)
             }
         }
         .task {
-            do {
-                try await viewModel.search("")
-            } catch let error where error.isCancellationError {
-            } catch {
-                err("搜索\(viewModel.type.localizedName)失败：\(error)")
-                await MainActor.run {
-                    viewModel.loadingVM.fail(with: "搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
-                }
+            await search("")
+        }
+    }
+    
+    /// 搜索；失败时提供重试入口。
+    @MainActor
+    private func search(_ query: String) async {
+        do {
+            try await viewModel.search(query)
+        } catch let error where error.isCancellationError {
+        } catch {
+            err("搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
+            viewModel.loadingVM.fail(with: "搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)") {
+                Task { await search(query) }
+            }
+        }
+    }
+    
+    /// 翻页；失败时提供重试入口。
+    @MainActor
+    private func changePage(_ page: Int) async {
+        do {
+            try await viewModel.changePage(page)
+        } catch let error where error.isCancellationError {
+        } catch {
+            err("搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
+            viewModel.loadingVM.fail(with: "搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)") {
+                Task { await changePage(page) }
             }
         }
     }

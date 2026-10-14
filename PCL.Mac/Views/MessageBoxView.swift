@@ -52,6 +52,27 @@ struct MessageBoxView: View {
                 inputText = initialContent
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .messageBoxConfirm)) { _ in
+            confirmWithKeyboard()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .messageBoxCancel)) { _ in
+            cancelWithKeyboard()
+        }
+    }
+    
+    /// 回车：触发主按钮（优先 highlight，其次 id 为 1 的按钮，再次最后一个按钮）。
+    private func confirmWithKeyboard() {
+        let button = model.buttons.first(where: { $0.type == .highlight })
+            ?? model.buttons.first(where: { $0.id == 1 })
+            ?? model.buttons.last
+        guard let button else { return }
+        onButtonTap(button)
+    }
+    
+    /// ESC：触发取消按钮（id 为 0 或 cancelButtonID）；没有取消按钮时不响应。
+    private func cancelWithKeyboard() {
+        guard let button = model.buttons.first(where: { $0.id == 0 || $0.id == MessageBoxManager.cancelButtonID }) else { return }
+        onButtonTap(button)
     }
     
     private var foregroundColor: Color {
