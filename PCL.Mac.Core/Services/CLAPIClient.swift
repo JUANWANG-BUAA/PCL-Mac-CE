@@ -11,7 +11,7 @@ import SwiftyJSON
 public class CLAPIClient {
     public static let shared: CLAPIClient = .init()
     
-    private let apiRoot: URL = .init(string: "https://api.cylorine.studio")!
+    private let apiRoot: URL = APIEndpoints.CylorineAPI.root
     private let iso8601DateFormatter: ISO8601DateFormatter = .init()
     
     public func getCaveMessages() async throws -> [String] {
@@ -83,7 +83,7 @@ public class CLAPIClient {
         }
     }
     
-    public enum EasyTierStatus {
+    public enum EasyTierStatus: Sendable {
         case available, unavailable(message: String, date: Date)
     }
 }

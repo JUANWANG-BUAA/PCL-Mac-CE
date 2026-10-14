@@ -51,9 +51,19 @@ class InstanceConfigViewModel: ObservableObject {
     
     @MainActor
     public func setHeapSize(_ heapSize: UInt64) {
-        instance.config.jvmHeapSize = heapSize
+        // 限制在合理范围内：过小无法启动，过大超过物理内存
+        let maxMB: UInt64 = UInt64(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
+        let clamped: UInt64 = min(max(heapSize, Self.minHeapSizeMB), maxMB)
+        if clamped != heapSize {
+            hint("内存分配已限制在 \(Self.minHeapSizeMB)–\(maxMB) MB", type: .critical)
+            jvmHeapSize = clamped.description
+        }
+        instance.config.jvmHeapSize = clamped
         instance.markDirty()
     }
+    
+    /// 内存分配下限（MB）。
+    private static let minHeapSizeMB: UInt64 = 512
 
     @MainActor
     public func setJvmArguments(_ arguments: String) {

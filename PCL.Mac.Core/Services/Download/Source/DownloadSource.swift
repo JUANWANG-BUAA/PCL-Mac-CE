@@ -38,7 +38,7 @@ public struct OfficialDownloadSource: DownloadSource {
     public var curseforgeApiKey: String?
 
     public func versionManifestURL() -> URL? {
-        URL(string: "https://launchermeta.mojang.com/mc/game/version_manifest.json")
+        APIEndpoints.MojangMeta.versionManifest
     }
 
     public func forgeVersionListURL(for minecraftVersion: String) -> URL? { nil }
@@ -46,7 +46,7 @@ public struct OfficialDownloadSource: DownloadSource {
     public func neoforgeVersionListURL(for minecraftVersion: String) -> URL? { nil }
 
     public func fabricVersionListURL(for minecraftVersion: String) -> URL? {
-        URL(string: "https://meta.fabricmc.net/v2/versions/loader/\(minecraftVersion)")
+        APIEndpoints.FabricMeta.loaderVersions(for: minecraftVersion)
     }
 
     public func candidate(for url: URL) -> DownloadCandidate? {
@@ -62,8 +62,8 @@ public struct OfficialDownloadSource: DownloadSource {
 public struct MirrorDownloadSource: DownloadSource {
     public static let shared: MirrorDownloadSource = .init()
 
-    private let bmclapiBaseURL = URL(string: "https://bmclapi2.bangbang93.com")!
-    private let mcimBaseURL = URL(string: "https://mod.mcimirror.top")!
+    private let bmclapiBaseURL = APIEndpoints.Mirrors.bmclapi
+    private let mcimBaseURL = APIEndpoints.Mirrors.mcim
 
     public func versionManifestURL() -> URL? {
         bmclapiBaseURL.appending(path: "mc/game/version_manifest.json")

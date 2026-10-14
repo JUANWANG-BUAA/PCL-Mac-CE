@@ -6,9 +6,10 @@
 //
 
 import Foundation
-import Core
+@preconcurrency import Core
 
 enum FileDropHandler {
+    @MainActor
     static func handle(_ url: URL, instanceManager: InstanceManager) async {
         if ModpackImportService.isModpack(url) {
             let viewModel = ModpackViewModel(instanceManager: instanceManager)
@@ -21,7 +22,7 @@ enum FileDropHandler {
             cache: .shared
         )
         if let resource = try? await resourceLoadService.load(at: url) {
-            guard let instance = await instanceManager.currentInstance else {
+            guard let instance = instanceManager.currentInstance else {
                 hint("请先选择一个实例！", type: .critical)
                 return
             }

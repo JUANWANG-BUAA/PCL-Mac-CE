@@ -11,7 +11,7 @@ import Core
 import ZIPFoundation
 
 class UpdateManager {
-    public static let shared: UpdateManager = .init(URL(string: "https://cylorine.studio/meta/PCL.Mac/update.json")!)
+    public static let shared: UpdateManager = .init(APIEndpoints.CylorineSite.launcherUpdate)
     
     private let updateMetadataURL: URL
     

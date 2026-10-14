@@ -11,7 +11,7 @@ public enum ModrinthCompatibility: String, Codable {
     case required, optional, unsupported, unknown
 }
 
-public struct ModrinthProject: Decodable, Identifiable, Hashable, Equatable {
+public struct ModrinthProject: Decodable, Identifiable, Hashable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case projectId = "project_id", type = "project_type"
         case clientSide = "client_side"

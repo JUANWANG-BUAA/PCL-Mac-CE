@@ -116,7 +116,7 @@ public class ClientManifest: Decodable {
             argument: "-Dlog4j.configurationFile=${path}",
             file: .init(
                 id: "client-1.12.xml",
-                url: URL(string: "https://piston-data.mojang.com/v1/objects/bd65e7d2e3c237be76cfbef4c2405033d7f91521/client-1.12.xml")!,
+                url: APIEndpoints.MojangPiston.dataRoot.appending(path: "v1/objects/bd65e7d2e3c237be76cfbef4c2405033d7f91521/client-1.12.xml"),
                 size: 888,
                 sha1: "bd65e7d2e3c237be76cfbef4c2405033d7f91521"
             )

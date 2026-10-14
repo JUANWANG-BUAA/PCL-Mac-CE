@@ -9,7 +9,8 @@ import Foundation
 import AppKit
 import Core
 
-class ResourceDisplayModel: ObservableObject, Hashable, Equatable {
+/// 构建于后台线程、发布于主线程；@Published 状态仅主线程变更，以 @unchecked 担保跨隔离传递。
+class ResourceDisplayModel: ObservableObject, Hashable, Equatable, @unchecked Sendable {
     let id: UUID = .init()
     let name: String
     let version: String?

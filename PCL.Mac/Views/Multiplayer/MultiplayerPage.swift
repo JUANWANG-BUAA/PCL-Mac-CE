@@ -70,7 +70,7 @@ struct MultiplayerPage: View {
             MyListItem(.init(image: .iconDownloadPage, imageSize: 28, name: "安装 EasyTier", description: "联机功能使用 EasyTier 实现，所以你需要先安装 EasyTier 才能进行联机！"))
                 .onTapGesture {
                     Task {
-                        try await checkDisclaimer()
+                        guard await checkDisclaimer() else { return }
                         let task: MyTask = EasyTierManager.shared.makeInstallTask()
                         await MainActor.run {
                             TaskManager.shared.execute(task: task)
@@ -90,7 +90,7 @@ struct MultiplayerPage: View {
                             if EasyTierManager.shared.hintInstall() {
                                 return
                             }
-                            try await checkDisclaimer()
+                            guard await checkDisclaimer() else { return }
                             guard await MessageBoxManager.shared.showTextAsync(
                                 title: "开启房间",
                                 content: "请按照以下步骤操作：\n   1. 进入世界，按下 ESC\n    2. 点击 “对局域网开放” > “创建局域网世界”\n    3. 回到启动器，点击 “确定” 并输入聊天栏中的端口号",
@@ -113,7 +113,7 @@ struct MultiplayerPage: View {
                             if EasyTierManager.shared.hintInstall() {
                                 return
                             }
-                            try await checkDisclaimer()
+                            guard await checkDisclaimer() else { return }
                             if let type: AccountType = AccountViewModel().currentAccount?.type,
                                type == .offline {
                                 guard await MessageBoxManager.shared.showTextAsync(
@@ -136,7 +136,7 @@ struct MultiplayerPage: View {
                     }
                 MyListItem(.init(image: .iconAbout, imageSize: 28, name: "帮助文档", description: "点击这里可以查看联机教程！"))
                     .onTapGesture {
-                        NSWorkspace.shared.open(URL(string: "https://cylorine.studio/helps/PCL.Mac#multiplayer")!)
+                        NSWorkspace.shared.open(WebLinks.CylorineSite.multiplayerHelp)
                     }
             }
         }
@@ -205,16 +205,17 @@ struct MultiplayerPage: View {
         }
     }
     
-    private func checkDisclaimer() async throws {
+    /// 检查免责声明；返回 false 表示不满足联机条件（地区不支持或用户未同意），应中止后续操作。
+    private func checkDisclaimer() async -> Bool {
         if await LocaleUtils.isInChinaMainland(strict: false) == false {
             MessageBoxManager.shared.showText(
                 title: "不支持的地区",
                 content: "PCL.Mac 目前只支持中国大陆地区。\n如果您在中国大陆，并使用了 VPN 等工具，请先关闭它们，然后再次尝试！",
                 level: .error
             )
-            throw SimpleError("不支持的地区")
+            return false
         }
-        if LauncherConfig.shared.multiplayerDisclaimerAgreed { return }
+        if LauncherConfig.shared.multiplayerDisclaimerAgreed { return true }
         if await MessageBoxManager.shared.showTextAsync(
             title: "免责声明",
             content: "在多人联机过程中，您须严格遵守所在国家和地区的相关法律法规。因违法使用本功能导致的后果将由用户自行承担。\n\n点击“同意”即表示您已阅读并同意上述全部内容。",
@@ -223,9 +224,10 @@ struct MultiplayerPage: View {
             .yes(label: "同意", type: .highlight)
         ) == 0 {
             AppRouter.shared.setRoot(.launch)
-            throw SimpleError("用户未同意免责声明")
+            return false
         }
         LauncherConfig.shared.multiplayerDisclaimerAgreed = true
+        return true
     }
 }
 

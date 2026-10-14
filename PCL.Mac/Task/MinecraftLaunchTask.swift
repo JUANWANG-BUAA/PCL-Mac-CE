@@ -6,12 +6,33 @@
 //
 
 import Foundation
-import Core
+@preconcurrency import Core
 import AppKit
 
 /// Minecraft 启动任务生成器。
 public enum MinecraftLaunchTask {
     private typealias SubTask = MyTask<Model>.SubTask
+    
+    /// 弹出错误提示框后取消任务。
+    private static func fail(task: SubTask, title: String, content: String) async throws {
+        _ = await MessageBoxManager.shared.showTextAsync(title: title, content: content, level: .error)
+        try task.cancel()
+    }
+    
+    /// 弹出“出错但可选择继续启动”确认框；用户选择取消时中止任务。
+    /// - Returns: 用户是否选择继续。
+    @discardableResult
+    private static func confirmContinue(task: SubTask, title: String, error: Error) async throws -> Bool {
+        let result = await MessageBoxManager.shared.showTextAsync(
+            title: title,
+            content: "在\(title)时发生错误：\(error.localizedDescription)\n\n如果继续启动，可能会导致无法加入部分需要验证的服务器！\n是否继续启动？\n\n若要寻求帮助，请将完整日志发送给他人，而不是发送此页面相关的图片。",
+            level: .error,
+            .no(),
+            .yes(label: "继续", type: .red)
+        )
+        if result == 0 { try task.cancel() }
+        return result == 1
+    }
     
     /// 创建 Minecraft 启动任务。
     /// - Parameters:
@@ -143,15 +164,7 @@ public enum MinecraftLaunchTask {
             shouldRefresh = try await model.account.shouldRefresh()
         } catch {
             err("验证令牌有效性失败：\(error.localizedDescription)")
-            if await MessageBoxManager.shared.showTextAsync(
-                title: "验证令牌有效性失败",
-                content: "在验证访问令牌有效性时发生错误：\(error.localizedDescription)\n\n如果继续启动，可能会导致无法加入部分需要验证的服务器！\n是否继续启动？\n\n若要寻求帮助，请将完整日志发送给他人，而不是发送此页面相关的图片。",
-                level: .error,
-                .no(),
-                .yes(label: "继续", type: .red)
-            ) == 0 {
-                try task.cancel()
-            }
+            try await confirmContinue(task: task, title: "验证令牌有效性", error: error)
             model.options.accessToken = model.account.accessToken
             return
         }
@@ -162,14 +175,23 @@ public enum MinecraftLaunchTask {
             } catch let error where error.isCancellationError {
             } catch {
                 err("刷新 accessToken 失败：\(error.localizedDescription)")
-                if await MessageBoxManager.shared.showTextAsync(
-                    title: "刷新访问令牌失败",
-                    content: "在刷新访问令牌时发生错误：\(error.localizedDescription)\n\n如果继续启动，可能会导致无法加入部分需要验证的服务器！\n是否继续启动？\n\n若要寻求帮助，请将完整日志发送给他人，而不是发送此页面相关的图片。",
-                    level: .error,
-                    .no(),
-                    .yes(label: "继续", type: .red)
-                ) == 0 {
-                    try task.cancel()
+                // 记录失败并落盘，避免令牌失效后每次启动都弹窗（24 小时冷却）
+                if let microsoftAccount = model.account as? MicrosoftAccount {
+                    microsoftAccount.markRefreshFailed()
+                    try? LauncherConfig.save()
+                }
+                if let authError = error as? MicrosoftAuthService.Error, case .grantExpired = authError {
+                    // 刷新令牌已永久失效：明确告知用户需要重新登录
+                    let result = await MessageBoxManager.shared.showTextAsync(
+                        title: "正版登录已过期",
+                        content: "这个账号的登录凭证已过期（通常因为超过 90 天未使用或在别处撤销了授权）。\n\n如果继续启动，可能无法加入需要正版验证的服务器。\n重新登录该账号即可彻底解决此问题！\n是否继续启动？",
+                        level: .error,
+                        .no(),
+                        .yes(label: "继续", type: .red)
+                    )
+                    if result == 0 { try task.cancel() }
+                } else {
+                    try await confirmContinue(task: task, title: "刷新访问令牌", error: error)
                 }
             }
         }
@@ -185,14 +207,9 @@ public enum MinecraftLaunchTask {
         for entry in entries {
             switch entry {
             case .javaVersionTooLow(let min):
-                _ = await MessageBoxManager.shared.showTextAsync(
-                    title: "Java 版本过低",
-                    content: "你正在使用 Java \(model.options.javaRuntime.majorVersion) 启动游戏，但这个版本需要 \(min)！",
-                    level: .error
-                )
-                try task.cancel()
+                try await fail(task: task, title: "Java 版本过低", content: "你正在使用 Java \(model.options.javaRuntime.majorVersion) 启动游戏，但这个版本需要 \(min)！")
             case .noMicrosoftAccount:
-                if AccountViewModel().accounts.reduce(false, { $0 || ($1.type == .microsoft) }) {
+                if LauncherConfig.shared.accounts.contains(where: { $0.type == .microsoft }) {
                     LauncherConfig.shared.hasMicrosoftAccount = true
                     continue
                 }
@@ -208,7 +225,7 @@ public enum MinecraftLaunchTask {
                                 .yes(label: "支持正版游戏！", type: .highlight),
                                 .no(label: "下次一定")
                             ) == 1 {
-                                NSWorkspace.shared.open(URL(string: "https://www.xbox.com/zh-cn/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj")!)
+                                NSWorkspace.shared.open(WebLinks.minecraftStore)
                             }
                         }
                     }
@@ -223,7 +240,7 @@ public enum MinecraftLaunchTask {
                     )
                     switch result {
                     case 0:
-                        NSWorkspace.shared.open(URL(string: "https://www.xbox.com/zh-cn/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj")!)
+                        NSWorkspace.shared.open(WebLinks.minecraftStore)
                         try task.cancel()
                     case 1:
                         hint("游戏将以试玩模式启动！", type: .critical)
@@ -279,11 +296,11 @@ public enum MinecraftLaunchTask {
         
         do {
             log("正在获取 Authlib Injector 版本列表")
-            let artifacts: AuthlibInjectorArtifacts = try await HTTPClient.shared.get("https://authlib-injector.yushi.moe/artifacts.json").decode(AuthlibInjectorArtifacts.self)
+            let artifacts: AuthlibInjectorArtifacts = try await HTTPClient.shared.get(APIEndpoints.AuthlibInjector.artifacts).decode(AuthlibInjectorArtifacts.self)
             guard let buildNumber = artifacts.artifacts.max(by: { $0.buildNumber < $1.buildNumber })?.buildNumber else {
                 throw SimpleError("获取 Authlib Injector 最新版本失败：找不到任何有效版本。")
             }
-            let latestArtifact: AuthlibInjectorArtifact = try await HTTPClient.shared.get("https://authlib-injector.yushi.moe/artifact/\(buildNumber).json").decode(AuthlibInjectorArtifact.self)
+            let latestArtifact: AuthlibInjectorArtifact = try await HTTPClient.shared.get(APIEndpoints.AuthlibInjector.artifact(buildNumber: buildNumber)).decode(AuthlibInjectorArtifact.self)
             let downloadItem: DownloadItem = .init(
                 url: latestArtifact.downloadURL,
                 destination: authlibInjectorURL,
@@ -370,7 +387,9 @@ public enum MinecraftLaunchTask {
         return false
     }
     
-    public class Model: TaskModel {
+    /// 启动任务的共享可变载体：由 MyTask 的多个子任务并发读写（MyTask 设计如此），
+    /// 在 Swift 6 完全迁移前以 @unchecked 担保跨隔离传递（见 ADR-003）。
+    public class Model: TaskModel, @unchecked Sendable {
         public let instance: MinecraftInstance
         public let account: Account
         public let repository: MinecraftRepository

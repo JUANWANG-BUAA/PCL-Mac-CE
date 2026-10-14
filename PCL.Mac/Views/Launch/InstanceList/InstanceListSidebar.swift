@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Core
+@preconcurrency import Core
 
 struct InstanceListSidebar: Sidebar {
     @StateObject private var instanceVM: InstanceViewModel
@@ -83,7 +83,7 @@ struct InstanceListSidebar: Sidebar {
         
         if panel.runModal() == .OK {
             guard let url = panel.url else { return }
-            Task.detached {
+            Task {
                 await modpackViewModel.importModpack(at: url, repository: repository)
             }
         }

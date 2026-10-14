@@ -1,3 +1,8 @@
 MARKETING_VERSION = 1.1.1
 CURRENT_PROJECT_VERSION = 0
 DEBUG_MODE = NO
+
+// 并发范式：渐进式 Swift 6 路径（Xcode 27 / Swift 6.2 工具链）。
+// 第一步 targeted：开启跨 actor 传递检查，清零并发警告；
+// 后续路线（见 docs-book ADR-003）：complete → SWIFT_VERSION = 6。
+SWIFT_STRICT_CONCURRENCY = targeted

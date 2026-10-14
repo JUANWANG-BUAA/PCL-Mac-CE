@@ -13,7 +13,7 @@ public class CurseForgeAPIClient {
     private let apiRoot: URL
     private let apiKey: String
     
-    public init(apiRoot: URL = .init(string: "https://api.curseforge.com")!, apiKey: String) {
+    public init(apiRoot: URL = APIEndpoints.CurseForge.apiRoot, apiKey: String) {
         self.apiRoot = apiRoot
         self.apiKey = apiKey
     }

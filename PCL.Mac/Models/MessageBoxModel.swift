@@ -31,13 +31,13 @@ struct MessageBoxModel: Equatable, Identifiable {
     public struct Button {
         public let id: Int
         public let label: String
-        public let type: MyButton.`Type`
+        public let type: MyButton.Style
         public let onClick: (() -> Void)?
         
         /// 创建一个弹窗按钮。
         /// - Parameters:
         ///   - onClick: 点击回调，有值时被点击后不会关闭弹窗。
-        public init(id: Int, label: String, type: MyButton.`Type`, onClick: (() -> Void)? = nil) {
+        public init(id: Int, label: String, type: MyButton.Style, onClick: (() -> Void)? = nil) {
             self.id = id
             self.label = label
             self.type = type
@@ -48,7 +48,7 @@ struct MessageBoxModel: Equatable, Identifiable {
         /// - Parameters:
         ///   - label: 按钮文本，默认为 `"确认"`。
         ///   - type: 按钮类型，默认为 `.normal`。
-        public static func yes(label: String = "确认", type: MyButton.`Type` = .normal) -> Button {
+        public static func yes(label: String = "确认", type: MyButton.Style = .normal) -> Button {
             return .init(id: 1, label: label, type: type)
         }
         
@@ -56,7 +56,7 @@ struct MessageBoxModel: Equatable, Identifiable {
         /// - Parameters:
         ///   - label: 按钮文本，默认为 `"取消"`。
         ///   - type: 按钮类型，默认为 `.normal`。
-        public static func no(label: String = "取消", type: MyButton.`Type` = .normal) -> Button {
+        public static func no(label: String = "取消", type: MyButton.Style = .normal) -> Button {
             return .init(id: 0, label: label, type: type)
         }
     }

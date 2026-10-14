@@ -8,7 +8,7 @@
 import Foundation
 
 public class ModrinthAPIClient {
-    public static let shared: ModrinthAPIClient = .init(apiRoot: URL(string: "https://api.modrinth.com")!)
+    public static let shared: ModrinthAPIClient = .init(apiRoot: APIEndpoints.Modrinth.apiRoot)
     
     private let apiRoot: URL
     
@@ -126,7 +126,7 @@ public class ModrinthAPIClient {
     
     // MARK: - 数据模型
     
-    public struct SearchResponse: Decodable {
+    public struct SearchResponse: Decodable, Sendable {
         private enum CodingKeys: String, CodingKey {
             case hits, offset, limit, totalHits = "total_hits"
         }

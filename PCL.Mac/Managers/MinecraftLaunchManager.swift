@@ -6,11 +6,12 @@
 //
 
 import Foundation
-import Core
+@preconcurrency import Core
 import Combine
 import ZIPFoundation
 import AppKit
 
+@MainActor
 class MinecraftLaunchManager: ObservableObject {
     public static let shared: MinecraftLaunchManager = .init()
     
@@ -43,17 +44,22 @@ class MinecraftLaunchManager: ObservableObject {
     ) {
         if isLaunching { return }
         self.loadingViewModel.text = "正在启动游戏"
-        let task: MyTask<MinecraftLaunchTask.Model> = MinecraftLaunchTask.create(for: instance, using: account, in: repository) { launcher, process in
+        let task: MyTask<MinecraftLaunchTask.Model> = MinecraftLaunchTask.create(for: instance, using: account, in: repository) { [weak self] launcher, process in
+            guard let self else { return }
             self.gameProcess = process
             process.terminationHandler = { [weak self] process in
                 log("游戏进程已退出，退出代码：\(process.terminationStatus)")
                 if ![0, 9, 15, 128 + 9, 128 + 15].contains(process.terminationStatus) {
                     log("游戏非正常退出")
-                    self?.onGameCrash(instance: instance, options: launcher.options, logURL: launcher.logURL)
+                    let options = launcher.options
+                    let logURL = launcher.logURL
+                    Task { @MainActor in
+                        self?.onGameCrash(instance: instance, options: options, logURL: logURL)
+                    }
                 } else {
                     try? FileManager.default.removeItem(at: launcher.logURL)
                 }
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     self?.cancel()
                     self?.gameProcess = nil
                 }

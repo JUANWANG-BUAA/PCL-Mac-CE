@@ -8,6 +8,7 @@
 import Foundation
 import Core
 
+@MainActor
 class ResourcesSearchViewModel: ObservableObject {
     @Published public var searchResults: [ProjectListItemModel]?
     @Published public var query: String = ""
@@ -25,16 +26,12 @@ class ResourcesSearchViewModel: ObservableObject {
     }
     
     public func search(_ query: String, pageIndex: Int = 0) async throws {
-        await MainActor.run {
-            self.query = query
-            loadingVM.reset()
-            searchResults = nil
-        }
+        self.query = query
+        loadingVM.reset()
+        searchResults = nil
         let response: ModrinthAPIClient.SearchResponse = try await ModrinthAPIClient.shared.search(type: type, query, forVersion: nil, pageIndex: pageIndex)
-        await MainActor.run {
-            lastSearchResponse = response
-            searchResults = response.hits.filter { $0.clientCompatibility != .unsupported }.map(ProjectListItemModel.init(_:))
-        }
+        lastSearchResponse = response
+        searchResults = response.hits.filter { $0.clientCompatibility != .unsupported }.map(ProjectListItemModel.init(_:))
     }
     
     public func changePage(_ page: Int) async throws {

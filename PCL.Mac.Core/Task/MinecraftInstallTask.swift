@@ -351,7 +351,8 @@ public enum MinecraftInstallTask {
         }
     }
     
-    public class Model: TaskModel {
+    /// MyTask 的共享可变载体，以 @unchecked 担保跨隔离传递（见 docs-book ADR-003）。
+    public class Model: TaskModel, @unchecked Sendable {
         public let name: String
         public let version: MinecraftVersion
         public let runningDirectory: URL
@@ -400,7 +401,7 @@ extension MinecraftInstallTask {
         if FileManager.default.fileExists(atPath: manifestURL.path) {
             try FileManager.default.removeItem(at: manifestURL)
         }
-        let url: URL = .init(string: "https://meta.fabricmc.net/v2/versions/loader/\(version)/\(loaderVersion)/profile/json")!
+        let url: URL = APIEndpoints.FabricMeta.loaderProfile(minecraftVersion: version.id, loaderVersion: loaderVersion)
         try await FileDownloader.shared.download(
             url: url,
             destination: manifestURL,

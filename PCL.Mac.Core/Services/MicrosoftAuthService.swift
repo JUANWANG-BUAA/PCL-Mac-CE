@@ -22,7 +22,7 @@ public class MicrosoftAuthService {
     /// - Returns: 用户授权代码和 `URL`。
     public func start() async throws -> AuthorizationCode {
         let json = try await post(
-            "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode",
+            APIEndpoints.MicrosoftAuth.deviceCode,
             [
                 "client_id": clientID,
                 "scope": "XboxLive.signin offline_access"
@@ -36,7 +36,7 @@ public class MicrosoftAuthService {
         self.pollInterval = interval
         return .init(
             code: json["user_code"].stringValue,
-            verificationURL: URL(string: json["verification_uri"].stringValue) ?? URL(string: "https://microsoft.com/link")!
+            verificationURL: URL(string: json["verification_uri"].stringValue) ?? APIEndpoints.MicrosoftAuth.verificationFallback
         )
     }
     
@@ -47,7 +47,7 @@ public class MicrosoftAuthService {
             throw Error.internalError
         }
         let json: JSON = try await post(
-            "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
+            APIEndpoints.MicrosoftAuth.token,
             [
                 "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
                 "client_id": clientID,
@@ -84,7 +84,7 @@ public class MicrosoftAuthService {
     /// - Returns: 新的 `MinecraftAuthResponse`。
     public func refresh(token: String) async throws -> MinecraftAuthResponse {
         let json: JSON = try await post(
-            "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
+            APIEndpoints.MicrosoftAuth.token,
             [
                 "client_id": clientID,
                 "refresh_token": token,
@@ -121,6 +121,8 @@ public class MicrosoftAuthService {
     public enum Error: Swift.Error {
         case xboxAuthenticationFailed(code: UInt32)
         case apiError(description: String)
+        /// 刷新令牌已过期或被撤销，必须重新登录。
+        case grantExpired
         case internalError
         case notPurchased
     }
@@ -141,6 +143,11 @@ public class MicrosoftAuthService {
                 return json
             }
             
+            if error == "invalid_grant" {
+                err("刷新令牌已过期或被撤销，需要重新登录")
+                throw Error.grantExpired
+            }
+            
             let description: String = json["error_description"].string ?? json["errorMessage"].stringValue
             err("调用 API 失败：\(response.statusCode) \(error)，错误描述：\(description)")
             throw Error.apiError(description: description)
@@ -158,7 +165,7 @@ public class MicrosoftAuthService {
     
     private func authenticateXBL(with accessToken: String) async throws -> XboxLiveAuthResponse {
         let json: JSON = try await post(
-            "https://user.auth.xboxlive.com/user/authenticate",
+            APIEndpoints.XboxAuth.userAuthenticate,
             [
                 "Properties": [
                     "AuthMethod": "RPS",
@@ -170,7 +177,7 @@ public class MicrosoftAuthService {
             ]
         )
         guard let uhs: String = json["DisplayClaims"]["xui"].arrayValue.first?["uhs"].string else {
-            err("https://user.auth.xboxlive.com/user/authenticate 返回的响应体中没有 uhs")
+            err("\(APIEndpoints.XboxAuth.userAuthenticate) 返回的响应体中没有 uhs")
             throw Error.internalError
         }
         return XboxLiveAuthResponse(token: json["Token"].stringValue, uhs: uhs)
@@ -178,7 +185,7 @@ public class MicrosoftAuthService {
     
     private func authorizeXSTS(with accessToken: String) async throws -> XboxLiveAuthResponse {
         let json: JSON = try await post(
-            "https://xsts.auth.xboxlive.com/xsts/authorize",
+            APIEndpoints.XboxAuth.xstsAuthorize,
             [
                 "Properties": [
                     "SandboxId": "RETAIL",
@@ -191,7 +198,7 @@ public class MicrosoftAuthService {
             ]
         )
         guard let uhs: String = json["DisplayClaims"]["xui"].arrayValue.first?["uhs"].string else {
-            err("https://xsts.auth.xboxlive.com/xsts/authorize 返回的响应体中没有 uhs")
+            err("\(APIEndpoints.XboxAuth.xstsAuthorize) 返回的响应体中没有 uhs")
             throw Error.internalError
         }
         return XboxLiveAuthResponse(token: json["Token"].stringValue, uhs: uhs)
@@ -199,7 +206,7 @@ public class MicrosoftAuthService {
     
     private func loginMinecraft(with xstsAuthResponse: XboxLiveAuthResponse) async throws -> String {
         let json: JSON = try await post(
-            "https://api.minecraftservices.com/authentication/login_with_xbox",
+            APIEndpoints.MojangServices.apiRoot.appending(path: "authentication/login_with_xbox"),
             [
                 "identityToken": "XBL3.0 x=\(xstsAuthResponse.uhs);\(xstsAuthResponse.token)"
             ]
@@ -209,7 +216,7 @@ public class MicrosoftAuthService {
     
     private func getMinecraftProfile(with token: String) async throws -> PlayerProfile? {
         let json: JSON = try await HTTPClient.shared.get(
-            "https://api.minecraftservices.com/minecraft/profile",
+            APIEndpoints.MojangServices.apiRoot.appending(path: "minecraft/profile"),
             headers: [
                 "Authorization": "Bearer \(token)"
             ]
@@ -224,7 +231,24 @@ public class MicrosoftAuthService {
         }
         // 该接口返回的 JSON 不是标准档案格式，需要根据 UUID 再获取一次
         let id: String = json["id"].stringValue
-        let data: Data = try await HTTPClient.shared.get("https://sessionserver.mojang.com/session/minecraft/profile/\(id)").data
+        let data: Data = try await HTTPClient.shared.get(APIEndpoints.MojangServices.sessionServerProfile(id: id)).data
         return try JSONDecoder.shared.decode(PlayerProfile.self, from: data)
+    }
+}
+
+extension MicrosoftAuthService.Error: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .xboxAuthenticationFailed(let code):
+            "Xbox Live 验证失败（错误代码 \(code)）。"
+        case .apiError(let description):
+            "微软账号服务返回错误：\(description)"
+        case .grantExpired:
+            "登录已过期，请重新登录该账号。"
+        case .internalError:
+            "内部错误。"
+        case .notPurchased:
+            "该微软账号尚未购买 Minecraft。"
+        }
     }
 }

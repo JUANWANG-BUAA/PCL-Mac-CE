@@ -6,12 +6,14 @@
 //
 
 import Foundation
+import AppKit
 import Core
 
 class MessageBoxManager: ObservableObject {
     public static let shared: MessageBoxManager = .init()
     public static let cancelButtonID: Int = 1000
     public static let okButtonID: Int = 1001
+    public static let copyButtonID: Int = 1002
     @Published public private(set) var currentMessageBox: MessageBoxModel?
     private let defaultButton: MessageBoxModel.Button = .yes()
     private let semaphore: AsyncSemaphore = .init(value: 1)
@@ -154,12 +156,31 @@ class MessageBoxManager: ObservableObject {
             title: title,
             content: content,
             level: level,
-            buttons: buttons
+            buttons: Self.insertingCopyButtonIfNeeded(title: title, content: content, level: level, into: buttons)
         )
         DispatchQueue.main.async {
             self.currentMessageBox = model
         }
         self.callback = callback
+    }
+    
+    /// 错误级别的文本弹窗自动前置“复制信息”按钮，便于把报错完整地转发给他人或 AI 诊断。
+    private static func insertingCopyButtonIfNeeded(
+        title: String,
+        content: MessageBoxModel.Content,
+        level: MessageBoxModel.Level,
+        into buttons: [MessageBoxModel.Button]
+    ) -> [MessageBoxModel.Button] {
+        guard case .text(let text) = content, level == .error,
+              !buttons.contains(where: { $0.id == copyButtonID }) else {
+            return buttons
+        }
+        let copyText: String = "PCL.Mac 报错信息\n【\(title)】\n\(text)"
+        return [MessageBoxModel.Button(id: copyButtonID, label: "复制信息", type: .normal) {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(copyText, forType: .string)
+            hint("已复制到剪贴板", type: .finish)
+        }] + buttons
     }
     
     public enum MessageBoxResult {

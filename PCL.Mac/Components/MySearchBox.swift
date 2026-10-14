@@ -37,7 +37,7 @@ struct MySearchBox: View {
                             .foregroundStyle(Color.colorGray3)
                     }
                 }
-                .font(.custom("PCLEnglish", size: 16))
+                .font(.pcl(16))
                 .focused($focused)
                 .onChange(of: query) { _ in
                     if query.count > 50 {

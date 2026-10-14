@@ -11,7 +11,7 @@ import Foundation
 public final class MinecraftProfileService {
     private let accessToken: String
 
-    private static let rootURL = URL(string: "https://api.minecraftservices.com/")!
+    private static let rootURL = APIEndpoints.MojangServices.apiRoot
     private static let profileURL = rootURL.appending(path: "/minecraft/profile")
     private static let activeCapeURL = rootURL.appending(path: "/minecraft/profile/capes/active")
 

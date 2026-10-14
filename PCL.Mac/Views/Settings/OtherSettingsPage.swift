@@ -29,7 +29,7 @@ struct OtherSettingsPage: View {
                 
                 Text("功能开关")
                     .foregroundStyle(Color.color1)
-                    .font(.custom("PingFangSC-Semibold", size: 14))
+                    .font(.cardTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
                 MyTip(text: "以下开关用于控制实验性功能及未经充分验证的更改。除非你了解其影响，否则请不要更改它们！", theme: .yellow)

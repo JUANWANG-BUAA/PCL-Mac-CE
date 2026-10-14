@@ -13,7 +13,7 @@ struct MyButton: View {
     private let label: String
     private let subLabel: String?
     private let textPadding: EdgeInsets
-    private let type: `Type`
+    private let type: Style
     private let disabled: Bool
     private let action: () -> Void
     
@@ -26,7 +26,7 @@ struct MyButton: View {
         _ label: String,
         subLabel: String? = nil,
         textPadding: EdgeInsets = .init(),
-        type: `Type` = .normal,
+        type: Style = .normal,
         disabled: Bool = false,
         _ action: @escaping () -> Void
     ) {
@@ -40,14 +40,14 @@ struct MyButton: View {
     
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: Radius.md)
                 .fill(color.opacity(hovered ? 0.2 : 0.005))
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: Radius.md)
                 .stroke(style: .init(lineWidth: 1.2))
                 .fill(color)
                 .padding(1.2)
                 .brightness(hovered ? 0.2 : 0)
-            VStack(spacing: 4) {
+            VStack(spacing: Spacing.xs) {
                 MyText(label, color: color)
                     .padding(textPadding)
                 if let subLabel {
@@ -58,7 +58,7 @@ struct MyButton: View {
         .scaleEffect(isPressed ? 0.85 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: hovered)
         .animation(.easeInOut(duration: 0.2), value: isPressed)
-        .contentShape(RoundedRectangle(cornerRadius: 4))
+        .contentShape(RoundedRectangle(cornerRadius: Radius.md))
         .onHover {
             guard !disabled else { return }
             hovered = $0
@@ -77,14 +77,14 @@ struct MyButton: View {
         )
     }
     
-    enum `Type` {
+    enum Style {
         case normal, highlight, red
         
         var color: Color {
             switch self {
             case .normal: .color1
             case .highlight: .color2
-            case .red: Color(0xCE2111)
+            case .red: .danger
             }
         }
         
@@ -92,7 +92,7 @@ struct MyButton: View {
             switch self {
             case .normal: .color3
             case .highlight: .color3
-            case .red: Color(0xFF4C4C)
+            case .red: .dangerHover
             }
         }
     }

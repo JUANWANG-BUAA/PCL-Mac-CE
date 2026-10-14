@@ -45,6 +45,3 @@ public struct DownloadItem: Hashable {
     }
 }
 
-public enum ReplaceMethod {
-    case replace, skip, `throw`
-}

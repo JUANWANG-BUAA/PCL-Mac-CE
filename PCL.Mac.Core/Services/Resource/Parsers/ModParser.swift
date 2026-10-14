@@ -70,7 +70,15 @@ enum ModParser: ResourceParser {
     
     
     private static func loadFabric(from data: Data) throws -> ModMeta {
-        let fabricMeta: FabricMeta = try JSONDecoder.shared.decode(FabricMeta.self, from: data)
+        let fabricMeta: FabricMeta
+        do {
+            fabricMeta = try JSONDecoder.shared.decode(FabricMeta.self, from: data)
+        } catch let error as DecodingError {
+            // 社区 mod 的 fabric.mod.json 常含未转义控制字符（严格 JSON 非法，
+            // 宽松解析器如 Newtonsoft 可读）；清洗后重试一次（见 docs-book ADR-004）
+            log("fabric.mod.json 严格解析失败（\(error.localizedDescription)），尝试宽松解析")
+            fabricMeta = try JSONDecoder.shared.decode(FabricMeta.self, from: Self.escapingControlCharacters(inJSONStrings: data))
+        }
         return .init(
             id: fabricMeta.id,
             name: fabricMeta.name,
@@ -78,6 +86,34 @@ enum ModParser: ResourceParser {
             version: fabricMeta.version,
             icon: fabricMeta.icon
         )
+    }
+    
+    /// 将 JSON 字符串字面量内未转义的控制字符（< 0x20）替换为 \uXXXX 转义序列。
+    private static func escapingControlCharacters(inJSONStrings data: Data) -> Data {
+        var output: [UInt8] = []
+        output.reserveCapacity(data.count)
+        var inString = false
+        var escaped = false
+        for byte in data {
+            if escaped {
+                output.append(byte)
+                escaped = false
+                continue
+            }
+            switch byte {
+            case 0x5C where inString: // 反斜杠
+                output.append(byte)
+                escaped = true
+            case 0x22: // 双引号
+                inString.toggle()
+                output.append(byte)
+            case 0...0x1F where inString:
+                output.append(contentsOf: "\\u\(String(format: "%04x", byte))".utf8)
+            default:
+                output.append(byte)
+            }
+        }
+        return .init(output)
     }
     
     private static func loadForge(from data: Data, jarManifest: [String: String]) throws -> ModMeta {

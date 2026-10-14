@@ -8,6 +8,7 @@
 import Foundation
 import Core
 
+@MainActor
 class ModpackViewModel: ObservableObject {
     private let instanceManager: InstanceManager
     
@@ -97,6 +98,9 @@ class ModpackViewModel: ObservableObject {
             default:
                 handleUnknownError(error)
             }
-        } catch {} // 不知道为什么必须加个 catch 兜底，上面的两个 catch 明明已经覆盖到所有声明了
+        } catch {
+            // 除上述两个类型化错误外，导入过程中的文件系统等错误会落到这里
+            handleUnknownError(error)
+        }
     }
 }

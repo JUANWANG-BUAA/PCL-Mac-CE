@@ -7,9 +7,10 @@
 
 import SwiftUI
 import Combine
-import Core
+@preconcurrency import Core
 import SwiftyJSON
 
+@MainActor
 class AccountViewModel: ObservableObject {
     @Published public private(set) var accounts: [Account] = [] {
         didSet {
@@ -146,10 +147,8 @@ class AccountViewModel: ObservableObject {
                 let account: MicrosoftAccount = .init(profile: response.profile, accessToken: response.accessToken, refreshToken: response.refreshToken)
                 log("添加正版账号成功")
                 hint("账号添加成功！", type: .finish)
-                await MainActor.run {
-                    LauncherConfig.shared.hasMicrosoftAccount = true
-                    addAccount(account)
-                }
+                LauncherConfig.shared.hasMicrosoftAccount = true
+                addAccount(account)
             } catch let error where error.isCancellationError {
             } catch let error as MicrosoftAuthService.Error {
                 switch error {
@@ -159,13 +158,13 @@ class AccountViewModel: ObservableObject {
                         showErrorMessageBox(
                             "Xbox 验证失败",
                             "当前账户为未成年账户，无法通过 Xbox Live 认证。\n请点击下方的“确定”按钮，更改账户年龄后再次尝试登录。",
-                            "https://support.microsoft.com/account-billing/837badbc-999e-54d2-2617-d19206b9540a"
+                            WebLinks.microsoftRename.absoluteString
                         )
                     case 2148916233:
                         showErrorMessageBox(
                             "Xbox 验证失败",
                             "该微软账户没有关联 Xbox 账户。\n请点击下方的“确定”按钮，关联 Xbox 账户后再次尝试登录。",
-                            "https://www.minecraft.net/msaprofile/mygames/editprofile"
+                            WebLinks.minecraftProfileEdit.absoluteString
                         )
                     default:
                         MessageBoxManager.shared.showText(
@@ -190,7 +189,14 @@ class AccountViewModel: ObservableObject {
                     showErrorMessageBox(
                         "添加正版账号失败",
                         "看起来你还没有购买 Minecraft。\n如果你已购买 Minecraft，请点击下方的“确定”按钮，创建档案后再次尝试登录。",
-                        "https://www.minecraft.net/msaprofile/mygames/editprofile"
+                        WebLinks.minecraftProfileEdit.absoluteString
+                    )
+                case .grantExpired:
+                    // 设备授权流中不会出现刷新令牌，仅为穷举完备
+                    MessageBoxManager.shared.showText(
+                        title: "添加正版账号失败",
+                        content: error.localizedDescription,
+                        level: .error
                     )
                 }
             } catch {
@@ -290,14 +296,12 @@ class AccountViewModel: ObservableObject {
                 clientToken: authResponse.clientToken
             )
             log("添加第三方账号（\(account.authServer)）成功：\(fullProfile.name)")
-            await MainActor.run {
-                addAccount(account)
-                hint("添加成功！", type: .finish)
-                currentPanel = .accountList
-                yggdrasilServer = ""
-                yggdrasilUsername = ""
-                yggdrasilPassword = ""
-            }
+            addAccount(account)
+            hint("添加成功！", type: .finish)
+            currentPanel = .accountList
+            yggdrasilServer = ""
+            yggdrasilUsername = ""
+            yggdrasilPassword = ""
         } catch {
             log("添加第三方账号失败：\(error.localizedDescription)")
             MessageBoxManager.shared.showText(
@@ -314,9 +318,7 @@ class AccountViewModel: ObservableObject {
             log("用户取消了添加")
             return
         }
-        await MainActor.run {
-            addAccount(OfflineAccount(name: playerName, uuid: UUIDUtils.uuid(ofOfflinePlayer: playerName)))
-        }
+        addAccount(OfflineAccount(name: playerName, uuid: UUIDUtils.uuid(ofOfflinePlayer: playerName)))
     }
     
     private func addAccount(_ account: Account) {

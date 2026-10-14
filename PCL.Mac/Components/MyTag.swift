@@ -26,7 +26,7 @@ struct MyTag: View {
             .fixedSize()
             .padding(2)
             .background {
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: Radius.lg)
                     .fill(backgroundColor)
             }
     }

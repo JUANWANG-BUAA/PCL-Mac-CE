@@ -79,6 +79,6 @@ public struct CurseForgeModFile: Codable {
         self.fileName = try container.decode(String.self, forKey: .fileName)
         self.hashes = try container.decode([CurseForgeModFile.FileHash].self, forKey: .hashes)
         self.available = try container.decode(Bool.self, forKey: .available)
-        self.downloadURL = try container.decodeIfPresent(URL.self, forKey: .downloadURL) ?? .init(string: "https://edge.forgecdn.net/files/\(id / 1000)/\(id % 1000)/\(fileName)")!
+        self.downloadURL = try container.decodeIfPresent(URL.self, forKey: .downloadURL) ?? APIEndpoints.CurseForge.forgeCDN.appending(path: "files/\(id / 1000)/\(id % 1000)/\(fileName)")
     }
 }

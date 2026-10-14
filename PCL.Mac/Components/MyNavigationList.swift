@@ -78,7 +78,7 @@ private struct RouteView: View {
                     .frame(width: 20, height: 20)
             }
             Text(label)
-                .font(.custom("PCLEnglish", size: 14))
+                .font(.pcl(14))
             if selected, hovered, let refresh {
                 Spacer(minLength: 0)
                 Image(.iconRefresh)

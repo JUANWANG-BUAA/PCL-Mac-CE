@@ -7,8 +7,8 @@
 
 import Foundation
 
-public protocol TaskModel: AnyObject {}
+public protocol TaskModel: AnyObject, Sendable {}
 
-public class EmptyModel: TaskModel {
+public final class EmptyModel: TaskModel, Sendable {
     public init() {}
 }

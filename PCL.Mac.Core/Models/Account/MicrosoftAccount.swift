@@ -38,4 +38,10 @@ public class MicrosoftAccount: Account {
     public func shouldRefresh() -> Bool {
         return Date.now.timeIntervalSince(lastRefresh) >= 86400
     }
+    
+    /// 记录一次失败的刷新尝试：将 lastRefresh 重置，使冷却 24 小时后再试，
+    /// 避免刷新令牌失效后每次启动都弹窗骚扰（见 docs-book ADR-004）。
+    public func markRefreshFailed() {
+        lastRefresh = .now
+    }
 }

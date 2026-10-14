@@ -11,7 +11,7 @@ import Core
 struct LaunchSidebar: Sidebar {
     @StateObject private var instanceVM: InstanceViewModel
     @StateObject private var accountVM: AccountViewModel = .init()
-    @StateObject private var launchVM: LaunchViewModel = .init()
+    @ObservedObject private var launchVM: MinecraftLaunchManager = .shared
     @State private var addingYggdrasilAccount: Bool = false
 
     @State private var showToolbar: Bool = false
@@ -68,7 +68,7 @@ struct LaunchSidebar: Sidebar {
                                 return
                             }
                             if let account = accountVM.currentAccount {
-                                launchVM.launch(instance, in: instanceVM.currentRepository, using: account)
+                                launchVM.launch(instance, using: account, in: instanceVM.currentRepository)
                             } else {
                                 hint("请先添加一个账号！", type: .critical)
                             }

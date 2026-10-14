@@ -133,7 +133,7 @@ public class ForgeInstallService {
     }
     
     internal func installerDownloadURLs() -> [URL] {
-        let root = URL(string: "https://files.minecraftforge.net/maven")!
+        let root = APIEndpoints.ForgeMaven.root
         let paths = [
             "net/minecraftforge/forge/\(minecraftVersion)-\(version)/forge-\(minecraftVersion)-\(version)-installer.jar",
             "net/minecraftforge/forge/\(minecraftVersion)-\(version)-\(minecraftVersion)/forge-\(minecraftVersion)-\(version)-\(minecraftVersion)-installer.jar"

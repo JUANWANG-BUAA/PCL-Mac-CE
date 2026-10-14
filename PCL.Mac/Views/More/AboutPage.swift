@@ -15,20 +15,20 @@ struct AboutPage: View {
                 VStack(spacing: 0) {
                     ProfileView(.local(.ltCatt), "龙腾猫跃", "Plain Craft Launcher 的作者！",
                                 .init("GitHub 主页", "https://github.com/LTCatt"),
-                                .init("前往赞助", "https://afdian.com/a/LTCat"))
+                                .init("前往赞助", WebLinks.Afdian.ltCat.absoluteString))
                     
-                    ProfileView(.network(url: "https://cylorine.studio/img/avatar/AnemoFlower.png"), "风花AnemoFlower", "PCL.Mac 的作者",
+                    ProfileView(.network(url: WebLinks.CylorineSite.avatar("AnemoFlower").absoluteString), "风花AnemoFlower", "PCL.Mac 的作者",
                                 .init("GitHub 主页", "https://github.com/AnemoFlower"),
                                 .init("Bilibili 主页", "https://space.bilibili.com/3461564927576750"),
-                                .init("前往赞助", "https://afdian.com/a/AnemoFlower"))
+                                .init("前往赞助", WebLinks.Afdian.anemoFlower.absoluteString))
                     
-                    ProfileView(.network(url: "https://cylorine.studio/img/avatar/CylorineStudio.png"), "Cylorine Studio", "PCL.Mac 的开发团队",
+                    ProfileView(.network(url: WebLinks.CylorineSite.avatar("CylorineStudio").absoluteString), "Cylorine Studio", "PCL.Mac 的开发团队",
                                 .init("GitHub 主页", "https://github.com/CylorineStudio"),
-                                .init("官方网站", "https://cylorine.studio"))
+                                .init("官方网站", APIEndpoints.CylorineSite.root.absoluteString))
                     
                     ProfileView(.local(.pclMac), "PCL.Mac.Refactor", "当前版本：\(Metadata.appVersion) (\(Metadata.bundleVersion))",
                                 .init("GitHub 仓库", "https://github.com/CylorineStudio/PCL.Mac.Refactor"),
-                                .init("官网页面", "https://cylorine.studio/projects/PCL.Mac.Refactor"))
+                                .init("官网页面", WebLinks.CylorineSite.project.absoluteString))
                 }
             }
             
@@ -41,7 +41,7 @@ struct AboutPage: View {
                                 .init("GitHub 仓库", "https://github.com/PCL-Community/PCL.Proto"))
                     
                     ProfileView(.local(.bangbang93), "bangbang93", "提供 BMCLAPI 镜像源，详见 https://bmclapi.bangbang93.com",
-                                .init("前往赞助", "https://afdian.com/a/bangbang93"))
+                                .init("前往赞助", WebLinks.Afdian.bangbang93.absoluteString))
                 }
             }
             

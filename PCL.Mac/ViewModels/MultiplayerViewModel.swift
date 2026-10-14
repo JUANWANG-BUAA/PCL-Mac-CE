@@ -6,12 +6,13 @@
 //
 
 import Foundation
-import SwiftScaffolding
+@preconcurrency import SwiftScaffolding
 import Core
 import Combine
 import AppKit
 import CryptoKit
 
+@MainActor
 class MultiplayerViewModel: ObservableObject {
     @MainActor @Published public var state: State = .ready
     @MainActor @Published public private(set) var room: Room?
@@ -39,16 +40,17 @@ class MultiplayerViewModel: ObservableObject {
             }
             state = .creatingRoom
             let code: String = RoomCode.generate()
-            Task.detached {
+            Task.detached { [weak self] in
+                guard let self else { return }
                 do {
                     let peers = await self.peers()
                     let server: ScaffoldingServer = .init(
                         easyTier: EasyTierManager.shared.makeEasyTier(peers: peers),
                         roomCode: code,
                         serverPort: serverPort,
-                        hostInfo: self.playerInfo()
+                        hostInfo: await self.playerInfo()
                     )
-                    self.registerCustomProtocols(to: server)
+                    await self.registerCustomProtocols(to: server)
                     
                     _ = try await server.startListener()
                     try server.createRoom(terminationHandler: { [weak self] process in
@@ -64,21 +66,23 @@ class MultiplayerViewModel: ObservableObject {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(server.roomCode, forType: .string)
                     }
-                    self.serverCheckTask = Task.detached {
-                        while !Task.isCancelled {
-                            try await Task.sleep(seconds: 5)
-                            guard await Scaffolding.checkMinecraftServer(on: serverPort, timeout: 5) else {
-                                log("局域网世界验活失败")
-                                await self.stopHost()
-                                MessageBoxManager.shared.showText(title: "房间已关闭", content: "局域网世界已关闭，房间已自动关闭。")
-                                break
+                    await MainActor.run {
+                        self.serverCheckTask = Task.detached {
+                            while !Task.isCancelled {
+                                try await Task.sleep(seconds: 5)
+                                guard await Scaffolding.checkMinecraftServer(on: serverPort, timeout: 5) else {
+                                    log("局域网世界验活失败")
+                                    await self.stopHost()
+                                    MessageBoxManager.shared.showText(title: "房间已关闭", content: "局域网世界已关闭，房间已自动关闭。")
+                                    break
+                                }
                             }
                         }
                     }
                     log("启动联机中心成功，房间码：\(server.roomCode)")
                 } catch {
                     err("启动联机中心失败：\(error.localizedDescription)")
-                    self.showError(title: "启动联机中心失败", body: error.localizedDescription)
+                    await self.showError(title: "启动联机中心失败", body: error.localizedDescription)
                     await MainActor.run {
                         self.stopHost()
                     }
@@ -110,12 +114,13 @@ class MultiplayerViewModel: ObservableObject {
     @MainActor
     public func join(roomCode: String) {
         state = .joiningRoom
-        Task.detached {
+        Task.detached { [weak self] in
+            guard let self else { return }
             do {
                 let peers = await self.peers()
                 let client: ScaffoldingClient = .init(
                     easyTier: EasyTierManager.shared.makeEasyTier(peers: peers),
-                    playerInfo: self.playerInfo()
+                    playerInfo: await self.playerInfo()
                 )
                 
                 try await client.connect(to: roomCode, terminationHandler: { [weak self] process in
@@ -140,7 +145,7 @@ class MultiplayerViewModel: ObservableObject {
                 }
             } catch {
                 err("加入房间失败：\(error.localizedDescription)")
-                self.showError(title: "加入房间失败", body: error.localizedDescription)
+                await self.showError(title: "加入房间失败", body: error.localizedDescription)
                 await self.leave()
             }
         }
@@ -159,9 +164,7 @@ class MultiplayerViewModel: ObservableObject {
     @discardableResult
     public func fetchEasyTierStatus() async throws -> CLAPIClient.EasyTierStatus {
         let status: CLAPIClient.EasyTierStatus = try await CLAPIClient.shared.getEasyTierStatus()
-        await MainActor.run {
-            self.easyTierStatus = status
-        }
+        easyTierStatus = status
         return status
     }
     
@@ -178,9 +181,7 @@ class MultiplayerViewModel: ObservableObject {
     }
     
     private func switchState(to state: State) async {
-        await MainActor.run {
-            self.state = state
-        }
+        self.state = state
     }
     
     @MainActor
@@ -212,7 +213,7 @@ class MultiplayerViewModel: ObservableObject {
             log("发送心跳包失败：\(error.localizedDescription)")
             showError(title: "发生未知错误", body: "同步数据失败：\(error.localizedDescription)")
         }
-        await leave()
+        leave()
     }
     
     private func registerCustomProtocols(to server: ScaffoldingServer) {
@@ -241,7 +242,7 @@ class MultiplayerViewModel: ObservableObject {
                 throw SimpleError("Message validation failed")
             }
             Task {
-                await self.stopHost()
+                self.stopHost()
             }
             MessageBoxManager.shared.showText(
                 title: "房间被强制关闭",

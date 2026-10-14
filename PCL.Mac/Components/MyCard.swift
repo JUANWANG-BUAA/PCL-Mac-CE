@@ -76,7 +76,7 @@ struct MyCard<Content: View, Action: View>: View {
             if titled {
                 HStack {
                     Text(title)
-                        .font(.custom("PingFangSC-Semibold", size: 14))
+                        .font(.cardTitle)
                     Spacer()
                     if foldable {
                         Image(.btnFold)
@@ -89,7 +89,7 @@ struct MyCard<Content: View, Action: View>: View {
                 }
                 .foregroundStyle(appearFinished && !disableHoverAnimation && showHovered ? Color.color2 : .color1)
                 .frame(height: 12)
-                .padding(12)
+                .padding(Spacing.md)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     guard foldable else { return }
@@ -169,9 +169,9 @@ struct MyCard<Content: View, Action: View>: View {
             self.showHovered = hovered
         }
         .background {
-            RoundedRectangle(cornerRadius: 5)
+            RoundedRectangle(cornerRadius: Radius.lg)
                 .fill(Color.colorGray8)
-                .shadow(color: showHovered ? .color3.opacity(0.6) : .black.opacity(0.1), radius: 6)
+                .shadow(color: showHovered ? ShadowToken.cardHover : ShadowToken.card, radius: 6)
         }
         .offset(y: appeared ? 0 : -25)
         .opacity(appeared ? 1 : 0)

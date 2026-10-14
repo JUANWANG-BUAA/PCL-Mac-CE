@@ -49,7 +49,8 @@ public enum JavaInstallTask {
         }
     }
     
-    public class Model: TaskModel {
+    /// MyTask 的共享可变载体，以 @unchecked 担保跨隔离传递（见 docs-book ADR-003）。
+    public class Model: TaskModel, @unchecked Sendable {
         public var manifest: MojangJavaManifest!
         
         public init() {}

@@ -28,10 +28,13 @@ public class TaskManager: ObservableObject {
     public func execute<Model>(task: MyTask<Model>, display: Bool = true, completion: ((Error?) -> Void)? = nil) -> Task<Void, Error> {
         let id: UUID = task.id
         tasks.append(.init(task, display: display))
+        // MyTask 的 Model 是跨子任务共享的可变载体（MyTask 设计如此），
+        // 在 Swift 6 完全迁移前以此声明担保跨隔离传递（见 ADR-003）。
+        nonisolated(unsafe) let unsafeTask = task
         let executorTask: Task<Void, Error> = Task {
             var e: Error?
             do {
-                try await task.start()
+                try await unsafeTask.start()
             } catch {
                 e = error
             }
@@ -40,11 +43,11 @@ public class TaskManager: ObservableObject {
                 if let error, !error.isCancellationError {
                     _ = await MessageBoxManager.shared.showTextAsync(
                         title: "任务执行失败",
-                        content: "任务 \(task.name) 执行失败：\(error.localizedDescription)\n\n若要寻求帮助，请将完整日志发送给他人，而不是发送关于此页面的图片。",
+                        content: "任务 \(unsafeTask.name) 执行失败：\(error.localizedDescription)\n\n若要寻求帮助，请将完整日志发送给他人，而不是发送关于此页面的图片。",
                         level: .error
                     )
                 } else if error == nil {
-                    hint("任务 \(task.name) 执行完成", type: .finish)
+                    hint("任务 \(unsafeTask.name) 执行完成", type: .finish)
                 }
             }
             await MainActor.run {

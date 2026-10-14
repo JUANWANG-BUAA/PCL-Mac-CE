@@ -35,7 +35,7 @@ public enum NativesMapper {
         for library in manifest.getLibraries() {
             if library.groupId == "org.lwjgl" && library.version.starts(with: "3.") && library.version != "3.3.3" {
                 if library.artifactId == "lwjgl-glfw" {
-                    newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl.mmachina:lwjgl-glfw:3.3.1-mmachina.1", in: URL(string: "https://repo1.maven.org/maven2/")!))
+                    newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl.mmachina:lwjgl-glfw:3.3.1-mmachina.1", in: APIEndpoints.MavenCentral.root))
                     continue
                 } else {
                     newLibraries.append(setVersion(for: library, to: "3.3.1"))
@@ -45,7 +45,7 @@ public enum NativesMapper {
                 newLibraries.append(setVersion(for: library, to: "5.14.0"))
                 continue
             } else if library.groupId == "ca.weblite" && library.artifactId == "java-objc-bridge" {
-                newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl.mmachina:java-objc-bridge:1.1.0-mmachina.1", in: URL(string: "https://repo1.maven.org/maven2/")!))
+                newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl.mmachina:java-objc-bridge:1.1.0-mmachina.1", in: APIEndpoints.MavenCentral.root))
                 continue
             }
             newLibraries.append(library)
@@ -58,10 +58,10 @@ public enum NativesMapper {
                     continue
                 }
             } else if library.groupId == "org.lwjgl.lwjgl" && library.artifactId == "lwjgl-platform" {
-                newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl:lwjgl2-natives:2.9.3-rc1-osx-arm64", in: URL(string: "https://repo1.maven.org/maven2/")!))
+                newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl:lwjgl2-natives:2.9.3-rc1-osx-arm64", in: APIEndpoints.MavenCentral.root))
                 continue
             } else if library.groupId == "ca.weblite" && library.artifactId == "java-objc-bridge" {
-                newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl.mmachina:java-objc-bridge:1.1.0-mmachina.1", in: URL(string: "https://repo1.maven.org/maven2/")!))
+                newLibraries.append(setArtifact(for: library, to: "org.glavo.hmcl.mmachina:java-objc-bridge:1.1.0-mmachina.1", in: APIEndpoints.MavenCentral.root))
                 continue
             }
             newLibraries.append(library)

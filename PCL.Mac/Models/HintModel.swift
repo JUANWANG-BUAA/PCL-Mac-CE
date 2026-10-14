@@ -9,10 +9,10 @@ import Foundation
 
 struct HintModel: Identifiable, Equatable {
     public let text: String
-    public let type: `Type`
+    public let type: Kind
     public let id: UUID = .init()
     
-    public enum `Type` {
+    public enum Kind {
         case info, finish, critical
     }
 }
