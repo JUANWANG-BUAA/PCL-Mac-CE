@@ -18,6 +18,7 @@ class UpdateService {
             log("启动器更新被忽略，取消更新检查")
             return
         }
+        guard isUpdateSourceAvailable(manually: manually) else { return }
         Task {
             await semaphore.wait()
             defer { Task { await semaphore.signal() } }
@@ -73,6 +74,19 @@ class UpdateService {
                 hint("更新失败：\(error.localizedDescription)", type: .critical)
             }
         }
+    }
+
+    /// 更新源是否可用（原上游源已随站点关闭失效）：
+    /// 不可用时跳过整个流程、不发起请求；手动检查时明确告知。
+    private func isUpdateSourceAvailable(manually: Bool) -> Bool {
+        guard UpdateManager.isSourceConfigured else {
+            log("更新源未配置，跳过更新检查")
+            if manually {
+                hint("启动器更新服务暂未配置（更新源迁移中）", type: .info)
+            }
+            return false
+        }
+        return true
     }
 
     private func formatSize(_ size: Int) -> String {

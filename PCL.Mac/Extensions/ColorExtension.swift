@@ -12,7 +12,7 @@ import SwiftUI
 /// 所有颜色都委托到 `ThemeManager`，因此主题切换后需要重建视图树才能刷新
 /// （`RootView` 以 `.id(theme)` 实现，见 `ThemeManager` 文档）。
 extension Color {
-    // https://github.com/CylorineStudio/PCL.Mac.Refactor/issues/13
+    // 出处：PCL2-CE 官方色板（原上游仓库 issue #13；该仓库已转为私有，此行仅作出处记录）
     // https://github.com/PCL-Community/PCL2-CE/blob/cf2ddb8cbd2a3edc00ebd9ebf7533b0ba7b7de10/Plain%20Craft%20Launcher%202/Application.xaml#L28-L84
     private static var palette: AppTheme.Palette { ThemeManager.shared.theme.palette }
 

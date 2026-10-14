@@ -19,6 +19,9 @@ public enum WebLinks {
     /// Minecraft 正版玩家档案编辑页（改名、皮肤）。
     public static let minecraftProfileEdit: URL = .init(string: "https://www.minecraft.net/msaprofile/mygames/editprofile")!
     /// GitHub 问题讨论区。
+    ///
+    /// ⚠️ 指向的原上游仓库（CylorineStudio/PCL.Mac.Refactor）已转为私有，链接失效；
+    /// 本项目自身的仓库确定后在此处替换。
     public static func githubDiscussion(category: String) -> URL {
         .init(string: "https://github.com/CylorineStudio/PCL.Mac.Refactor/discussions/new?category=\(category)")!
     }
@@ -35,9 +38,11 @@ public enum WebLinks {
         public static let bangbang93: URL = .init(string: "https://afdian.com/a/bangbang93")!
     }
 
-    /// 作者自建站点页面。
+    /// 原上游作者的站点页面。
     ///
-    /// ⚠️ 主域已下线（404），链接保留待站点恢复或迁移后一处更新。
+    /// ⚠️ 上游项目已关闭：主域整站下线（404）且不会恢复。本枚举仅作历史记录保留，
+    /// **不再被任何 UI 引用**（关于页 / 帮助 / 隐私政策等入口均已移除）；
+    /// 本项目自己的站点确定后，另建命名空间在此登记。
     public enum CylorineSite {
         public static let project: URL = APIEndpoints.CylorineSite.root.appending(path: "projects/PCL.Mac.Refactor")
         public static let privacy: URL = APIEndpoints.CylorineSite.root.appending(path: "privacy")

@@ -13,6 +13,12 @@ import ZIPFoundation
 class UpdateManager {
     public static let shared: UpdateManager = .init(APIEndpoints.CylorineSite.launcherUpdate)
 
+    /// 更新源是否已配置。
+    ///
+    /// ⚠️ 原更新源随上游关闭（`cylorine.studio/meta/...` 已 404）。本项目的新更新源
+    /// 确定并部署后：把此开关改为 `true`，并把 `shared` 的初始化地址换成新源。
+    public static let isSourceConfigured: Bool = false
+
     private let updateMetadataURL: URL
 
     private init(_ updateMetadataURL: URL) {

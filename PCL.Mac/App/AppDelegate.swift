@@ -61,13 +61,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             alert.informativeText = error.localizedDescription
             alert.alertStyle = .critical
 
-            _ = alert.addButton(withTitle: "反馈")
+            // 原上游仓库已关闭，不再提供"反馈"跳转；错误详情见日志
             _ = alert.addButton(withTitle: "退出")
 
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                NSWorkspace.shared.open(WebLinks.githubDiscussion(category: "q-a"))
-            }
+            _ = alert.runModal()
             exit(1)
         }
         LogManager.shared.enableLogging()
@@ -164,14 +161,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !LauncherConfig.shared.hasEnteredLauncher {
             MessageBoxManager.shared.showText(
                 title: "欢迎使用 PCL.Mac！",
-                content: "PCL.Mac 是 Plain Craft Launcher 的非官方衍生版，使用 SwiftUI 框架完全重构了 PCL 以支持 macOS。\n本启动器还处于开发阶段，有许多功能尚未完成，Bug 可能也比较多……\n若要获取帮助或查看更多信息，请访问 Cylorine Studio 官方网站！\n\n在开始使用前，请先阅读 Cylorine Studio 隐私政策。",
+                content: "PCL.Mac 是 Plain Craft Launcher 的非官方衍生版，使用 SwiftUI 框架完全重构了 PCL 以支持 macOS。\n"
+                    + "本启动器还处于开发阶段，有许多功能尚未完成，Bug 可能也比较多……\n\n"
+                    + "本版本现由 JUANWANG（github.com/JUANWANG-BUAA）独立维护并持续开发；原项目已停止公开开发。",
                 level: .info,
-                .init(id: 0, label: "打开 Cylorine Studio 官网", type: .normal) {
-                    NSWorkspace.shared.open(WebLinks.CylorineSite.project)
-                },
-                .init(id: 1, label: "查看隐私政策", type: .normal) {
-                    NSWorkspace.shared.open(WebLinks.CylorineSite.privacy)
-                },
                 .init(id: 2, label: "开始使用", type: .highlight)
             ) { _ in
                 LauncherConfig.shared.hasEnteredLauncher = true

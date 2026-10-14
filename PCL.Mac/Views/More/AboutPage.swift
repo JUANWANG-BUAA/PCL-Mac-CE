@@ -17,18 +17,16 @@ struct AboutPage: View {
                                 .init("GitHub 主页", "https://github.com/LTCatt"),
                                 .init("前往赞助", WebLinks.Afdian.ltCat.absoluteString))
 
-                    ProfileView(.network(url: WebLinks.CylorineSite.avatar("AnemoFlower").absoluteString), "风花AnemoFlower", "PCL.Mac 的作者",
-                                .init("GitHub 主页", "https://github.com/AnemoFlower"),
-                                .init("Bilibili 主页", "https://space.bilibili.com/3461564927576750"),
-                                .init("前往赞助", WebLinks.Afdian.anemoFlower.absoluteString))
+                    // 新维护者：原项目停更后接手本版本，持续开发中
+                    ProfileView(.network(url: "https://github.com/JUANWANG-BUAA.png"), "JUANWANG", "PCL.Mac 社区维护版的维护者 · 持续开发中",
+                                .init("GitHub 主页", "https://github.com/JUANWANG-BUAA"))
 
-                    ProfileView(.network(url: WebLinks.CylorineSite.avatar("CylorineStudio").absoluteString), "Cylorine Studio", "PCL.Mac 的开发团队",
-                                .init("GitHub 主页", "https://github.com/CylorineStudio"),
-                                .init("官方网站", APIEndpoints.CylorineSite.root.absoluteString))
-
-                    ProfileView(.local(.pclMac), "PCL.Mac.Refactor", "当前版本：\(Metadata.appVersion) (\(Metadata.bundleVersion))",
-                                .init("GitHub 仓库", "https://github.com/CylorineStudio/PCL.Mac.Refactor"),
-                                .init("官网页面", WebLinks.CylorineSite.project.absoluteString))
+                    // 上游（CylorineStudio/PCL.Mac.Refactor）已关闭：不再提供其站点/仓库/赞助等外链
+                    // （原链接均已成死链、头像图源已下线），仅保留事实性的代码基线说明；
+                    // 本项目自身的仓库地址待确定后在此补充
+                    ProfileView(.local(.pclMac), "PCL.Mac",
+                                "原项目由风花AnemoFlower 与 Cylorine Studio 开发，已停止公开开发；"
+                                + "本版本基于其 v1.1.1 代码基线独立维护 · 当前版本 \(Metadata.appVersion) (\(Metadata.bundleVersion))")
                 }
             }
 

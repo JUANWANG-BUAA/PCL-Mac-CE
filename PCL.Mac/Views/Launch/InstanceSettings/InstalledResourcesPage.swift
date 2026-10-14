@@ -50,10 +50,8 @@ struct InstalledResourcesPage: View {
             } else {
                 CardContainer {
                     if viewModel.type == .shader {
-                        MyTip(text: "光影包需要搭配光影加载器使用。\n详细教程：\(WebLinks.CylorineSite.shaderHelp.absoluteString)", theme: .blue)
-                            .onTapGesture {
-                                NSWorkspace.shared.open(WebLinks.CylorineSite.shaderHelp)
-                            }
+                        // 原站教程链接随上游关闭失效，先只保留提示本身
+                        MyTip(text: "光影包需要搭配光影加载器使用。", theme: .blue)
                     }
 
                     MySearchBox(placeholder: "搜索\(viewModel.type.localizedName)") { keyword in

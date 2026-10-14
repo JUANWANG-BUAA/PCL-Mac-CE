@@ -1,14 +1,13 @@
 <div align="center">
   <img alt="Logo" src=".github/assets/icon.png" width="140">
   <h1>PCL.Mac</h1>
-  <img src="https://img.shields.io/github/stars/CylorineStudio/PCL.Mac.Refactor?style=flat&color=yellow" alt="Stars">
   <img src="https://img.shields.io/badge/macOS-12.0+-blue?logo=macos" alt="Minimum OS Version">
-  <img src="https://img.shields.io/github/commit-activity/m/CylorineStudio/PCL.Mac.Refactor?style=flat&color=blue" alt="Activity">
-  <img src="https://img.shields.io/github/contributors/CylorineStudio/PCL.Mac.Refactor?style=flat&color=green" alt="Contributors">
 </div>
 <br>
 
-PCL.Mac 是 [Plain Craft Launcher](https://github.com/Meloong-Git/PCL)（由 [龙腾猫跃](https://afdian.com/a/LTCat) 制作的 Minecraft 启动器）的**非官方**重构版，使用 SwiftUI 框架**完全重构**了 PCL 以支持 macOS。
+PCL.Mac 是 [Plain Craft Launcher](https://github.com/Meloong-Git/PCL)（由 [龙腾猫跃](https://afdian.com/a/LTCat) 制作的 Minecraft 启动器）的**非官方**衍生版，使用 SwiftUI 框架**完全重构**了 PCL 以支持 macOS。
+
+> **维护状态**：原 PCL.Mac 项目（`CylorineStudio/PCL.Mac.Refactor`）已停止公开开发；现由 [**@JUANWANG-BUAA**](https://github.com/JUANWANG-BUAA) 接手独立维护并**持续开发**，基于原项目的 v1.1.1 代码基线。本项目与 Cylorine Studio、PCL 官方均无隶属关系。
 
 <table>
   <tr>
@@ -17,14 +16,12 @@ PCL.Mac 是 [Plain Craft Launcher](https://github.com/Meloong-Git/PCL)（由 [�
   </tr>
 </table>
 
-用户群（QQ）：见[官方网站](https://cylorine.studio/projects/PCL.Mac.Refactor#user_group)
-
 **请不要在 PCL 官方版本 / 其它版本相关仓库或群聊中反馈关于 PCL.Mac 的问题。**
 
 ## 下载
-你可以在 [Releases](https://github.com/CylorineStudio/PCL.Mac.Refactor/releases) 中下载 PCL.Mac（Universal）。<br>
 
-我们已为 v1.0.1 及以上版本添加了签名和有效公证票据，无需进入系统设置放行。
+发布渠道待定（原发布页随上游关闭，新的发布地址确定后在此更新）。<br>
+已发布版本的签名与公证信息会在新发布页说明。
 
 ## 环境要求
 

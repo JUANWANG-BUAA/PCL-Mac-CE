@@ -134,10 +134,6 @@ struct MultiplayerPage: View {
                             }
                         }
                     }
-                MyListItem(.init(image: .iconAbout, imageSize: 28, name: "帮助文档", description: "点击这里可以查看联机教程！"))
-                    .onTapGesture {
-                        NSWorkspace.shared.open(WebLinks.CylorineSite.multiplayerHelp)
-                    }
             }
         }
     }
