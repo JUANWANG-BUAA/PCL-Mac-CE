@@ -39,7 +39,11 @@ public enum Architecture: String, CustomStringConvertible {
         if fatMagicNumbers.contains(magic) {
             return architectureFromFat(handle)
         }
-        return architecture(forCPUType: magic)
+        // thin 二进制的 cputype 是 magic 紧随其后的 4 字节——magic 本身不是 cputype。
+        // （曾误把 magic 直接传入 forCPUType，导致所有 thin 二进制被判为 unknown：
+        //   本机 Homebrew / Mojang / Corretto 的 arm64 JDK 全部无法被识别。）
+        guard let cputype = readUInt32(from: handle) else { return .unknown }
+        return architecture(forCPUType: cputype)
     }
 
     /// 解析 fat（Universal）二进制：依次读取各架构描述，判断包含的架构。
