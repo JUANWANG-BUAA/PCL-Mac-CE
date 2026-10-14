@@ -24,6 +24,9 @@ struct ContentView: View {
                 AppSidebarView()
                 AppRouterView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // 内容区遮罩：页面玻璃与卡片材质在失焦 / 过渡期会"回退态 → 真实态"地
+                    // settle（亮度突变）；盖上后 settle 发生在遮罩之下（见 GlassCoverState）
+                    .overlay { GlassCoverOverlay(dark: false) }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

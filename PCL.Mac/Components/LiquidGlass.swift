@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppKit
+import Core
 
 /// Liquid Glass 辅助：macOS 26+ 使用官方玻璃效果，低版本回退为系统材质。
 ///
@@ -127,11 +128,124 @@ struct GlassPageBackground: View {
     }
 }
 
+/// 玻璃遮罩状态：控制全窗遮罩（侧栏 / 顶栏 / 内容区）的显示。
+///
+/// 背景（Cmd+Tab 问题的完整根因，见 ADR-007 补充五）：系统在窗口失活 / Cmd+Tab
+/// 切换期间不提供背板采样——**任何采样类内容**（自定义玻璃、系统材质、卡片材质、
+/// 页面玻璃）都会回退成平板外观，并在背板恢复时"settle"，
+/// 实机表现为黑块 / 纯色块 / 亮度突变。
+/// 遮罩必须是**完全不依赖采样的纯 App 绘制面**（平滑玻璃光泽面：底色 + 光泽渐变 +
+/// 顶部泛光，无任何噪声颗粒）：任何窗口状态下的渲染完全一致。
+/// 失活瞬间立即盖上（侧栏深色调、顶栏与内容区浅色调，保留窗口的结构感）；
+/// 回到前台 0.7s 后再 0.35s 淡出——此时切换动画与背板恢复都已结束，
+/// 露出的玻璃与内容都已是最终状态，全程没有任何突变。
+@MainActor
+private final class GlassCoverState: ObservableObject {
+    static let shared: GlassCoverState = .init()
+
+    /// 揭幕延迟：激活后遮罩保持的时长（实机调试后定为 0.7s）。
+    /// 越短揭幕越快；过短可能露出玻璃/材质的回退态（黑块/亮度突变）。
+    private static let revealDelay: TimeInterval = 0.7
+
+    /// 遮罩是否遮盖（= 窗口失活 / 切换过渡 / 回到前台后的短暂收尾期）。
+    @Published private(set) var isCovered: Bool
+
+    private var revealWorkItem: DispatchWorkItem?
+
+    private init() {
+        self.isCovered = !NSApplication.shared.isActive
+        let center = NotificationCenter.default
+        // 用 willResignActive（比 didResignActive 更早）：第一时间盖上遮罩，
+        // 失活期任何采样类内容的回退渲染都不可见
+        center.addObserver(forName: NSApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.cover()
+            }
+        }
+        center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.scheduleReveal()
+            }
+        }
+    }
+
+    /// 失活 / 切换出去：立即盖上遮罩（无动画，失活瞬间完成遮挡）。
+    private func cover() {
+        revealWorkItem?.cancel()
+        revealWorkItem = nil
+        guard !isCovered else { return }
+        isCovered = true
+        log("玻璃遮罩：盖上（应用失活）")
+    }
+
+    /// 激活：等安全间隔到点后自动揭幕（无需用户交互，可预期且更快）。
+    private func scheduleReveal() {
+        revealWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            self?.reveal()
+        }
+        revealWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.revealDelay, execute: item)
+    }
+
+    private func reveal() {
+        guard isCovered else { return }
+        isCovered = false
+        log("玻璃遮罩：揭幕（激活后 \(Self.revealDelay)s）")
+    }
+}
+
+/// 遮罩面：完全不透明的"玻璃光泽面"——平滑底色 + 上亮下暗的光泽渐变
+/// + 顶部柔和泛光，参照系统玻璃按钮的质感。纯 App 绘制、**不含任何噪声颗粒**，
+/// 任何窗口状态下的渲染完全一致。
+private struct GlassCoverSurface: View {
+    let dark: Bool
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(dark ? Color(0x1E2025) : Color(0xAAB2BC))
+            LinearGradient(
+                stops: [
+                    .init(color: .white.opacity(dark ? 0.10 : 0.18), location: 0),
+                    .init(color: .clear, location: 0.55),
+                    .init(color: .black.opacity(dark ? 0.12 : 0.06), location: 1)
+                ],
+                startPoint: .top, endPoint: .bottom
+            )
+            RadialGradient(
+                colors: [.white.opacity(dark ? 0.06 : 0.12), .clear],
+                center: .init(x: 0.5, y: 0.1),
+                startRadius: 0,
+                endRadius: dark ? 180 : 260
+            )
+        }
+    }
+}
+
+/// 全窗遮罩：按 `GlassCoverState` 把玻璃光泽面盖上 / 揭开——
+/// 盖上无动画（失活瞬间完成遮挡），揭开 0.35s 淡出（渐变呈现，不突然）。
+struct GlassCoverOverlay: View {
+    @ObservedObject private var coverState: GlassCoverState = .shared
+    let dark: Bool
+
+    var body: some View {
+        GlassCoverSurface(dark: dark)
+            .opacity(coverState.isCovered ? 1 : 0)
+            .allowsHitTesting(false)
+            .animation(coverState.isCovered ? nil : .easeOut(duration: 0.35), value: coverState.isCovered)
+    }
+}
+
 /// 侧栏/顶栏玻璃背景：在页面玻璃之上再叠一层 clear 玻璃，并施加额外的模糊。
 ///
 /// 需要比内容区更重的模糊以区分层次，但依然保持透光（可以辨认壁纸轮廓）。
 /// 实测直接叠加多层 clear 玻璃不会进一步模糊（每层都采样窗口背后的壁纸），
 /// 因此在 clear 玻璃之上再应用一次 `blur`，用极低的白色代价换取更强磨砂感。
+///
+/// 失焦 / 切换期间由上方的不透明毛玻璃遮罩（见 `GlassCoverState` / `GlassCoverOverlay`）
+/// 遮挡：遮罩是纯 App 绘制面，任何状态下渲染恒定；玻璃被遮住期间渲染成什么都不可见。
+/// 因此这里**不再对玻璃做任何状态切换**——色调与模糊恒定，就是原版；
+/// 回到前台约 0.7s 后遮罩 0.35s 淡出露出原版玻璃，全程只有一次柔和过渡。
 ///
 /// - Parameter dark: 深色侧栏（原生风格）：加黑色色调以承载白色文字，
 ///   同时保持半透明，让壁纸以磨砂形式透出。
@@ -140,15 +254,12 @@ struct GlassSidebarBackground: View {
 
     var body: some View {
         if #available(macOS 26.0, *) {
-            NativeGlassEffectView(
-                style: .clear,
-                // 顶栏：一层轻而均匀的浅色底，保证标题区不受背后壁纸明暗影响；
-                // 侧栏：深色调，承载白色文字
-                tint: dark
-                    ? NSColor.black.withAlphaComponent(0.38)
-                    : NSColor.windowBackgroundColor.withAlphaComponent(0.35)
-            )
-            .blur(radius: 5, opaque: true)
+            ZStack {
+                NativeGlassEffectView(style: .clear, tint: glassTint)
+                    .blur(radius: 5, opaque: true)
+                // 遮罩盖在玻璃之上：完全不透明，玻璃在它之下渲染什么都不可见
+                GlassCoverOverlay(dark: dark)
+            }
         } else if dark {
             // macOS 26 以下：用暗色材质模拟深色玻璃
             Rectangle()
@@ -158,6 +269,14 @@ struct GlassSidebarBackground: View {
             Rectangle()
                 .fill(AppTheme.liquidGlass.sidebarBackground)
         }
+    }
+
+    /// 玻璃色调：顶栏一层轻而均匀的浅色底（标题区不受背后壁纸明暗影响）；
+    /// 侧栏深色调，承载白色文字。
+    private var glassTint: NSColor {
+        dark
+            ? NSColor.black.withAlphaComponent(0.38)
+            : NSColor.windowBackgroundColor.withAlphaComponent(0.35)
     }
 }
 
