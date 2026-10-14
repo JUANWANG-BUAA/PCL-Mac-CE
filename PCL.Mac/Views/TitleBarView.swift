@@ -19,9 +19,19 @@ struct TitleBarView: View {
                 Rectangle()
                     .fill(.blue)
             } else {
-                // 原生风格：工具栏材质（与系统 toolbar 一致）
-                Rectangle()
-                    .fill(.bar)
+                // 原生风格：左侧绘制侧栏材质（侧栏延伸到顶），
+                // 右侧透明（透出内容背景，顶栏与内容区连成一体）
+                HStack(spacing: 0) {
+                    Rectangle()
+                        .fill(ThemeManager.shared.theme.sidebarBackground)
+                        .frame(width: AppSidebarView.sidebarWidth(for: router.last))
+                        .overlay(alignment: .trailing) {
+                            Rectangle()
+                                .fill(Color.black.opacity(0.07))
+                                .frame(width: 0.5)
+                        }
+                    Spacer(minLength: 0)
+                }
             }
             Group {
                 if router.isSubPage {
@@ -57,7 +67,8 @@ struct TitleBarView: View {
                     }
                 }
             }
-            .padding(.leading, 65)
+            // 原生风格下交通灯更靠右，加大左侧留白避免 logo 与绿灯重叠
+            .padding(.leading, isNative ? 84 : 65)
         }
         .frame(height: 48)
     }

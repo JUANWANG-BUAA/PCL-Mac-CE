@@ -171,6 +171,23 @@ struct AppSidebarView: View {
 
     init() {}
 
+    /// 当前路由对应的侧栏宽度。
+    /// 供顶栏绘制"侧栏延伸到顶"的分层背景使用，需与 `sidebar` 的映射保持一致。
+    static func sidebarWidth(for route: AppRoute) -> CGFloat {
+        switch route {
+        case .launch: 285
+        case .instanceList: 300
+        case .instanceSettings, .instanceConfig, .installedResources: 140
+        case .minecraftDownload, .resourceDownload: 150
+        case .multiplayer, .multiplayerSub, .multiplayerSettings: 150
+        case .settings, .launcherSettings, .javaSettings, .otherSettings: 140
+        case .more, .about, .toolbox: 140
+        case .tasks: 220
+        // 其余页面（安装页/项目详情等）无侧栏，与 `sidebar` 的 default 分支一致
+        default: 0
+        }
+    }
+
     var sidebar: any Sidebar {
         switch router.last {
         case .launch: LaunchSidebar(instanceManager: instanceManager)
@@ -191,6 +208,14 @@ struct AppSidebarView: View {
                 .fill(ThemeManager.shared.theme.sidebarBackground)
                 .frame(width: width)
                 .shadow(radius: ThemeManager.shared.theme.isNativeStyle ? 0 : 2)
+                .overlay(alignment: .trailing) {
+                    // 原生风格：侧栏与内容区的细分隔线（材质色差微弱时提供明确分界）
+                    if ThemeManager.shared.theme.isNativeStyle {
+                        Rectangle()
+                            .fill(Color.black.opacity(0.07))
+                            .frame(width: 0.5)
+                    }
+                }
                 .zIndex(10)
 
             AnyView(sidebar)
