@@ -51,8 +51,17 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
     }
 
     /// 卡片背景。
+    ///
+    /// 原生风格**不使用 `Material`**：页面底已经是重模糊的玻璃（`GlassPageBackground`），
+    /// 材质会对同一画面做第二次模糊与降饱和——实机观感即"卡片发灰的奶雾"。
+    /// 改为不采样的半透明填充：透过卡片看到的本来就是页面玻璃的模糊画面，
+    /// 视觉上等价，却不再二次降饱和，卡片呈现为"玻璃上的玻璃片"。
+    /// 0.6：在保留玻璃透光观感的同时，为正文/次级文字提供稳定的对比度底座
+    /// （0.45–0.5 在亮壁纸下会让 .secondary 文字跌破可读线）。
     var cardBackground: AnyShapeStyle {
-        isNativeStyle ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(Color.colorGray8)
+        isNativeStyle
+            ? AnyShapeStyle(Color.white.opacity(0.6))
+            : AnyShapeStyle(Color.colorGray8)
     }
 
     /// 卡片圆角半径（原生风格使用 macOS 卡片标准的 10pt）。

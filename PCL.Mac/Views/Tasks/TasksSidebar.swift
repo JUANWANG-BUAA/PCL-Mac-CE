@@ -42,11 +42,12 @@ private struct PanelView: View {
     }
 
     var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
         VStack {
-            MyText(title, size: 14, color: .color2)
+            MyText(title, size: 14, color: isNative ? .secondary : .color2)
             Rectangle()
-                .fill(Color.color2)
-                .frame(width: 180, height: 2)
+                .fill(isNative ? Color.primary.opacity(0.12) : Color.color2)
+                .frame(width: 180, height: isNative ? 1 : 2)
             MyText(value, size: 20)
         }
     }

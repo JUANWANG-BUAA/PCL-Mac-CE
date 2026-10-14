@@ -20,9 +20,10 @@ struct MessageBoxView: View {
         let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack {
             if isNative {
-                // 原生风格：WinUI 风格 Acrylic 玻璃浮层（高模糊 + 色调 + 噪点 + 高光边）
+                // 原生风格：官方玻璃浮层（与顶栏胶囊/按钮同一材质语言），
+                // 替代此前的 WinUI Acrylic（噪点 + 白描边是 Windows 语言）
                 Color.clear
-                    .acrylicBackground(in: RoundedRectangle(cornerRadius: 16))
+                    .glassBackground(in: RoundedRectangle(cornerRadius: 16))
                     .shadow(color: .black.opacity(0.2), radius: 26)
             } else {
                 RoundedRectangle(cornerRadius: 7)
@@ -80,14 +81,23 @@ struct MessageBoxView: View {
         onButtonTap(button)
     }
 
-    /// ESC：触发取消按钮（id 为 0 或 cancelButtonID）；没有取消按钮时不响应。
+    /// ESC：触发取消按钮（id 为 0 或 cancelButtonID）；
+    /// 单按钮弹窗按 macOS 惯例等同于点按该按钮，多按钮且无取消按钮时不响应。
     private func cancelWithKeyboard() {
-        guard let button = model.buttons.first(where: { $0.id == 0 || $0.id == MessageBoxManager.cancelButtonID }) else { return }
-        onButtonTap(button)
+        if let button = model.buttons.first(where: { $0.id == 0 || $0.id == MessageBoxManager.cancelButtonID }) {
+            onButtonTap(button)
+            return
+        }
+        if model.buttons.count == 1, let button = model.buttons.first {
+            onButtonTap(button)
+        }
     }
 
+    /// 弹窗标题与分隔线的颜色。
+    /// 原生风格使用正文色（macOS 面板标题从不着品牌色）；经典主题保留 PCL 品牌蓝/红。
     private var foregroundColor: Color {
-        switch model.level {
+        if ThemeManager.shared.theme.isNativeStyle { return .primary }
+        return switch model.level {
         case .info: .color2
         case .error: .red
         }

@@ -236,15 +236,17 @@ struct GlassCoverOverlay: View {
     }
 }
 
-/// 侧栏/顶栏玻璃背景：在页面玻璃之上再叠一层 clear 玻璃，并施加额外的模糊。
+/// 侧栏/顶栏玻璃背景：在页面玻璃之上再叠一层 regular 玻璃，组成侧栏/顶栏的材质层。
 ///
-/// 需要比内容区更重的模糊以区分层次，但依然保持透光（可以辨认壁纸轮廓）。
-/// 实测直接叠加多层 clear 玻璃不会进一步模糊（每层都采样窗口背后的壁纸），
-/// 因此在 clear 玻璃之上再应用一次 `blur`，用极低的白色代价换取更强磨砂感。
+/// 磨砂质感由玻璃自身与其色调承担：`.regular` 是玻璃系统给"需要明确存在感"的
+/// 大面积材质准备的样式，直接用它拿到磨砂，而不在玻璃之上再套 SwiftUI `.blur`——
+/// 后置模糊会把玻璃自身的边缘高光与透镜感一并糊掉（实机观感接近"磨砂塑料板"），
+/// 且会把玻璃推进离屏合成路径（失焦回退成块的诱因之一）。
+/// 若日后觉得磨砂过头，可换回 `.clear`（更透、能辨认壁纸轮廓）。
 ///
 /// 失焦 / 切换期间由上方的不透明毛玻璃遮罩（见 `GlassCoverState` / `GlassCoverOverlay`）
 /// 遮挡：遮罩是纯 App 绘制面，任何状态下渲染恒定；玻璃被遮住期间渲染成什么都不可见。
-/// 因此这里**不再对玻璃做任何状态切换**——色调与模糊恒定，就是原版；
+/// 因此这里**不再对玻璃做任何状态切换**——色调恒定，就是原版；
 /// 回到前台约 0.7s 后遮罩 0.35s 淡出露出原版玻璃，全程只有一次柔和过渡。
 ///
 /// - Parameter dark: 深色侧栏（原生风格）：加黑色色调以承载白色文字，
@@ -255,8 +257,7 @@ struct GlassSidebarBackground: View {
     var body: some View {
         if #available(macOS 26.0, *) {
             ZStack {
-                NativeGlassEffectView(style: .clear, tint: glassTint)
-                    .blur(radius: 5, opaque: true)
+                NativeGlassEffectView(style: .regular, tint: glassTint)
                 // 遮罩盖在玻璃之上：完全不透明，玻璃在它之下渲染什么都不可见
                 GlassCoverOverlay(dark: dark)
             }

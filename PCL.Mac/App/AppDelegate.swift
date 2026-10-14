@@ -218,6 +218,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             if event.keyCode == 53 {
+                // 有下拉弹层打开时：Esc 只关闭弹层，不触发页面返回
+                if SelectPopupRegistry.presentedCount > 0 {
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .selectPopupCloseAll, object: nil)
+                    }
+                    return nil
+                }
                 DispatchQueue.main.async {
                     guard AppRouter.shared.isSubPage else { return }
                     AppRouter.shared.removeLast()

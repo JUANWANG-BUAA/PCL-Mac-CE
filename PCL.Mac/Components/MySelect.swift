@@ -7,6 +7,19 @@
 
 import SwiftUI
 
+/// 下拉弹层全局注册表：供 AppDelegate 的 Esc 监视器判断"当前是否有下拉弹层打开"，
+/// 以便 Esc 优先关闭弹层、而不是触发页面返回。
+enum SelectPopupRegistry {
+    private(set) static var presentedCount: Int = 0
+    static func push() { presentedCount += 1 }
+    static func pop() { presentedCount = max(0, presentedCount - 1) }
+}
+
+extension Notification.Name {
+    /// 关闭所有下拉弹层（由全局 Esc 监视器触发）。
+    static let selectPopupCloseAll = Notification.Name("PCLMac.selectPopupCloseAll")
+}
+
 struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
     @State private var hovered: Bool = false
     @State private var presented: Bool = false
@@ -100,11 +113,16 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
                 }
 
                 panel.makeKeyAndOrderFront(nil)
+                SelectPopupRegistry.push()
 
                 self.panel = panel
             }
         }
         .onDisappear {
+            close()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .selectPopupCloseAll)) { _ in
+            presented = false
             close()
         }
     }
@@ -125,6 +143,9 @@ struct MySelect<Entry: Hashable & CustomStringConvertible>: View {
         if let observer {
             NotificationCenter.default.removeObserver(observer)
             self.observer = nil
+        }
+        if panel != nil {
+            SelectPopupRegistry.pop()
         }
         panel?.close()
         panel = nil
@@ -163,9 +184,10 @@ private struct PopupView<Entry: Hashable & CustomStringConvertible>: View {
         let isNative = ThemeManager.shared.theme.isNativeStyle
         ZStack {
             if isNative {
-                // 原生风格：Acrylic 弹层
+                // 原生风格：官方玻璃弹层 + 投影（与系统菜单语言一致，替代 WinUI Acrylic）
                 Color.clear
-                    .acrylicBackground(in: RoundedRectangle(cornerRadius: 8))
+                    .glassBackground(in: RoundedRectangle(cornerRadius: 8))
+                    .shadow(color: .black.opacity(0.28), radius: 12, y: 4)
             } else {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(.white)
@@ -195,7 +217,7 @@ private struct PopupView<Entry: Hashable & CustomStringConvertible>: View {
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .clipShape(RoundedRectangle(cornerRadius: isNative ? 8 : 4))
 
             if !isNative {
                 RoundedRectangle(cornerRadius: 4)

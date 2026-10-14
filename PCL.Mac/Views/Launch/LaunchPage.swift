@@ -25,9 +25,9 @@ struct LaunchPage: View {
                 .scaledToFit()
                 .frame(width: 56, height: 56)
                 .opacity(0.35)
-            MyText("在左侧选择一个实例，点击「启动游戏」开始游玩", color: .colorGray3)
+            MyText("在左侧选择一个实例，点击「启动游戏」开始游玩", color: .textSecondary)
                 .padding(.top, 4)
-            MyText("你可以在「下载」页面安装新的游戏版本与 Mod", size: 12, color: .colorGray4)
+            MyText("你可以在「下载」页面安装新的游戏版本与 Mod", size: 12, color: .textTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

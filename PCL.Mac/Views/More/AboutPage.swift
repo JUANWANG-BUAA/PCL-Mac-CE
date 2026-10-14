@@ -121,7 +121,7 @@ struct AboutPage: View {
                     .contrast(easterEggManager.modifyColor ? -1 : 1) // 防止“千万别点”颜色反转影响到头像
                     VStack(alignment: .leading) {
                         MyText(nickname)
-                        MyText(description, color: .colorGray3)
+                        MyText(description, color: .textSecondary)
                     }
                     Spacer()
                     HStack {

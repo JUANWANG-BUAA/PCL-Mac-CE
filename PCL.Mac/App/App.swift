@@ -23,10 +23,12 @@ struct PCLMacApp: App {
                     .keyboardShortcut(",", modifiers: [.command])
                 }
                 CommandMenu("导航") {
+                    // Escape 快捷键由 AppDelegate 的本地监视器处理（菜单项无法承载 Esc 键等效），
+                    // 这里提供菜单入口本身可用
                     Button("返回") {
-                        // 似乎无法使用 Escape 作为快捷键，这里只显示
+                        guard AppRouter.shared.isSubPage else { return }
+                        AppRouter.shared.removeLast()
                     }
-                    .keyboardShortcut(.escape, modifiers: [])
                 }
             }
         // 主视图声明被移至 AppWindow.swift:26

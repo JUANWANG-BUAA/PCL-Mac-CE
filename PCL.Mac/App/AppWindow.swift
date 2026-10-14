@@ -25,11 +25,14 @@ class AppWindow: NSWindow, NSWindowDelegate {
         )
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
+        // 标题本身仍然设置：标题栏不显示它，但窗口菜单 / Mission Control / 辅助功能依赖该值
+        self.title = "PCL.Mac"
         // 窗口透明：使侧栏/顶栏的玻璃层能透出桌面壁纸，呈现毛玻璃质感。
-        // 背景保留半透明浅色底：为玻璃未覆盖的区域提供稳定底色（实验证明去掉它
-        // 并不能消除主区域的采样 settle，故维持原值）。
+        // 底色全透明（原 0.25 浅色底会让整个主区域"蒙一层白"）：
+        // 其当年的"防首帧黑"职责已由遮罩体系接管（首帧有遮罩、页面玻璃不会黑、
+        // 失焦期整体被遮罩盖住），现在去掉只净收益——更通透、不损失任何稳定性。
         self.isOpaque = false
-        self.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.25)
+        self.backgroundColor = .clear
         // 允许在自绘顶栏的空白区域拖动窗口（原生体验）
         self.isMovableByWindowBackground = true
 

@@ -25,12 +25,12 @@ struct MySearchBox: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
-                    .foregroundStyle(Color.color1)
+                    .foregroundStyle(ThemeManager.shared.theme.isNativeStyle ? Color.secondary : Color.color1)
 
                 ZStack(alignment: .leading) {
                     TextField("", text: $query)
                         .textFieldStyle(.plain)
-                        .foregroundStyle(Color.color1)
+                        .foregroundStyle(ThemeManager.shared.theme.isNativeStyle ? Color.primary : Color.color1)
                     if !focused && query.isEmpty {
                         Text(placeholder)
                             .allowsHitTesting(false)

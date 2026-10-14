@@ -28,8 +28,16 @@ struct MyTip: View {
                     .fill(theme.borderColor)
                     .frame(width: 3)
             }
-            MyText(text, color: theme.foregroundColor)
-                .padding(.horizontal, Spacing.md)
+            if isNative {
+                // 原生风格：SF Symbol + 语义色 + 正文色（macOS 内联横幅语言），
+                // 不再使用 PCL 的粉彩色块
+                Image(systemName: theme.nativeIcon)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(theme.nativeTint)
+                    .padding(.leading, Spacing.md)
+            }
+            MyText(text, color: isNative ? .primary : theme.foregroundColor)
+                .padding(.horizontal, isNative ? Spacing.sm : Spacing.md)
                 .padding(.vertical, 9)
             Spacer(minLength: 0)
             if let actionLabel, let action {
@@ -40,7 +48,11 @@ struct MyTip: View {
                 .padding(.trailing, 10)
             }
         }
-        .background(theme.backgroundColor)
+        .background(
+            isNative
+                ? AnyShapeStyle(theme.nativeTint.opacity(0.12))
+                : AnyShapeStyle(theme.backgroundColor)
+        )
         .clipShape(RoundedRectangle(cornerRadius: isNative ? 6 : Radius.xs))
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -73,6 +85,23 @@ struct MyTip: View {
             case .yellow: 0xD86C00
             }
             return .init(hex)
+        }
+
+        /// 原生风格的语义色调（横幅底色与 SF Symbol 用）。
+        var nativeTint: Color {
+            switch self {
+            case .blue: .blue
+            case .red: .red
+            case .yellow: .orange
+            }
+        }
+
+        /// 原生风格的 SF Symbol。
+        var nativeIcon: String {
+            switch self {
+            case .blue: "info.circle.fill"
+            case .red, .yellow: "exclamationmark.triangle.fill"
+            }
         }
     }
 }

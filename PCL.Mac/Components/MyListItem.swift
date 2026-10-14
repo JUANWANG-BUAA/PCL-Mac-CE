@@ -24,7 +24,8 @@ struct MyListItem<Content: View>: View {
         self.init {
             AnyView(
                 HStack(spacing: 0) {
-                    if selected {
+                    if selected && !ThemeManager.shared.theme.isNativeStyle {
+                        // 经典主题：PCL 蓝色竖条
                         RightRoundedRectangle(cornerRadius: 2)
                             .fill(Color.color3)
                             .frame(width: 4, height: 24)
@@ -35,18 +36,26 @@ struct MyListItem<Content: View>: View {
                             image.makeView()
                             .scaledToFit()
                             .frame(width: model.imageSize, height: model.imageSize)
-                            .foregroundStyle(Color.color1)
+                            .foregroundStyle(ThemeManager.shared.theme.isNativeStyle ? Color.primary : Color.color1)
                         }
                         VStack(alignment: .leading) {
                             MyText(model.name)
                                 .lineLimit(1)
                             if let description = model.description {
-                                MyText(description, color: .colorGray3)
+                                MyText(description, color: .textSecondary)
                                     .lineLimit(1)
                             }
                         }
                     }
                     Spacer()
+                    if selected && ThemeManager.shared.theme.isNativeStyle {
+                        // 原生风格：以对勾标记"当前选择"（与系统"当前项"语言一致），
+                        // 不再使用 PCL 的蓝色竖条
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.trailing, 8)
+                    }
                 }
             )
         }

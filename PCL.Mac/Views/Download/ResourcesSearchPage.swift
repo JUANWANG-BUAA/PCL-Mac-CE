@@ -130,7 +130,11 @@ struct ProjectListItemView: View {
     }
 
     var body: some View {
-        MyListItem {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        // 标签配色：原生风格用语义灰（亮玻璃上可读），经典主题保留 PCL 灰阶
+        let tagLabel: Color = isNative ? .secondary : .colorGray2
+        let tagFill: Color = isNative ? Color.primary.opacity(0.07) : .init(0x000000, alpha: 17 / 255)
+        return MyListItem {
             HStack {
                 Group {
                     if let iconURL: URL = project.iconURL {
@@ -153,18 +157,18 @@ struct ProjectListItemView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(project.tags, id: \.self) { tag in
-                                    MyTag(tag, labelColor: .colorGray2, backgroundColor: .init(0x000000, alpha: 17 / 255), size: 12)
+                                    MyTag(tag, labelColor: tagLabel, backgroundColor: tagFill, size: 12)
                                 }
                             }
                         }
 
-                        MyText(project.description, color: .colorGray3)
+                        MyText(project.description, color: .textSecondary)
                     } else {
                         HStack {
                             ForEach(project.tags.prefix(3), id: \.self) { tag in
-                                MyTag(tag, labelColor: .colorGray2, backgroundColor: .init(0x000000, alpha: 17 / 255), size: 12)
+                                MyTag(tag, labelColor: tagLabel, backgroundColor: tagFill, size: 12)
                             }
-                            MyText(project.description, color: .colorGray3)
+                            MyText(project.description, color: .textSecondary)
                                 .lineLimit(1)
                         }
                     }
@@ -200,8 +204,8 @@ struct ProjectListItemView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 14)
-                    .foregroundStyle(Color.colorGray3)
-                MyText(text, size: 12, color: .colorGray3)
+                    .foregroundStyle(Color.textSecondary)
+                MyText(text, size: 12, color: .textSecondary)
             }
             .frame(width: width, alignment: .leading)
         }

@@ -119,7 +119,7 @@ private struct ModLoaderCard: View {
                             .frame(width: 18)
                         MyText(currentLoader.version, color: .colorGray1)
                     } else {
-                        MyText(loadState.description, color: .colorGray4)
+                        MyText(loadState.description, color: .textTertiary)
                     }
                 }
                 .padding(.leading, 300)

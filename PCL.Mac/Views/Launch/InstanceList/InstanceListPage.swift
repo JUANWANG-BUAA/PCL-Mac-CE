@@ -147,7 +147,7 @@ private struct ErrorInstanceView: View {
 
                 VStack(alignment: .leading) {
                     MyText(instance.name)
-                    MyText(instance.message, size: 12, color: .colorGray3)
+                    MyText(instance.message, size: 12, color: .textSecondary)
                 }
                 .lineLimit(1)
 

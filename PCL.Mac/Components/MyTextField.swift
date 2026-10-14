@@ -39,7 +39,7 @@ struct MyTextField: View {
 
             if !focused && text.isEmpty {
                 Text(placeholder)
-                    .foregroundStyle(Color.colorGray3)
+                    .foregroundStyle(Color.textSecondary)
                     .padding(.horizontal, 6)
                     .allowsHitTesting(false)
             }

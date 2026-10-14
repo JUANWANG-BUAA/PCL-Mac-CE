@@ -79,4 +79,17 @@ extension Color {
     static let danger: Color = .init(0xCE2111)
     /// 危险操作按钮的悬停红色。
     static let dangerHover: Color = .init(0xFF4C4C)
+
+    /// 次级文字色（列表描述、信息行、面板标签等）。
+    ///
+    /// 原生风格使用系统语义色：随外观与材质自适应，在任何壁纸上的对比度都由系统保障；
+    /// 固定灰阶（如 colorGray3）叠在透亮玻璃上会随壁纸亮度漂移、不可读。
+    static var textSecondary: Color {
+        ThemeManager.shared.theme.isNativeStyle ? .secondary : .colorGray3
+    }
+
+    /// 三级文字色（占位符、极弱提示）。
+    static var textTertiary: Color {
+        ThemeManager.shared.theme.isNativeStyle ? .secondary.opacity(0.75) : .colorGray4
+    }
 }

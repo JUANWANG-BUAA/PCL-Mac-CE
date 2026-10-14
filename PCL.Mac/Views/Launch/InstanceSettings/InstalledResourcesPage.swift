@@ -164,7 +164,7 @@ private struct ResourceListItem: View {
                         }
                         .animation(.easeInOut(duration: 0.1), value: resource.disabled)
 
-                        MyText(" | \(resource.fileName)", size: 12, color: .colorGray3)
+                        MyText(" | \(resource.fileName)", size: 12, color: .textSecondary)
                         HStack(spacing: 3) {
                             ForEach(resource.tags, id: \.self) { tag in
                                 MyTag(tag, labelColor: .colorGray2, backgroundColor: .black.opacity(0.05), size: 12)
@@ -174,9 +174,9 @@ private struct ResourceListItem: View {
                     }
                     HStack(spacing: 0) {
                         if let version = resource.version {
-                            MyText("\(version) | ", size: 12, color: .colorGray3)
+                            MyText("\(version) | ", size: 12, color: .textSecondary)
                         }
-                        MyText(resource.description, size: 12, color: .colorGray3)
+                        MyText(resource.description, size: 12, color: .textSecondary)
                     }
                 }
                 .lineLimit(1)

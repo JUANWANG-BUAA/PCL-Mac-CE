@@ -127,10 +127,10 @@ struct MyButton: View {
         }
     }
 
-    /// 原生按钮副标题的颜色。
+    /// 原生按钮副标题的颜色（语义色，随材质自适应）。
     private var subLabelColor: Color {
         switch type {
-        case .normal: .colorGray3
+        case .normal: .secondary
         case .highlight, .red: .white.opacity(0.7)
         }
     }
@@ -215,22 +215,23 @@ struct MyButton: View {
         let hovered: Bool
 
         func makeBody(configuration: Configuration) -> some View {
+            // macOS 26 玻璃按钮的系统形状是胶囊；经典主题仍为 4pt 圆角（pclBody）
             ZStack {
                 // 可扩展的透明形状：给按钮一个能填满可用空间的尺寸来源
-                RoundedRectangle(cornerRadius: Radius.md)
+                Capsule()
                     .fill(.clear)
                 if let sheen {
-                    RoundedRectangle(cornerRadius: Radius.md)
+                    Capsule()
                         .fill(sheen)
                         .allowsHitTesting(false)
                 }
                 configuration.label
             }
-            .contentShape(RoundedRectangle(cornerRadius: Radius.md))
-            .glassEffect(glass, in: RoundedRectangle(cornerRadius: Radius.md))
+            .contentShape(Capsule())
+            .glassEffect(glass, in: Capsule())
             .overlay {
                 if hovered && !disabled {
-                    RoundedRectangle(cornerRadius: Radius.md)
+                    Capsule()
                         .fill(.white.opacity(0.08))
                         .allowsHitTesting(false)
                 }

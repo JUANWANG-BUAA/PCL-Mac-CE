@@ -33,15 +33,25 @@ struct ContentView: View {
         .overlay { ExtraButtonsOverlay() }
         .overlay { MessageBoxOverlay() }
         .overlay {
-            VStack(alignment: .leading, spacing: 16) {
-                Spacer()
+            // 原生风格：提示出现在右上角（macOS 瞬时反馈惯例，避开底部内容）；
+            // 经典主题保持 PCL 的左下角提示
+            let isNative = ThemeManager.shared.theme.isNativeStyle
+            VStack(alignment: isNative ? .trailing : .leading, spacing: isNative ? 10 : 16) {
+                if !isNative {
+                    Spacer()
+                }
                 ForEach(hintManager.hints) { hint in
                     HintView(model: hint)
                 }
+                if isNative {
+                    Spacer()
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isNative ? .topTrailing : .bottomLeading)
             .animation(.easeOut(duration: 0.2), value: hintManager.hints)
-            .padding(.bottom, 100)
+            .padding(isNative
+                ? EdgeInsets(top: 64, leading: 0, bottom: 0, trailing: 20)
+                : EdgeInsets(top: 0, leading: 0, bottom: 100, trailing: 0))
         }
         .background {
             if ThemeManager.shared.theme.isNativeStyle {
@@ -109,7 +119,8 @@ private struct HintView: View {
             }
         }
         .opacity(appeared ? 1 : 0)
-        .offset(x: appeared ? 0 : -30)
+        // 原生（右上角）：自上滑入；经典（左下角）：自左滑入
+        .offset(x: isNative ? 0 : (appeared ? 0 : -30), y: isNative && !appeared ? -10 : 0)
         .fixedSize(horizontal: true, vertical: false)
         .animation(.easeOut(duration: isNative ? 0.15 : 0.2), value: appeared)
         .onAppear {
@@ -142,6 +153,13 @@ private struct MessageBoxOverlay: View {
     @State private var scale: CGFloat = 0.92
     private var isNative: Bool { ThemeManager.shared.theme.isNativeStyle }
 
+    /// 弹窗遮罩色调：原生风格一律中性变暗（macOS 从不把整窗染色）；
+    /// 经典主题保留 PCL 的"错误红屏"。
+    private func overlayTint(for level: MessageBoxModel.Level) -> Color {
+        if isNative { return .black.opacity(0.35) }
+        return level == .error ? Color(0xFF0000).opacity(0.5) : .black.opacity(0.35)
+    }
+
     @State private var animationHideWorkItem: DispatchWorkItem?
 
     var body: some View {
@@ -149,7 +167,7 @@ private struct MessageBoxOverlay: View {
             if let messageBox {
                 ZStack {
                     Rectangle()
-                        .fill(messageBox.level == .error ? Color(0xFF0000).opacity(0.5) : .black.opacity(0.35))
+                        .fill(overlayTint(for: messageBox.level))
                     MessageBoxView(model: messageBox)
                         .scaleEffect(isNative ? scale : 1)
                 }

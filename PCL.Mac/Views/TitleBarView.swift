@@ -29,20 +29,26 @@ struct TitleBarView: View {
                 Rectangle()
                     .fill(.blue)
             } else {
-                // 原生风格：整条顶栏统一使用侧栏同款玻璃材质（侧栏延伸到顶，顶栏与侧栏连成一体）。
-                // 不再"左侧材质 + 右侧透明"地分层：右侧按钮区也有稳定的磨砂底，
-                // 文字在任何壁纸上都保持可读；同时避免路由切换时材质宽度变化导致的重绘闪烁。
-                GlassSidebarBackground()
-                    .overlay(alignment: .leading) {
-                        // 侧栏 / 内容区分界线在顶栏中的延续
+                // 原生风格：侧栏玻璃延伸到顶——左段与侧栏同色（深色），交通灯与 logo
+                // 落在同一材质的延伸面上（Finder / 邮件式的一体感），消除"顶栏浅、侧栏深"
+                // 在 y=48 处的横向色阶断层；右段保持浅色玻璃，导航按钮在任何壁纸上都保持可读。
+                HStack(spacing: 0) {
+                    GlassSidebarBackground(dark: true)
+                        .frame(width: layoutState.width)
+                    GlassSidebarBackground()
+                }
+                .overlay(alignment: .leading) {
+                    // 侧栏 / 内容区分界线在顶栏中的延续（与侧栏的白色细分隔线同色）
+                    if layoutState.width > 0 {
                         HStack(spacing: 0) {
                             Color.clear
                                 .frame(width: layoutState.width)
                             Rectangle()
-                                .fill(Color.black.opacity(0.07))
+                                .fill(Color.white.opacity(0.12))
                                 .frame(width: 0.5)
                         }
                     }
+                }
             }
             Group {
                 if router.isSubPage {
@@ -52,6 +58,7 @@ struct TitleBarView: View {
                         }
                         MyText(router.title, size: 16, color: isNative ? .primary : .white)
                     }
+                    .environment(\.colorScheme, leftChromeScheme)
                 } else {
                     HStack {
                         Image(.iconTitleLogo)
@@ -62,9 +69,10 @@ struct TitleBarView: View {
                         MyTag("Mac", labelColor: isNative ? .primary : .color2, backgroundColor: isNative ? Color.primary.opacity(0.22) : .white)
 
                         if Metadata.debugMode {
-                            MyTag("Debug", backgroundColor: Color(0x9BF00B))
+                            MyTag("Debug", backgroundColor: .green)
                         }
                     }
+                    .environment(\.colorScheme, leftChromeScheme)
                     HStack {
                         Spacer()
                         if isNative {
@@ -83,6 +91,15 @@ struct TitleBarView: View {
             .padding(.leading, isNative ? 84 : 65)
         }
         .frame(height: 48)
+    }
+
+    /// 顶栏左侧内容的着色外观。
+    ///
+    /// 原生风格下左段是深色玻璃（侧栏延伸到顶）：语义色（`.primary`、`Color.primary`）
+    /// 需按深色外观解析为白色前景——与侧栏强制 `.dark` 的做法一致（见 `AppSidebarView`）。
+    /// 无侧栏的子页（安装页等）左段仍是浅色玻璃，维持默认浅色外观；经典主题不受影响。
+    private var leftChromeScheme: ColorScheme {
+        ThemeManager.shared.theme.isNativeStyle && layoutState.width > 0 ? .dark : .light
     }
 
     /// 导航项定义（数组顺序即选中胶囊的滑动位置）。

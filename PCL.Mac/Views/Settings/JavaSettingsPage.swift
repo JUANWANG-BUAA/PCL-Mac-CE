@@ -78,7 +78,7 @@ struct JavaSettingsPage: View {
                                 VStack(alignment: .leading) {
                                     MyText(item.name)
                                         .lineLimit(1)
-                                    MyText(item.url.path, color: .colorGray3)
+                                    MyText(item.url.path, color: .textSecondary)
                                         .lineLimit(1)
                                 }
                                 Spacer(minLength: 0)

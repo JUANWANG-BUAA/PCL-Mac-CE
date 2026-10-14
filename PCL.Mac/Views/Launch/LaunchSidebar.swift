@@ -107,26 +107,26 @@ struct LaunchSidebar: Sidebar {
     }
 
     private func normalPanel(_ account: Account) -> some View {
-        ZStack {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        return VStack(spacing: 14) {
             VStack(spacing: 15) {
                 PlayerAvatar(account)
                 VStack(spacing: 4) {
                     MyText(account.profile.name, size: 16)
-                    MyText(account.localizedTypeName, size: 12, color: ThemeManager.shared.theme.isNativeStyle ? .secondary : .colorGray4)
+                    MyText(account.localizedTypeName, size: 12, color: isNative ? .secondary : .colorGray4)
                 }
             }
             .padding(4)
+            .contentShape(.rect)
             .onTapGesture {
                 accountVM.currentPanel = .accountList
             }
 
-            VStack {
-                Spacer()
-                    .frame(height: 160)
-                toolbarView
-                    .opacity(showToolbar ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.2), value: showToolbar)
-            }
+            // 工具条：原生风格常驻显示（可见即可用的 macOS 语言，不再藏进悬停热区）；
+            // 经典主题保持 PCL 的悬停显露
+            toolbarView
+                .opacity(isNative || showToolbar ? 1 : 0)
+                .animation(.easeInOut(duration: 0.2), value: showToolbar)
         }
         .contentShape(.rect)
         .onHover { showToolbar = $0 }
@@ -134,7 +134,7 @@ struct LaunchSidebar: Sidebar {
 
     private var toolbarView: some View {
         let isNative = ThemeManager.shared.theme.isNativeStyle
-        return HStack(spacing: 16) {
+        let icons = HStack(spacing: 16) {
             Image(systemName: "tshirt.fill")
                 .resizable()
                 .scaledToFit()
@@ -157,23 +157,35 @@ struct LaunchSidebar: Sidebar {
                     accountVM.currentPanel = .accountList
                 }
         }
-        .foregroundStyle(Color.color3)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
-        .background {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.colorGray8)
-                .shadow(
-                    color: isNative ? .black.opacity(0.18) : (toolbarHovered ? .color3.opacity(0.6) : .black.opacity(0.15)),
-                    radius: isNative ? 6 : (toolbarHovered ? 6 : 8)
-                )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(
-                    isNative ? Color.black.opacity(0.12) : (toolbarHovered ? Color.color3.opacity(0.45) : Color.colorGray2.opacity(0.35)),
-                    lineWidth: 1
-                )
+        return Group {
+            if isNative {
+                // 原生风格：与顶栏导航胶囊同一语言的玻璃胶囊，图标用正文色（深色侧栏下为白色）
+                icons
+                    .foregroundStyle(Color.primary.opacity(toolbarHovered ? 1 : 0.8))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .glassBackground(in: Capsule(), tint: .black.opacity(0.3))
+            } else {
+                icons
+                    .foregroundStyle(Color.color3)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.colorGray8)
+                            .shadow(
+                                color: toolbarHovered ? .color3.opacity(0.6) : .black.opacity(0.15),
+                                radius: toolbarHovered ? 6 : 8
+                            )
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                toolbarHovered ? Color.color3.opacity(0.45) : Color.colorGray2.opacity(0.35),
+                                lineWidth: 1
+                            )
+                    }
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: toolbarHovered)
         .onHover { toolbarHovered = $0 }
