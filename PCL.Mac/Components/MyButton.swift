@@ -42,7 +42,7 @@ struct MyButton: View {
         Group {
             if ThemeManager.shared.theme.isNativeStyle {
                 if #available(macOS 26.0, *) {
-                    // 系统 Liquid Glass 按钮（自带交互反馈，不挂 DragGesture）
+                    // 系统 Liquid Glass 材质（自带交互反馈，不挂 DragGesture）
                     glassBody
                 } else {
                     acrylicBody.gesture(pressGesture)
@@ -60,7 +60,7 @@ struct MyButton: View {
             hovered = $0
         }
     }
-    
+
     /// 自绘按钮的按压手势（系统按钮不需要）。
     private var pressGesture: some Gesture {
         DragGesture(minimumDistance: 0)
@@ -74,83 +74,76 @@ struct MyButton: View {
                 isPressed = false
             }
     }
-    
+
     /// macOS 26 以下的原生风格回退：自绘 Acrylic 玻璃按钮。
     private var acrylicBody: some View {
-        // 注意：背景直接修饰内容（不要用 Color.clear 占位——可扩展视图会把按钮撑满可用宽度）
-        VStack(spacing: Spacing.xs) {
-            Text(label)
-                .font(.app(13))
-                .foregroundStyle(foregroundColor)
-                .padding(textPadding)
-            if let subLabel {
-                Text(subLabel)
-                    .font(.app(11))
-                    .foregroundStyle(foregroundColor.opacity(0.7))
-            }
+        ZStack {
+            // 可扩展的透明形状：与经典主题一致地填满调用点的 frame 约束
+            RoundedRectangle(cornerRadius: Radius.md)
+                .fill(.clear)
+            nativeLabel
         }
-        .padding(.vertical, 3)
-        .padding(.horizontal, 6)
         .acrylicBackground(
             in: RoundedRectangle(cornerRadius: Radius.md),
-            tint: tintColor,
+            tint: materialTint ?? .white,
             tintOpacity: tintOpacity,
             noise: 0.03
         )
         .contentShape(RoundedRectangle(cornerRadius: Radius.md))
     }
-    
-    /// macOS 26+ 官方 Liquid Glass 按钮（Apple 设计指南样式，保持系统默认形态与尺寸语义）。
-    /// 尺寸由调用点的 `.frame` 决定；单边约束的调用点应用容器包裹（见各处调用点）。
+
+    /// macOS 26+ 官方 Liquid Glass 按钮。
+    ///
+    /// 系统 `.glass` / `.glassProminent` 样式只会按内容自然尺寸渲染，忽略布局给出的宽高
+    /// 约束（单边 frame 被撑满、固定 width 被居中），导致同一布局下按钮比原版 PCL 明显
+    /// 偏小、突兀。这里改用自定义 `GlassStyle` 承载官方玻璃材质，让按钮像经典主题的
+    /// 自绘按钮一样服从调用点的 frame 约束，切换主题时尺寸保持不变。
     @available(macOS 26.0, *)
-    @ViewBuilder
     private var glassBody: some View {
-        switch type {
-        case .normal:
-            Button(action: action) {
-                nativeLabel
-            }
-            .buttonStyle(.glass)
-            .disabled(disabled)
-        case .highlight:
-            Button(action: action) {
-                nativeLabel
-            }
-            .buttonStyle(.glassProminent)
-            .disabled(disabled)
-        case .red:
-            Button(action: action) {
-                nativeLabel
-            }
-            .buttonStyle(.glassProminent)
-            .tint(.red)
-            .disabled(disabled)
+        Button(action: action) {
+            nativeLabel
         }
+        .buttonStyle(GlassStyle(tint: materialTint, disabled: disabled, hovered: hovered))
+        .disabled(disabled)
     }
-    
-    /// Liquid Glass 按钮的标签内容。
+
+    /// 原生玻璃按钮的标签（与经典主题使用同一套字号，仅颜色随材质区分）。
     private var nativeLabel: some View {
         VStack(spacing: Spacing.xs) {
-            Text(label)
-                .font(.app(13))
+            MyText(label, color: foregroundColor)
                 .padding(textPadding)
             if let subLabel {
-                Text(subLabel)
-                    .font(.app(11))
-                    .opacity(0.7)
+                MyText(subLabel, size: 12, color: subLabelColor)
             }
         }
     }
-    
-    /// 原生按钮的玻璃色调。
-    private var tintColor: Color {
+
+    /// 原生按钮的前景色。
+    private var foregroundColor: Color {
         switch type {
-        case .normal: .white
+        case .normal: disabled ? Color.primary.opacity(0.35) : .primary
+        case .highlight, .red: disabled ? Color.white.opacity(0.6) : .white
+        }
+    }
+
+    /// 原生按钮副标题的颜色。
+    private var subLabelColor: Color {
+        switch type {
+        case .normal: .colorGray3
+        case .highlight, .red: .white.opacity(0.7)
+        }
+    }
+
+    /// 玻璃/材质色调：普通按钮为中性材质，高亮与危险操作带语义色。
+    private var materialTint: Color? {
+        switch type {
+        case .normal: nil
         case .highlight: .accentColor
         case .red: .red
         }
     }
-    
+
+    /// Acrylic 色调层的不透明度（悬停时加深）。
     private var tintOpacity: Double {
         if disabled { return 0.1 }
         switch type {
@@ -158,14 +151,7 @@ struct MyButton: View {
         case .highlight, .red: return hovered ? 0.95 : 0.85
         }
     }
-    
-    private var foregroundColor: Color {
-        switch type {
-        case .normal: disabled ? Color.primary.opacity(0.35) : .primary
-        case .highlight, .red: disabled ? Color.white.opacity(0.6) : .white
-        }
-    }
-    
+
     /// PCL 经典风格：描边式按钮。
     private var pclBody: some View {
         ZStack {
@@ -185,6 +171,43 @@ struct MyButton: View {
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: Radius.md))
+    }
+
+    /// macOS 26+ 的玻璃按钮样式：官方 `glassEffect` + 与 `pclBody` 相同的尺寸语义。
+    @available(macOS 26.0, *)
+    private struct GlassStyle: ButtonStyle {
+        /// 玻璃色调（nil 为中性玻璃）。
+        let tint: Color?
+        /// 禁用时保持中性玻璃并关闭交互反馈。
+        let disabled: Bool
+        /// 悬停时叠加轻微高光。
+        let hovered: Bool
+
+        func makeBody(configuration: Configuration) -> some View {
+            ZStack {
+                // 可扩展的透明形状：给按钮一个能填满可用空间的尺寸来源
+                RoundedRectangle(cornerRadius: Radius.md)
+                    .fill(.clear)
+                configuration.label
+            }
+            .contentShape(RoundedRectangle(cornerRadius: Radius.md))
+            .glassEffect(glass, in: RoundedRectangle(cornerRadius: Radius.md))
+            .overlay {
+                if hovered && !disabled {
+                    RoundedRectangle(cornerRadius: Radius.md)
+                        .fill(.white.opacity(0.08))
+                        .allowsHitTesting(false)
+                }
+            }
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+        }
+
+        private var glass: Glass {
+            .regular
+                .tint(disabled ? nil : tint)
+                .interactive(!disabled)
+        }
     }
 
     enum Style {

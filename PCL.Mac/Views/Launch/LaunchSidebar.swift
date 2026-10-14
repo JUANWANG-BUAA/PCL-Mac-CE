@@ -65,41 +65,35 @@ struct LaunchSidebar: Sidebar {
 
             Spacer()
             VStack(spacing: 11) {
-                // 注意：glass 按钮会填满单边 .frame 约束，故用 ZStack 容器包裹，
-                // 让按钮保持自然尺寸并在容器内居中（与经典主题的按钮尺寸语义一致）。
-                ZStack {
-                    Group {
-                        if let instance = instanceVM.currentInstance {
-                            MyButton("启动游戏", subLabel: instance.name, type: .highlight) {
-                                guard !launchVM.isRunning && !launchVM.isLaunching else {
-                                    hint("已有一个游戏实例正在运行！", type: .critical)
-                                    return
-                                }
-                                if let account = accountVM.currentAccount {
-                                    launchVM.launch(instance, using: account, in: instanceVM.currentRepository)
-                                } else {
-                                    hint("请先添加一个账号！", type: .critical)
-                                }
+                Group {
+                    if let instance = instanceVM.currentInstance {
+                        MyButton("启动游戏", subLabel: instance.name, type: .highlight) {
+                            guard !launchVM.isRunning && !launchVM.isLaunching else {
+                                hint("已有一个游戏实例正在运行！", type: .critical)
+                                return
                             }
-                        } else if instanceVM.loading {
-                            MyButton("加载中", subLabel: "正在加载实例列表", disabled: true) {}
-                        } else {
-                            MyButton("下载游戏", subLabel: "未找到可用的游戏实例", type: .normal) {
-                                AppRouter.shared.setRoot(.download)
+                            if let account = accountVM.currentAccount {
+                                launchVM.launch(instance, using: account, in: instanceVM.currentRepository)
+                            } else {
+                                hint("请先添加一个账号！", type: .critical)
                             }
+                        }
+                    } else if instanceVM.loading {
+                        MyButton("加载中", subLabel: "正在加载实例列表", disabled: true) {}
+                    } else {
+                        MyButton("下载游戏", subLabel: "未找到可用的游戏实例", type: .normal) {
+                            AppRouter.shared.setRoot(.download)
                         }
                     }
                 }
                 .frame(height: 50)
-                ZStack {
-                    HStack(spacing: 11) {
-                        MyButton("实例选择") {
-                            AppRouter.shared.append(.instanceList(repositoryId: instanceVM.currentRepository.id))
-                        }
-                        if let instance = instanceVM.currentInstance {
-                            MyButton("实例设置") {
-                                AppRouter.shared.append(.instanceSettings(id: instance.name))
-                            }
+                HStack(spacing: 11) {
+                    MyButton("实例选择") {
+                        AppRouter.shared.append(.instanceList(repositoryId: instanceVM.currentRepository.id))
+                    }
+                    if let instance = instanceVM.currentInstance {
+                        MyButton("实例设置") {
+                            AppRouter.shared.append(.instanceSettings(id: instance.name))
                         }
                     }
                 }
@@ -346,10 +340,8 @@ struct LaunchSidebar: Sidebar {
             .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
-            ZStack {
-                MyButton("取消", launchVM.cancel)
-            }
-            .frame(height: 32)
+            MyButton("取消", launchVM.cancel)
+                .frame(height: 32)
                 .padding(21)
         }
         .animation(.easeOut(duration: 0.2), value: launchVM.progress)
