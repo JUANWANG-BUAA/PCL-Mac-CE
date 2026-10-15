@@ -11,12 +11,41 @@ import SwiftyJSON
 public class MicrosoftAuthService {
     public private(set) var pollCount: Int?
     public private(set) var pollInterval: Int?
-    private let clientID: String = "dd28b3f2-1db5-49b7-9228-99fdb46dfaca"
+
+    /// 缺省 client ID：Prism Launcher 公开在其仓库中的公共客户端 ID。
+    ///
+    /// 来源：`PrismLauncher/PrismLauncher` 仓库根 `CMakeLists.txt`（继承自 MultiMC，
+    /// 注释声明“在构建中使用此 ID 即接受微软身份平台服务条款”），是其全部 fork
+    /// 共用的缺省值——注册不了自有 Entra 应用的社区项目的事实标准。
+    /// 实测与本项目端点/作用域完全兼容（见 docs-book ADR-010）。
+    ///
+    /// 后续注册了自有应用后，无需改代码：在 `Secrets.properties` 配置 `MS_CLIENT_ID`
+    /// 或设环境变量 `PCLMAC_MS_CLIENT_ID` 即可覆盖。
+    public static let defaultClientID: String = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb"
+
+    private let clientID: String
     private var deviceCode: String?
     private var oAuthToken: String?
     private var refreshToken: String?
 
-    public init() {}
+    /// - Parameter clientID: 显式指定 client ID；缺省时依次读取环境变量
+    ///   `PCLMAC_MS_CLIENT_ID`、Bundle 内 `Secrets.properties` 的 `MS_CLIENT_ID`，
+    ///   均未配置时回落到 `defaultClientID`。
+    public init(clientID: String? = nil) {
+        self.clientID = clientID ?? Self.configuredClientID() ?? Self.defaultClientID
+    }
+
+    /// 构建期/运行时注入通道（优先级：显式参数 > 环境变量 > Secrets.properties）。
+    private static func configuredClientID() -> String? {
+        if let env = ProcessInfo.processInfo.environment["PCLMAC_MS_CLIENT_ID"], !env.isEmpty {
+            return env
+        }
+        if let properties = try? PropertiesLoader.load(at: URLConstants.resourcesURL.appending(path: "Secrets.properties")),
+           let id = properties["MS_CLIENT_ID"], !id.isEmpty {
+            return id
+        }
+        return nil
+    }
 
     /// 开始登录并获取设备码。
     /// - Returns: 用户授权代码和 `URL`。

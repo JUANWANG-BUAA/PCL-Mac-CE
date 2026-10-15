@@ -57,7 +57,7 @@
 | CurseForge API Key | `Resources/Secrets.properties`，键 `CURSE_FORGE_API_KEY` | 仓库内是**全注释模板**，无真实值；CI 用 heredoc 写入（`build.yml:50-53`，#204 修的就是变量被提前展开） |
 | 环境变量优先 | `App/Secrets.swift:30` | `PCLMAC_CURSE_FORGE_API_KEY` 优先于文件 |
 | 打包方式 | `project.pbxproj:100-103` | `Resources` 作为同步根组整体进 bundle → **该文件会被拷进 `.app` 内**，任何人可从成品 app 里读出 key |
-| 微软 client ID | `Core/Services/MicrosoftAuthService.swift:14` | 硬编码 `dd28b3f2-1db5-49b7-9228-99fdb46dfaca`，`init()` 无参 → **无法换成自己的 AAD 应用** |
+| 微软 client ID | `Core/Services/MicrosoftAuthService.swift` | 缺省为 Prism 公共 ID，可用 `Secrets.properties` / `PCLMAC_MS_CLIENT_ID` 覆盖（见 ADR-010） |
 | ATS | `PCL.Mac/Info.plist:6-10` | `NSAllowsArbitraryLoads = true` |
 | 沙盒 | `PCL.Mac/PCL_Mac.entitlements` | 只有 `app-sandbox = false` 与 `audio-input = true` |
 

@@ -47,3 +47,4 @@
 - [ADR-007 主题系统、静态分析基线与复杂度治理](decisions/adr-007-theming-quality.md)
 - [ADR-008 与已关闭的直系上游（CylorineStudio/PCL.Mac）切割](decisions/adr-008-upstream-detachment.md)
 - [ADR-009 上游身份资产本地化：Bundle ID、数据目录、版本序列与 SwiftScaffolding vendor](decisions/adr-009-own-identity.md)
+- [ADR-010 微软登录 client_id 处置：Prism 公共 ID + 构建期注入通道](decisions/adr-010-ms-client-id.md)

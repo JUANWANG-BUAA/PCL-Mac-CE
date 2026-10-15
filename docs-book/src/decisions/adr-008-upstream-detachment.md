@@ -50,11 +50,12 @@
 - `githubDiscussion()` 的替换（新仓库的 Discussions）；
 - 更新源部署 → `isSourceConfigured = true` + 换地址；
 - 本站隐私政策（若继续收集账号信息）。
-- **替换 Microsoft 登录的 OAuth client_id**：现为上游注册的 Azure 应用
-  （`MicrosoftAuthService.swift:14` 硬编码 `dd28b3f2-…`），上游已关闭、该应用随时可能失效
-  （届时新登录与 refresh 全断）。需注册自己的应用：Microsoft Entra → 应用注册 →
-  "仅个人 Microsoft 账户" + **允许公共客户端流**（Device Code 流程免 client secret、
-  免 redirect URI）。替换后老用户的 refresh token 因绑定旧 client 而失效，需重新登录一次。
+- **替换 Microsoft 登录的 OAuth client_id**：~~现为上游注册的 Azure 应用
+  （`MicrosoftAuthService.swift:14` 硬编码 `dd28b3f2-…`）~~
+  ✅ **已处置（2026-10-15，另见 [ADR-010](adr-010-ms-client-id.md)）**：个人账户已无法免目录注册
+  新的 Entra 应用（微软已弃用该通道），改为缺省使用 Prism 公共 ID + 构建期注入通道；
+  原上游 ID 实测仍存活，切换后老用户需重新登录一次。注册自有应用的条件
+  （学校租户或 Azure 免费账户）具备后经 `MS_CLIENT_ID` 一处切换。
 
 ## 维护者归位（同日补记）
 
