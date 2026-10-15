@@ -133,27 +133,31 @@ struct LaunchSidebar: Sidebar {
     private var toolbarView: some View {
         let isNative = ThemeManager.shared.theme.isNativeStyle
         let icons = HStack(spacing: 16) {
-            Image(systemName: "tshirt.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 18)
-                .contentShape(.rect)
-                .onTapGesture {
+            Button {
                     guard let account = accountVM.currentAccount else {
                         hint("请先选择一个账号！", type: .critical)
                         return
                     }
                     CapeSelection.request(for: account)
-                }
+            } label: {
+                Image(systemName: "tshirt.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("选择披风")
 
-            Image(systemName: "arrow.left.arrow.right")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16)
-                .contentShape(.rect)
-                .onTapGesture {
-                    accountVM.currentPanel = .accountList
-                }
+            Button { accountVM.currentPanel = .accountList } label: {
+                Image(systemName: "arrow.left.arrow.right")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("切换账号")
         }
         return Group {
             if isNative {
@@ -162,7 +166,7 @@ struct LaunchSidebar: Sidebar {
                     .foregroundStyle(Color.primary.opacity(toolbarHovered ? 1 : 0.8))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
-                    .glassBackground(in: Capsule(), tint: .black.opacity(0.3))
+                    .glassBackground(in: Capsule())
             } else {
                 icons
                     .foregroundStyle(Color.color3)
@@ -230,27 +234,30 @@ struct LaunchSidebar: Sidebar {
                             MyText(account.localizedTypeName, color: ThemeManager.shared.theme.isNativeStyle ? .secondary : .colorGray3)
                         }
                         Spacer()
-                        if hovered {
-                            Image(systemName: "trash")
+                        if ThemeManager.shared.theme.isNativeStyle || hovered {
+                            Button {
+                                MessageBoxManager.shared.showText(
+                                    title: "移除账号",
+                                    content: "确定要移除账号「\(account.profile.name)」吗？\n移除后需要重新登录才能再次使用。",
+                                    level: .info,
+                                    .no(),
+                                    .yes(label: "移除", type: .red)
+                                ) { result in
+                                    guard result == 1 else { return }
+                                    accountVM.remove(account: account)
+                                    hint("已移除账号「\(account.profile.name)」", type: .finish)
+                                }
+                            } label: {
+                                Image(systemName: "trash")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 12)
                                 .foregroundStyle(Color.color3)
-                                .padding(.trailing, 8)
-                                .contentShape(.rect)
-                                .onTapGesture {
-                                    MessageBoxManager.shared.showText(
-                                        title: "移除账号",
-                                        content: "确定要移除账号「\(account.profile.name)」吗？\n移除后需要重新登录才能再次使用。（本地配置不会被删除）",
-                                        level: .info,
-                                        .no(),
-                                        .yes(label: "移除", type: .red)
-                                    ) { result in
-                                        guard result == 1 else { return }
-                                        accountVM.remove(account: account)
-                                        hint("已移除账号「\(account.profile.name)」", type: .finish)
-                                    }
-                                }
+                                .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("移除账号 \(account.profile.name)")
+                            .padding(.trailing, 4)
                         }
                     }
                 }

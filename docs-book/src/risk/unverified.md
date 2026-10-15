@@ -6,7 +6,7 @@
 
 | # | 事项 | 线索 | 怎么验 |
 |---|---|---|---|
-| U1 | 1.12- 老清单的 `--accessToken` 是否根本没被替换 | 老式占位符是 `${access_token}` / `${profile_name}`，而 values 字典只有 `auth_access_token` / `auth_player_name`（`Core/Minecraft/Launch/MinecraftLauncher.swift:25-43`、`Core/Models/ClientManifest.swift:73-83`） | 装一个 1.8.9 实例启动，看日志里的 argv |
+| ~~U1~~ | ~~1.12- 老清单占位符未替换~~ | **已补齐** `${access_token}` / `${profile_name}` 映射；真实 1.8.9 启动仍可作为回归验证 | — |
 | U2 | `--clientId ${clientid}` / `--xuid ${auth_xuid}` 字面量进 argv 是否影响 1.20.2+ 实际启动 | 无值供给、无 rules 保护 | 1.20.5 实例启动并观察游戏是否报参数错 |
 | U3 | `URL.appending(path:)` 对带尾斜杠的 `authServerURL` 拼接 `/authserver/…` 的归一化行为 | `YggdrasilService.swift:216` | 用尾斜杠地址添加第三方账号 |
 | U4 | authlib-injector 官方 `artifact/N.json` 实际给哪几种 checksum 键 | 代码支持 sha1/256/512（`Core/Utils/FileUtils.swift:52-64`） | `curl https://authlib-injector.yushi.moe/artifacts.json` 后取最新 build 的 json |

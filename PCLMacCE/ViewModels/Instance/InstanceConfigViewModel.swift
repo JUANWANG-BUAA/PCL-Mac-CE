@@ -29,6 +29,7 @@ class InstanceConfigViewModel: ObservableObject {
 
     public let id: String
     private let instanceManager: InstanceManager
+    private var saveTask: Task<Void, Never>?
 
     public init(instanceManager: InstanceManager, id: String) {
         self.instanceManager = instanceManager
@@ -65,6 +66,7 @@ class InstanceConfigViewModel: ObservableObject {
         }
         instance.config.jvmHeapSize = clamped
         instance.markDirty()
+        scheduleSave()
     }
 
     /// 内存分配下限（MB）。
@@ -75,6 +77,7 @@ class InstanceConfigViewModel: ObservableObject {
         guard let instance else { return }
         instance.config.jvmArguments = arguments.splitToArguments()
         instance.markDirty()
+        scheduleSave()
     }
 
     @MainActor
@@ -86,6 +89,31 @@ class InstanceConfigViewModel: ObservableObject {
         instance.config.javaURL = runtime.executableURL
         instance.markDirty()
         javaDescription = runtime.description
+        scheduleSave()
+    }
+
+    private func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            do {
+                try await Task.sleep(seconds: 0.5)
+                try Task.checkCancellation()
+                self?.savePendingChanges()
+            } catch {}
+        }
+    }
+
+    public func savePendingChanges() {
+        saveTask?.cancel()
+        saveTask = nil
+        guard let instance, instance.dirty else { return }
+        do {
+            try MinecraftInstanceLoader.save(instance)
+            instance.dirty = false
+        } catch {
+            err("保存实例设置失败：\(error.localizedDescription)")
+            hint("保存实例设置失败：\(error.localizedDescription)", type: .critical)
+        }
     }
 
     public enum Error: Swift.Error {

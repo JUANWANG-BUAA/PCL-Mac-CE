@@ -64,7 +64,7 @@ struct ResourcesSearchPage: View {
     @MainActor
     private func search(_ query: String) async {
         do {
-            try await viewModel.search(query)
+            try await viewModel.search(query, gameVersion: targetInstance?.version.id)
         } catch let error where error.isCancellationError {
         } catch {
             err("搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
@@ -78,7 +78,7 @@ struct ResourcesSearchPage: View {
     @MainActor
     private func changePage(_ page: Int) async {
         do {
-            try await viewModel.changePage(page)
+            try await viewModel.changePage(page, gameVersion: targetInstance?.version.id)
         } catch let error where error.isCancellationError {
         } catch {
             err("搜索\(viewModel.type.localizedName)失败：\(error.localizedDescription)")
@@ -96,7 +96,7 @@ struct ResourcesSearchPage: View {
             if let instance = targetInstance {
                 MyTip(
                     text: "实例定向下载：正在为「\(instance.name)」（\(instance.version.id)"
-                        + "\(instance.modLoader.map { " · \($0)" } ?? "")）挑选\(viewModel.type.localizedName)，列表仅显示兼容版本",
+                        + "\(instance.modLoader.map { " · \($0)" } ?? "")）挑选\(viewModel.type.localizedName)。项目按游戏版本筛选，具体加载器兼容性请在版本页确认。",
                     theme: .blue,
                     actionLabel: "退出实例模式"
                 ) {

@@ -109,8 +109,8 @@ class MinecraftLaunchManager: ObservableObject {
                 panel.allowedContentTypes = [.zip]
                 panel.canCreateDirectories = true
                 panel.nameFieldStringValue = fileName
-                panel.beginSheetModal(for: NSApplication.shared.windows.first!) { _ in
-                    guard let url: URL = panel.url else { return }
+                let handleSave: (NSApplication.ModalResponse) -> Void = { response in
+                    guard response == .OK, let url: URL = panel.url else { return }
                     do {
                         try self.exportCrashReport(for: instance, to: url, with: fileName, options: options, logURL: logURL)
                         log("导出崩溃报告成功")
@@ -118,6 +118,11 @@ class MinecraftLaunchManager: ObservableObject {
                         err("导出崩溃报告失败：\(error.localizedDescription)")
                         hint("导出崩溃报告失败：\(error.localizedDescription)", type: .critical)
                     }
+                }
+                if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
+                    panel.beginSheetModal(for: window, completionHandler: handleSave)
+                } else {
+                    panel.begin(completionHandler: handleSave)
                 }
             }
         }
@@ -140,7 +145,7 @@ class MinecraftLaunchManager: ObservableObject {
         try JSONEncoder.shared.encode(launcherInfo).write(to: reportURL.appending(path: "launcher-info.json"))
 
         if FileManager.default.fileExists(atPath: logURL.path) {
-            try FileManager.default.moveItem(at: logURL, to: reportURL.appending(path: "game-log.log"))
+            try FileManager.default.copyItem(at: logURL, to: reportURL.appending(path: "game-log.log"))
         }
 
         let crashReportDirectory: URL = instance.url.appending(path: "crash-reports")

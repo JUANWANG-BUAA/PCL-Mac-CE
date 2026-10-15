@@ -239,6 +239,12 @@ public enum MinecraftLaunchTask {
             do {
                 try await model.account.refresh()
                 log("刷新 accessToken 成功")
+                do {
+                    try LauncherConfig.save()
+                } catch {
+                    err("保存刷新后的账号凭据失败：\(error.localizedDescription)")
+                    hint("账号凭据保存失败，下次启动可能需要重新登录", type: .critical)
+                }
             } catch let error where error.isCancellationError {
             } catch {
                 err("刷新 accessToken 失败：\(error.localizedDescription)")

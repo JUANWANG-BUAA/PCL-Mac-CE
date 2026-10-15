@@ -9,7 +9,7 @@ import Foundation
 public class ConcurrentProgressHandler {
     private let totalHandler: @MainActor (Double) -> Void
     private var progressMap: [UUID: Progress] = [:]
-    private var calculateTask: Task<Void, Error>?
+    private var calculateTask: Task<Void, Never>?
 
     public init(totalHandler: @MainActor @escaping (Double) -> Void) {
         self.totalHandler = totalHandler
@@ -42,22 +42,34 @@ public class ConcurrentProgressHandler {
         if calculateTask != nil { return }
         calculateTask = Task.detached { [weak self] in
             while !Task.isCancelled {
-                guard let self else { return }
-                await self.totalHandler(await self.calculateProgress())
-                try await Task.sleep(seconds: interval)
+                await self?.reportProgress()
+                do {
+                    try await Task.sleep(seconds: interval)
+                } catch {
+                    return
+                }
             }
         }
     }
 
     /// 停止计算并最后一次同步进度。
     public func stopCalculate() {
+        cancelCalculate()
+        totalHandler(1)
+    }
+
+    /// Stop without reporting completion when the enclosing operation fails or is cancelled.
+    public func cancelCalculate() {
         calculateTask?.cancel()
         calculateTask = nil
-        totalHandler(1)
     }
 
     private func calculateProgress() -> Double {
         min(max(progressMap.values.reduce(0) { $0 + $1.currentProgress * $1.multiplier }, 0), 1)
+    }
+
+    private func reportProgress() {
+        totalHandler(calculateProgress())
     }
 
     private class Progress {

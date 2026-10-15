@@ -10,6 +10,7 @@ import SwiftyJSON
 
 @MainActor
 class AccountViewModel: ObservableObject {
+    private static var skinCache: [UUID: (texture: String?, data: Data)] = [:]
     @Published public private(set) var accounts: [Account] = [] {
         didSet {
             LauncherConfig.shared.accounts = accounts
@@ -66,7 +67,7 @@ class AccountViewModel: ObservableObject {
     public func switchAccount(to account: Account) {
         currentAccountId = account.id
         // 立即落盘：账号与选中状态属于关键数据，不应等到退出才保存
-        try? LauncherConfig.save()
+        saveAccounts()
     }
 
     /// 移除账号。
@@ -80,11 +81,15 @@ class AccountViewModel: ObservableObject {
                 currentAccountId = nil
             }
         }
-        try? LauncherConfig.save()
+        saveAccounts()
     }
 
     /// 获取账号皮肤数据。
-    public func skinData(for account: Account) async -> Data {
+    public static func skinData(for account: Account) async -> Data {
+        let texture = account.profile.property(forName: "textures")
+        if let cached = skinCache[account.profile.id], cached.texture == texture {
+            return cached.data
+        }
         let defaultSkinBase64: String =
             "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAdVBMVEUAAAAKvLwAzMwmGgokGAgrHg0zJBE/KhW3g2uzeV5SPYn///+qclmbY0"
             + "mQWT8Af38AaGhVVVWUYD52SzOBUzmPXj5JJRBCHQp3QjVqQDA0JRIoKCg3Nzc/Pz9KSko6MYlBNZtGOqUDenoFiIgElZUApKQAr6/wvakZAAAA"
@@ -99,7 +104,7 @@ class AccountViewModel: ObservableObject {
             + "JP0PkyyAI1S6cSIAAAAASUVORK5CYII="
         let defaultSkin: Data = .init(base64Encoded: defaultSkinBase64)!
         do {
-            guard let textures: Data = account.profile.property(forName: "textures")
+            guard let textures: Data = texture
                 .flatMap({ Data(base64Encoded: $0) }) else {
                 return defaultSkin
             }
@@ -108,7 +113,9 @@ class AccountViewModel: ObservableObject {
                 err("解析 textures 属性失败")
                 return defaultSkin
             }
-            return try await HTTPClient.shared.get(url).data
+            let data = try await HTTPClient.shared.get(url).data
+            skinCache[account.profile.id] = (texture, data)
+            return data
         } catch {
             err("获取皮肤数据失败：\(error.localizedDescription)")
             return defaultSkin
@@ -284,18 +291,33 @@ class AccountViewModel: ObservableObject {
         return url
     }
 
+    private func confirmAuthServerRedirect(from original: URL, to resolved: URL) async -> Bool {
+        guard resolved.host != original.host
+            || (original.scheme == "https" && resolved.scheme == "http") else { return true }
+        let choice = await MessageBoxManager.shared.showTextAsync(
+            title: "确认验证服务器地址",
+            content: "服务器要求将登录请求发送到 \(resolved.absoluteString)。请确认这是你信任的地址，再继续登录。",
+            level: .info,
+            .no(),
+            .yes(label: "继续登录")
+        )
+        return choice == 1
+    }
+
     public func addYggdrasilAccount() async {
         let trimmedServerLocation = yggdrasilServer.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var authServerURL = parsedAuthServerURL(from: trimmedServerLocation) else { return }
         let username: String = yggdrasilUsername.trimmingCharacters(in: .whitespacesAndNewlines)
-        let password: String = yggdrasilPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        let password = yggdrasilPassword
         guard !username.isEmpty && !password.isEmpty else {
             hint("用户名与密码不能为空！", type: .critical)
             return
         }
+        defer { yggdrasilPassword = "" }
         let service: YggdrasilService = .init(authServerURL: authServerURL)
         do {
             let resolvedServerURL = try await service.resolveALI()
+            guard await confirmAuthServerRedirect(from: authServerURL, to: resolvedServerURL) else { return }
             if authServerURL != resolvedServerURL {
                 log("解析 ALI 头成功，真实 API 地址：\(resolvedServerURL)")
                 authServerURL = resolvedServerURL
@@ -350,13 +372,25 @@ class AccountViewModel: ObservableObject {
             log("用户取消了添加")
             return
         }
+        guard playerName.range(of: "^[A-Za-z0-9_]{3,16}$", options: .regularExpression) != nil else {
+            hint("玩家名需为 3–16 位英文字母、数字或下划线", type: .critical)
+            return
+        }
         addAccount(OfflineAccount(name: playerName, uuid: UUIDUtils.uuid(ofOfflinePlayer: playerName)))
     }
 
     private func addAccount(_ account: Account) {
         accounts.append(account)
         switchAccount(to: account)
-        try? LauncherConfig.save()
+    }
+
+    private func saveAccounts() {
+        do {
+            try LauncherConfig.save()
+        } catch {
+            err("保存账号配置失败：\(error.localizedDescription)")
+            hint("保存账号失败：\(error.localizedDescription)", type: .critical)
+        }
     }
 
     enum PanelType {

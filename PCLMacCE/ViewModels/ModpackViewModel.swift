@@ -19,8 +19,10 @@ class ModpackViewModel: ObservableObject {
         // Modrinth / 普通压缩包不依赖 CurseForge，不能被缺失的 API Key 阻断。
         let curseforgeClient = Secrets.shared.curseforgeApiKey.map { CurseForgeAPIClient(apiKey: $0) }
         let service = ModpackImportService(curseforgeClient: curseforgeClient, modpackURL: url)
+        var taskScheduled = false
+        defer { if !taskScheduled { service.cleanup() } }
         do {
-            let index = try service.load()
+            let index = try await service.loadAsync()
             guard await confirmModpackInfo(index) else { return }
             guard let name = await MessageBoxManager.shared.showInputAsync(
                 title: "导入整合包 - 输入实例名",
@@ -32,12 +34,13 @@ class ModpackViewModel: ObservableObject {
             }
             // 两个任务工厂返回不同的任务模型类型，需分别创建与执行
             if index.format == .simple {
-                let task = try service.createSimpleImportTask(name: name, repository: repository, completion: completion)
-                TaskManager.shared.execute(task: task)
+                let task = try await service.createSimpleImportTask(name: name, repository: repository, completion: completion)
+                TaskManager.shared.execute(task: task) { _ in service.cleanup() }
             } else {
-                let task = try service.createImportTask(name: name, repository: repository, completion: completion)
-                TaskManager.shared.execute(task: task)
+                let task = try await service.createImportTask(name: name, repository: repository, completion: completion)
+                TaskManager.shared.execute(task: task) { _ in service.cleanup() }
             }
+            taskScheduled = true
             AppRouter.shared.append(.tasks)
         } catch let error as ModpackImportService.LoadError {
             handleLoadError(error)

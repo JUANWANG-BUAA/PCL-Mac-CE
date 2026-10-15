@@ -60,10 +60,9 @@ class InstanceListViewModel: ObservableObject {
         loadingViewModel.reset()
         loading = true
         instanceManager.startLoad(repository: repository) { result in
+            self.loading = false
             if case .failure(let error) = result {
                 self.loadingViewModel.fail(with: "加载失败：\(error.localizedDescription)")
-            } else {
-                self.loading = false
             }
         }
     }

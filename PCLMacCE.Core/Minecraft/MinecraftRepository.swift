@@ -47,6 +47,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
     /// 只会在读取目录失败时抛出错误。
     public func load() async throws {
         let result = try await loadInstances()
+        try Task.checkCancellation()
         await MainActor.run {
             self.instances = result.instances.reduce(into: [:], { $0[$1.id] = $1 })
             self.errorInstances = result.errorInstances
@@ -89,7 +90,7 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
     public func removeInstance(named name: String) throws {
         guard var instances, self.contains(named: name) else { return }
         let removedInstanceId = instances.first(where: { $0.value.name == name })?.key
-        try FileManager.default.removeItem(at: versionsDirectory.appending(path: name))
+        try FileManager.default.trashItem(at: versionsDirectory.appending(path: name), resultingItemURL: nil)
         instances = instances.filter { $1.name != name }
         if currentInstanceId == removedInstanceId {
             currentInstanceId = instances.keys.first

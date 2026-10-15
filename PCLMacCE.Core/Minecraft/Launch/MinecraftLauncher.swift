@@ -6,7 +6,6 @@
 import Foundation
 
 public class MinecraftLauncher {
-    private static let gameLogQueue: DispatchQueue = .init(label: "PCLMacCE.GameLog")
     public let options: LaunchOptions
     public let logURL: URL
     private let manifest: ClientManifest
@@ -28,12 +27,14 @@ public class MinecraftLauncher {
             "library_directory": librariesURL.path,
 
             "auth_player_name": options.profile.name,
+            "profile_name": options.profile.name,
             "version_name": options.runningDirectory.lastPathComponent,
             "game_directory": runningDirectory.path,
             "assets_root": librariesURL.deletingLastPathComponent().appending(path: "assets").path,
             "assets_index_name": manifest.assetIndex?.id ?? manifest.assets ?? "legacy",
             "auth_uuid": UUIDUtils.string(of: options.profile.id, withHyphens: false),
             "auth_access_token": options.accessToken,
+            "access_token": options.accessToken,
             "auth_session": options.accessToken,
             "user_type": "msa",
             "version_type": "PCLMacCE",
@@ -69,9 +70,18 @@ public class MinecraftLauncher {
         process.standardOutput = pipe
         process.standardError = pipe
 
-        log("正在使用以下参数启动 Minecraft：\(arguments.map { $0 == options.accessToken ? "🥚" : $0 })")
+        let safeArguments = arguments.map { argument in
+            if argument.hasPrefix("-Dauthlibinjector.yggdrasil.prefetched=")
+                || (options.authlibInjectorPath != nil && argument.hasPrefix("-javaagent:")) {
+                return "<authlib-injector 参数已隐藏>"
+            }
+            guard !options.accessToken.isEmpty else { return argument }
+            return argument.replacingOccurrences(of: options.accessToken, with: "<令牌已隐藏>")
+        }
+        log("正在使用以下参数启动 Minecraft：\(safeArguments)")
         try process.run()
-        Self.gameLogQueue.async {
+        try? pipe.fileHandleForWriting.close()
+        DispatchQueue.global(qos: .utility).async {
             FileManager.default.createFile(atPath: self.logURL.path, contents: nil)
             let handle: FileHandle?
             do {
@@ -82,7 +92,7 @@ public class MinecraftLauncher {
             }
             defer { try? handle?.close() }
 
-            while process.isRunning {
+            while true {
                 let data: Data = pipe.fileHandleForReading.availableData
                 if data.isEmpty { break }
                 try? handle?.write(contentsOf: data)

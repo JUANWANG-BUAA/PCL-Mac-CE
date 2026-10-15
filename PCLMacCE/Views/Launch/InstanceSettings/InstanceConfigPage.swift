@@ -33,7 +33,7 @@ struct InstanceConfigPage: View {
                         guard let instance = viewModel.instance else { return }
                         MessageBoxManager.shared.showText(
                             title: "确认",
-                            content: "你确定要删除这个实例（\(instance.name)）吗？\n这个实例的所有存档、模组、资源包等将会永久消失！（真的很久！）",
+                            content: "确定移除实例「\(instance.name)」吗？实例及其存档、模组和资源包会一起移入废纸篓，可在废纸篓中恢复。",
                             level: .error,
                             .no(),
                             .yes(type: .red)
@@ -41,7 +41,7 @@ struct InstanceConfigPage: View {
                             if result == 1 {
                                 do {
                                     try instanceVM.deleteInstance(instance)
-                                    hint("删除成功！", type: .finish)
+                                    hint("实例已移入废纸篓", type: .finish)
                                     AppRouter.shared.removeLast()
                                 } catch {
                                     hint("删除实例失败：\(error.localizedDescription)", type: .critical)
@@ -58,6 +58,7 @@ struct InstanceConfigPage: View {
             jvmCard
                 .cardIndex(2)
         }
+        .onDisappear { viewModel.savePendingChanges() }
     }
 
     @ViewBuilder

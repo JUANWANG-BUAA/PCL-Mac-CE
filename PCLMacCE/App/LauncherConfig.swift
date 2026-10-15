@@ -29,6 +29,7 @@ class LauncherConfig: Codable {
                 // 原备份不能先删除：读取或写入失败时仍保留上一次可恢复的副本。
                 let originalData = try Data(contentsOf: url)
                 try originalData.write(to: backupURL, options: .atomic)
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: backupURL.path)
                 log("备份配置文件成功：\(backupURL.path)")
             } catch {
                 err("备份配置文件失败：\(error.localizedDescription)")
@@ -120,6 +121,7 @@ class LauncherConfig: Codable {
             throw SimpleError("原配置文件未能备份，已停止自动保存以防覆盖：\(saveBlockedReason.localizedDescription)")
         }
         try data.write(to: url, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 
     private enum CodingKeys: String, CodingKey {

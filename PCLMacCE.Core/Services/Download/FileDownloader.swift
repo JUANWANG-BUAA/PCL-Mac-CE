@@ -156,22 +156,33 @@ public class FileDownloader {
         let multiplier = 1.0 / Double(total)
         await progressHandler.startCalculate()
 
-        let concurrency = maxConcurrency ?? sourceManager.recommendedConcurrency
+        do {
+            let concurrency = max(1, maxConcurrency ?? sourceManager.recommendedConcurrency)
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                var remaining = items.makeIterator()
+                for _ in 0..<min(concurrency, items.count) {
+                    guard let item = remaining.next() else { break }
+                    group.addTask {
+                        let handler = await progressHandler.handler(withMultiplier: multiplier)
+                        try await self.download(item, preferMirror: preferMirror, progressHandler: handler, checkDestination: false)
+                    }
+                }
 
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            let semaphore = AsyncSemaphore(value: concurrency)
-
-            for item in items {
-                if Task.isCancelled { break }
-                await semaphore.wait()
-                group.addTask {
-                    defer { Task { await semaphore.signal() } }
-                    let handler = await progressHandler.handler(withMultiplier: multiplier)
-                    try await self.download(item, preferMirror: preferMirror, progressHandler: handler, checkDestination: false)
+                while try await group.next() != nil {
+                    try Task.checkCancellation()
+                    if let item = remaining.next() {
+                        group.addTask {
+                            let handler = await progressHandler.handler(withMultiplier: multiplier)
+                            try await self.download(item, preferMirror: preferMirror, progressHandler: handler, checkDestination: false)
+                        }
+                    }
                 }
             }
-
-            try await group.waitForAll()
+            try Task.checkCancellation()
+            await progressHandler.stopCalculate()
+        } catch {
+            await progressHandler.cancelCalculate()
+            throw error
         }
     }
 

@@ -25,21 +25,16 @@ class AppWindow: NSWindow, NSWindowDelegate {
         self.titlebarAppearsTransparent = true
         // 标题本身仍然设置：标题栏不显示它，但窗口菜单 / Mission Control / 辅助功能依赖该值
         self.title = "PCL Mac CE"
-        // 窗口透明：使侧栏/顶栏的玻璃层能透出桌面壁纸，呈现毛玻璃质感。
-        // 底色全透明（原 0.25 浅色底会让整个主区域"蒙一层白"）：
-        // 其当年的"防首帧黑"职责已由遮罩体系接管（首帧有遮罩、页面玻璃不会黑、
-        // 失焦期整体被遮罩盖住），现在去掉只净收益——更通透、不损失任何稳定性。
-        self.isOpaque = false
-        self.backgroundColor = .clear
+        // 原生主题允许侧栏采样壁纸，正文由 ContentView 单独绘制不透明底色。
+        self.updateTheme(ThemeManager.shared.theme)
         // 允许在自绘顶栏的空白区域拖动窗口（原生体验）
         self.isMovableByWindowBackground = true
 
         // 缩放按钮：原生风格显示（可最大化/全屏），经典主题保持隐藏；主题切换时实时更新
-        self.standardWindowButton(.zoomButton)?.isHidden = !ThemeManager.shared.theme.isNativeStyle
         ThemeManager.shared.$theme
             .receive(on: DispatchQueue.main)
             .sink { [weak self] theme in
-                self?.standardWindowButton(.zoomButton)?.isHidden = !theme.isNativeStyle
+                self?.updateTheme(theme)
             }
             .store(in: &cancellables)
 
@@ -48,6 +43,12 @@ class AppWindow: NSWindow, NSWindowDelegate {
 
         self.setFrameAutosaveName("AppWindow")
         self.center()
+    }
+
+    private func updateTheme(_ theme: AppTheme) {
+        self.isOpaque = !theme.isNativeStyle
+        self.backgroundColor = theme.isNativeStyle ? .clear : .windowBackgroundColor
+        self.standardWindowButton(.zoomButton)?.isHidden = !theme.isNativeStyle
     }
 
     func windowDidUpdate(_ notification: Notification) {

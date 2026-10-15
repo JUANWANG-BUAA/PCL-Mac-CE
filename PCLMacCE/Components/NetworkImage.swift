@@ -8,6 +8,7 @@ import Core
 import CoreImage
 
 struct NetworkImage: View {
+    private static let context = CIContext()
     @State private var nsImage: NSImage = .init(size: .zero)
     private let url: URL
     /// 相对于图片左上角的像素裁剪区域；为 nil 时显示完整图片。
@@ -75,7 +76,7 @@ struct NetworkImage: View {
         }
 
         let cropped = image.cropped(to: coreImageRect)
-        guard let cgImage = CIContext().createCGImage(cropped, from: coreImageRect) else {
+        guard let cgImage = Self.context.createCGImage(cropped, from: coreImageRect) else {
             throw SimpleError("创建裁剪图片失败。")
         }
         return NSImage(cgImage: cgImage, size: coreImageRect.size)

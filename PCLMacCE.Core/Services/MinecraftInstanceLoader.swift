@@ -280,7 +280,7 @@ public extension MinecraftInstanceLoader {
             throw .failedToEncodeConfig(underlying: error)
         }
         do {
-            try configData.write(to: instance.url.appending(path: configFileName))
+            try configData.write(to: instance.url.appending(path: configFileName), options: .atomic)
         } catch {
             throw .failedToWriteFile(underlying: error)
         }
@@ -293,7 +293,7 @@ public extension MinecraftInstanceLoader {
             throw .failedToEncodeMetadata(underlying: error)
         }
         do {
-            try metadataData.write(to: instance.url.appending(path: metadataFileName))
+            try metadataData.write(to: instance.url.appending(path: metadataFileName), options: .atomic)
         } catch {
             throw .failedToWriteFile(underlying: error)
         }

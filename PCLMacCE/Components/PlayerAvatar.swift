@@ -7,7 +7,6 @@ import SwiftUI
 import Core
 
 struct PlayerAvatar: View {
-    @StateObject private var viewModel: AccountViewModel = .init()
     @State private var skinImage: CIImage?
     private let account: Account
     private let length: CGFloat
@@ -28,8 +27,8 @@ struct PlayerAvatar: View {
         }
         .shadow(radius: 2)
         .frame(width: length, height: length)
-        .task {
-            let skinData: Data = await viewModel.skinData(for: account)
+        .task(id: account.id) {
+            let skinData: Data = await AccountViewModel.skinData(for: account)
             guard let image: CIImage = .init(data: skinData) else {
                 err("加载 CIImage 失败")
                 return
@@ -42,13 +41,13 @@ struct PlayerAvatar: View {
 }
 
 private struct SkinLayerView: View {
+    private static let context = CIContext()
     private let image: NSImage?
 
     init(image: CIImage, startX: CGFloat, startY: CGFloat) {
         let yOffset: CGFloat = image.extent.height == 32 ? 0 : 32
         let cropped: CIImage = image.cropped(to: CGRect(x: startX, y: startY + yOffset, width: 8, height: 8))
-        let context: CIContext = .init()
-        guard let cgImage = context.createCGImage(cropped, from: cropped.extent) else {
+        guard let cgImage = Self.context.createCGImage(cropped, from: cropped.extent) else {
             warn("创建 CGImage 失败")
             self.image = nil
             return

@@ -48,6 +48,7 @@ public enum FileUtils {
     }
 
     public static func checkFile(at url: URL, with checksums: [String: String]) throws -> Bool {
+        var checked = false
         for (algorithm, value) in checksums {
             let hash: String? = switch algorithm {
             case "sha1": try sha1(of: url)
@@ -56,9 +57,10 @@ public enum FileUtils {
             default: nil
             }
             guard let hash else { continue }
+            checked = true
             guard hash == value else { return false }
         }
-        return true
+        return checksums.isEmpty || checked
     }
 
     public static func check(_ item: DownloadItem) throws -> Bool {

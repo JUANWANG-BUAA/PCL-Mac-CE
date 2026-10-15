@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#438eb8"/>
+      <stop offset="0.48" stop-color="#176b9f"/>
+      <stop offset="1" stop-color="#123f78"/>
+    </linearGradient>
+    <linearGradient id="letter" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dceef8"/>
+    </linearGradient>
+    <linearGradient id="play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a9e7a5"/>
+      <stop offset="1" stop-color="#55c892"/>
+    </linearGradient>
+    <filter id="mark-shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="15"/>
+      <feOffset dy="21"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.23"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="24" y="24" width="976" height="976" rx="210" fill="url(#tile)"/>
+  <path d="M130 347C189 207 330 125 478 118" fill="none" stroke="#ffffff" stroke-opacity="0.19" stroke-width="24" stroke-linecap="round"/>
+  <path d="M86 766C175 900 334 956 502 955" fill="none" stroke="#071f50" stroke-opacity="0.12" stroke-width="30" stroke-linecap="round"/>
+  <g filter="url(#mark-shadow)">
+    <path fill="url(#letter)" fill-rule="evenodd" d="M270 216h280c183 0 294 101 294 257S733 729 550 729h-98v111H270V216Zm182 149v215h100c76 0 110-38 110-107s-34-108-110-108H452Z"/>
+    <path d="M496 413c0-12 13-19 23-13l99 61c10 6 10 20 0 26l-99 61c-10 6-23-1-23-13V413Z" fill="url(#play)"/>
+  </g>
+  <path d="M271 216h279c183 0 294 101 294 257" fill="none" stroke="#ffffff" stroke-opacity="0.30" stroke-width="5"/>
+</svg>

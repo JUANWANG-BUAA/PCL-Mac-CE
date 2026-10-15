@@ -244,6 +244,7 @@ public enum MinecraftInstallTask {
     ) async throws {
         let progressHandler: ConcurrentProgressHandler = await .init(totalHandler: progressHandler)
         await progressHandler.startCalculate(interval: 0.1)
+        defer { Task { await progressHandler.cancelCalculate() } }
 
         if let downloads = manifest.downloads {
             try await downloadClient(

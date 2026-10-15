@@ -218,16 +218,22 @@ public class YggdrasilService {
         if !(200..<300).contains(response.statusCode) {
             if let json: JSON = try? response.json(),
                let error: String = json["error"].string {
-                let errorMessage: String = json["errorMessage"].stringValue
-                let cause: String? = json["cause"].string
+                let errorMessage = Self.safeErrorText(json["errorMessage"].stringValue)
+                let cause = json["cause"].string.map(Self.safeErrorText(_:))
                 throw Error.apiError(error: error, errorMessage: errorMessage, cause: cause)
             }
 
             guard let string = String(data: response.data, encoding: .utf8) else {
                 throw Error.internalError(description: "解码响应体失败。")
             }
-            throw Error.apiError(error: response.statusCode.description, errorMessage: string, cause: nil)
+            throw Error.apiError(error: response.statusCode.description, errorMessage: Self.safeErrorText(string), cause: nil)
         }
         return response
+    }
+
+    private static func safeErrorText(_ text: String) -> String {
+        String(text.replacingOccurrences(of: "\r", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+            .prefix(300))
     }
 }

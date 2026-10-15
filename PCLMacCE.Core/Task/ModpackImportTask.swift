@@ -26,37 +26,7 @@ public enum ModpackImportTask {
         subTasks.insert(
             contentsOf: [
                 .init(6, "下载整合包所需文件") { task, model in
-                    let progressHandler = await ConcurrentProgressHandler(totalHandler: task.setProgress(_:))
-
-                    let fetchProgressHandler = await progressHandler.handler(withMultiplier: 0.2)
-                    let total = Double(index.files.count)
-                    var completed = 0.0
-                    var downloadItems: [DownloadItem] = []
-
-                    await progressHandler.startCalculate()
-
-                    try await withThrowingTaskGroup(of: DownloadItem?.self) { group in
-                        for file in index.files {
-                            group.addTask {
-                                try await file.fetchInfo()
-                                guard let url = file.url, let path = file.path else {
-                                    throw SimpleError("整合包资源缺少下载地址或目标路径。")
-                                }
-                                let destination = try validatedDestination(for: path, in: model.runningDirectory)
-                                return .init(url: url, destination: destination, checksums: file.checksums ?? [:])
-                            }
-                        }
-                        for try await item in group {
-                            if let item {
-                                downloadItems.append(item)
-                            }
-                            completed += 1
-                            await fetchProgressHandler(completed / total)
-                        }
-                    }
-
-                    let downloadProgressHandler = await progressHandler.handler(withMultiplier: 0.8)
-                    try await FileDownloader.shared.download(files: downloadItems, progressHandler: downloadProgressHandler)
+                    try await downloadModpackFiles(index: index, model: model, task: task)
                 },
                 .init(7, "应用整合包修改") { _, model in
                     try applyOverrides(index.overridesDirectories, from: modpackDirectory, to: model.runningDirectory)
@@ -73,6 +43,53 @@ public enum ModpackImportTask {
             // 复用安装子任务时也必须继承失败清理。
             cleanupFailedImport(at: repository.versionsDirectory.appending(path: name))
         }
+    }
+
+    private static func downloadModpackFiles(index: ModpackIndex, model: Model, task: MyTask<Model>.SubTask) async throws {
+        let progressHandler = await ConcurrentProgressHandler(totalHandler: task.setProgress(_:))
+        let fetchProgressHandler = await progressHandler.handler(withMultiplier: 0.2)
+        let total = Double(index.files.count)
+        var completed = 0.0
+        var downloadItems: [DownloadItem] = []
+        await progressHandler.startCalculate()
+
+        do {
+            try await withThrowingTaskGroup(of: DownloadItem.self) { group in
+                var remaining = index.files.makeIterator()
+                for _ in 0..<min(16, index.files.count) {
+                    guard let file = remaining.next() else { break }
+                    group.addTask {
+                        try await fetchDownloadItem(file, in: model.runningDirectory)
+                    }
+                }
+                while let item = try await group.next() {
+                    downloadItems.append(item)
+                    completed += 1
+                    await fetchProgressHandler(completed / total)
+                    if let file = remaining.next() {
+                        group.addTask {
+                            try await fetchDownloadItem(file, in: model.runningDirectory)
+                        }
+                    }
+                }
+            }
+            if index.files.isEmpty { await fetchProgressHandler(1) }
+            let downloadProgressHandler = await progressHandler.handler(withMultiplier: 0.8)
+            try await FileDownloader.shared.download(files: downloadItems, progressHandler: downloadProgressHandler)
+            await progressHandler.stopCalculate()
+        } catch {
+            await progressHandler.cancelCalculate()
+            throw error
+        }
+    }
+
+    private static func fetchDownloadItem(_ file: ModpackIndex.File, in directory: URL) async throws -> DownloadItem {
+        try await file.fetchInfo()
+        guard let url = file.url, let path = file.path else {
+            throw SimpleError("整合包资源缺少下载地址或目标路径。")
+        }
+        let destination = try validatedDestination(for: path, in: directory)
+        return .init(url: url, destination: destination, checksums: file.checksums ?? [:])
     }
 
     private static func applyOverrides(_ names: [String], from source: URL, to destination: URL) throws {

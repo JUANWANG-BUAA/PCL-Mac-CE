@@ -22,16 +22,11 @@ struct ContentView: View {
                 AppSidebarView()
                 AppRouterView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // 主区域只叠加轻微的非采样底色，不再对整窗玻璃做第二次材质模糊。
-                    // 保留壁纸透光，同时降低亮暗壁纸对正文对比度的影响。
                     .background {
                         if ThemeManager.shared.theme.isNativeStyle {
-                            Color.white.opacity(0.22)
+                            GlassPageBackground()
                         }
                     }
-                    // 内容区遮罩：页面玻璃与卡片材质在失焦 / 过渡期会"回退态 → 真实态"地
-                    // settle（亮度突变）；盖上后 settle 发生在遮罩之下（见 GlassCoverState）
-                    .overlay { GlassCoverOverlay(dark: false) }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -59,27 +54,26 @@ struct ContentView: View {
                 : EdgeInsets(top: 0, leading: 0, bottom: 100, trailing: 0))
         }
         .background {
-            if ThemeManager.shared.theme.isNativeStyle {
-                GlassPageBackground()
-            } else {
+            if !ThemeManager.shared.theme.isNativeStyle {
                 Rectangle().fill(ThemeManager.shared.theme.pageBackground)
             }
         }
         .rotation3DEffect(easterEggManager.rotationAngle, axis: easterEggManager.rotationAxis)
         .contrast(easterEggManager.modifyColor ? -1 : 1)
         .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
-            guard let provider = providers.first else { return false }
-            _ = provider.loadObject(ofClass: URL.self) { item, error in
-                if let error {
-                    err("处理拖拽失败：\(error.localizedDescription)")
-                    hint("处理拖拽失败：\(error.localizedDescription)", type: .critical)
-                    return
-                }
-                guard let url = item else {
-                    hint("处理拖拽失败：发生未知错误。", type: .critical)
-                    return
-                }
-                Task {
+            guard !providers.isEmpty else { return false }
+            Task { @MainActor in
+                for provider in providers {
+                    let url: URL? = await withCheckedContinuation { continuation in
+                        _ = provider.loadObject(ofClass: URL.self) { item, error in
+                            if let error { err("处理拖拽失败：\(error.localizedDescription)") }
+                            continuation.resume(returning: item)
+                        }
+                    }
+                    guard let url else {
+                        hint("无法读取拖入的文件", type: .critical)
+                        continue
+                    }
                     await FileDropHandler.handle(url, instanceManager: instanceManager)
                 }
             }
@@ -111,7 +105,7 @@ private struct HintView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .acrylicBackground(in: Capsule(), tintOpacity: 0.3)
+                .glassBackground(in: Capsule())
             } else {
                 ZStack(alignment: .leading) {
                     RightRoundedRectangle(cornerRadius: 5)

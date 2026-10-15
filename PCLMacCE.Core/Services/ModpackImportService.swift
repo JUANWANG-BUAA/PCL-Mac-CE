@@ -16,7 +16,23 @@ public class ModpackImportService {
         self.curseforgeClient = curseforgeClient
         self.modpackURL = modpackURL
         self.index = index
-        self.tempDirectory = URLConstants.tempURL.appending(path: "modpack-import-\(modpackURL.lastPathComponent.sha1)")
+        self.tempDirectory = URLConstants.tempURL.appending(path: "modpack-import-\(UUID().uuidString)")
+    }
+
+    public func cleanup() {
+        guard FileManager.default.fileExists(atPath: tempDirectory.path) else { return }
+        do {
+            try FileManager.default.removeItem(at: tempDirectory)
+        } catch {
+            err("清理整合包临时文件失败：\(error.localizedDescription)")
+        }
+    }
+
+    /// Archive inspection can read large files, so keep it off the UI actor.
+    public func loadAsync() async throws -> ModpackIndex {
+        try await Task.detached(priority: .userInitiated) { [self] in
+            try self.load()
+        }.value
     }
 
     @discardableResult
@@ -61,11 +77,11 @@ public class ModpackImportService {
         name: String,
         repository: MinecraftRepository,
         completion: (@MainActor (MinecraftInstance) -> Void)? = nil
-    ) throws(ImportError) -> MyTask<ModpackImportTask.Model> {
+    ) async throws(ImportError) -> MyTask<ModpackImportTask.Model> {
         guard let index else { throw .notLoaded }
         guard index.format != .simple && index.minecraftVersion != nil else { throw .incorrectTaskType }
 
-        let (instanceName, modpackDirectory) = try prepareTask(name: name, repository: repository)
+        let (instanceName, modpackDirectory) = try await prepareTask(name: name, repository: repository)
 
         return ModpackImportTask.create(
             modpackDirectory: modpackDirectory,
@@ -80,11 +96,11 @@ public class ModpackImportService {
         name: String,
         repository: MinecraftRepository,
         completion: (@MainActor (MinecraftInstance) -> Void)? = nil
-    ) throws(ImportError) -> MyTask<SimpleModpackImportTask.Model> {
+    ) async throws(ImportError) -> MyTask<SimpleModpackImportTask.Model> {
         guard let index else { throw .notLoaded }
         guard index.format == .simple else { throw .incorrectTaskType }
 
-        let (instanceName, modpackDirectory) = try prepareTask(name: name, repository: repository)
+        let (instanceName, modpackDirectory) = try await prepareTask(name: name, repository: repository)
 
         return SimpleModpackImportTask.create(
             modpackDirectory: modpackDirectory,
@@ -180,7 +196,7 @@ public class ModpackImportService {
         }
     }
 
-    private func prepareTask(name: String, repository: MinecraftRepository) throws(ImportError) -> (String, URL) {
+    private func prepareTask(name: String, repository: MinecraftRepository) async throws(ImportError) -> (String, URL) {
         let instanceName: String
         do {
             instanceName = try repository.checkInstanceName(name, trim: true)
@@ -191,7 +207,10 @@ public class ModpackImportService {
         let modpackDirectory = tempDirectory.appending(path: "modpack")
         if !FileManager.default.fileExists(atPath: modpackDirectory.path) {
             do {
-                try FileManager.default.unzipItem(at: self.modpackURL, to: modpackDirectory)
+                let archiveURL = self.modpackURL
+                try await Task.detached(priority: .userInitiated) {
+                    try FileManager.default.unzipItem(at: archiveURL, to: modpackDirectory)
+                }.value
             } catch {
                 throw .extractFailed(underlying: error)
             }
@@ -249,6 +268,7 @@ public class ModpackImportService {
 public extension ModpackImportService {
     static func isModpack(_ url: URL) -> Bool {
         let service = ModpackImportService(modpackURL: url)
+        defer { service.cleanup() }
         do {
             _ = try service.load()
         } catch {

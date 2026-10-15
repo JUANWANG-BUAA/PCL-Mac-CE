@@ -11,6 +11,7 @@ public class ResourceCache {
     private let cacheFileURL: URL
     private let iconCacheDirectory: URL
     private var cacheMap: [String: Resource]
+    private let cacheLock = NSLock()
 
     public init(cacheDirectory: URL) {
         self.cacheFileURL = cacheDirectory.appending(path: "resource_cache.json")
@@ -30,9 +31,17 @@ public class ResourceCache {
         }
     }
 
-    public func resource(forHash hash: String) -> Resource? { cacheMap[hash] }
+    public func resource(forHash hash: String) -> Resource? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return cacheMap[hash]
+    }
 
-    public func store(_ resource: Resource, forHash hash: String) { cacheMap[hash] = resource }
+    public func store(_ resource: Resource, forHash hash: String) {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        cacheMap[hash] = resource
+    }
 
     public func icon(forHash globalHash: String) throws -> Data? {
         let url = url(of: globalHash)
@@ -46,14 +55,17 @@ public class ResourceCache {
         let globalHash = globalHash(of: relativePath, with: fileHash)
         let url = url(of: globalHash)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try iconData.write(to: url)
+        try iconData.write(to: url, options: .atomic)
         return globalHash
     }
 
     public func save() throws {
         try FileManager.default.createDirectory(at: cacheFileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let data = try JSONEncoder.shared.encode(cacheMap)
-        try data.write(to: cacheFileURL)
+        cacheLock.lock()
+        let snapshot = cacheMap
+        cacheLock.unlock()
+        let data = try JSONEncoder.shared.encode(snapshot)
+        try data.write(to: cacheFileURL, options: .atomic)
     }
 
     private func url(of globalHash: String) -> URL {

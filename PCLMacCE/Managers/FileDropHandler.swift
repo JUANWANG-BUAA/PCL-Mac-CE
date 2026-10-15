@@ -9,7 +9,10 @@ import Foundation
 enum FileDropHandler {
     @MainActor
     static func handle(_ url: URL, instanceManager: InstanceManager) async {
-        if ModpackImportService.isModpack(url) {
+        let isModpack = await Task.detached(priority: .userInitiated) {
+            ModpackImportService.isModpack(url)
+        }.value
+        if isModpack {
             let viewModel = ModpackViewModel(instanceManager: instanceManager)
             await viewModel.importModpack(at: url, repository: instanceManager.currentRepository)
             return

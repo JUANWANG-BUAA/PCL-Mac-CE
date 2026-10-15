@@ -189,7 +189,15 @@ public class HTTPClient {
         case .json:
             return (try JSONSerialization.data(withJSONObject: body), "application/json")
         case .urlEncoded:
-            return (try body.map { "\($0)=\($1)" }.joined(separator: "&").data(using: .utf8).unwrap(), "application/x-www-form-urlencoded")
+            var components = URLComponents()
+            components.queryItems = body.sorted { $0.key < $1.key }
+                .map { URLQueryItem(name: $0.key, value: String(describing: $0.value)) }
+            guard let encoded = components.percentEncodedQuery else {
+                throw SimpleError("无法编码表单请求体。")
+            }
+            // In form encoding a bare '+' means space, so keep literal plus signs escaped.
+            let formBody = encoded.replacingOccurrences(of: "+", with: "%2B")
+            return (Data(formBody.utf8), "application/x-www-form-urlencoded")
         }
     }
 

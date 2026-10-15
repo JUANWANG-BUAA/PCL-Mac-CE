@@ -15,6 +15,7 @@ public class InstanceManager: ObservableObject {
 
     @Published public var lastLoadError: Error?
     @Published public private(set) var loadTask: Task<Void, Never>?
+    private var loadID = UUID()
 
     public init(repositories: [UUID: MinecraftRepository], currentRepositoryId: UUID?) {
         if repositories.isEmpty {
@@ -25,7 +26,8 @@ public class InstanceManager: ObservableObject {
             self.currentRepositoryId = repository.id
         } else {
             self.repositories = repositories
-            self.currentRepositoryId = currentRepositoryId ?? repositories.first!.key
+            self.currentRepositoryId = currentRepositoryId.flatMap { repositories[$0] != nil ? $0 : nil }
+                ?? repositories.first!.key
         }
     }
 
@@ -90,11 +92,17 @@ public class InstanceManager: ObservableObject {
         completion: (@MainActor (Result<Void, Error>) -> Void)? = nil
     ) -> Task<Void, Never> {
         loadTask?.cancel()
+        let loadID = UUID()
+        self.loadID = loadID
         lastLoadError = nil
         repository.instances = nil
         repository.errorInstances = nil
         let task = Task.detached {
-            defer { Task { @MainActor in self.loadTask = nil } }
+            defer {
+                Task { @MainActor in
+                    if self.loadID == loadID { self.loadTask = nil }
+                }
+            }
             do {
                 if VersionManifest.shared == nil {
                     try await VersionManifest.load()
@@ -104,14 +112,15 @@ public class InstanceManager: ObservableObject {
             }
             do {
                 try await repository.load()
-                await completion?(.success(()))
+                try Task.checkCancellation()
+                if await self.loadID == loadID { await completion?(.success(())) }
             } catch let error where error.isCancellationError {
-                await completion?(.failure(error))
+                if await self.loadID == loadID { await completion?(.failure(error)) }
             } catch {
                 log("加载仓库 \(repository.name) 失败：\(error.localizedDescription)")
-                await completion?(.failure(error))
+                if await self.loadID == loadID { await completion?(.failure(error)) }
                 await MainActor.run {
-                    self.lastLoadError = error
+                    if self.loadID == loadID { self.lastLoadError = error }
                 }
             }
         }

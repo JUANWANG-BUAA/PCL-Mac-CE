@@ -258,18 +258,21 @@ struct ResourceInstallPage: View {
         }
 
         let service = ModpackImportService(modpackURL: destination)
+        var taskScheduled = false
+        defer { if !taskScheduled { service.cleanup() } }
 
         do {
-            let index = try service.load()
+            let index = try await service.loadAsync()
             guard let name = await MessageBoxManager.shared.showInputAsync(
                 title: "安装整合包 - 输入实例名",
                 initialContent: index.name
             ) else { return }
 
-            let task = try service.createImportTask(name: name, repository: repository) { instance in
+            let task = try await service.createImportTask(name: name, repository: repository) { instance in
                 instanceVM.switchInstance(to: instance, in: repository)
             }
-            TaskManager.shared.execute(task: task)
+            TaskManager.shared.execute(task: task) { _ in service.cleanup() }
+            taskScheduled = true
         } catch {
             err("安装整合包失败：\(error.localizedDescription)")
             hint("安装整合包失败：\(error.localizedDescription)", type: .critical)

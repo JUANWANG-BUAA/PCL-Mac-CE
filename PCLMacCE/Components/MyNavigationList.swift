@@ -12,6 +12,7 @@ private enum NavigationRowMetrics {
 }
 
 struct MyNavigationList: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var router: AppRouter = .shared
     private let routes: [Route]
     private let performRefresh: ((AppRoute) -> Void)?
@@ -50,12 +51,10 @@ struct MyNavigationList: View {
                 Capsule()
                     .fill(.clear)
                     .glassHighlight(true, in: Capsule())
-                    // 强制浅色外观：玻璃观感与顶栏选中胶囊保持一致
-                    .environment(\.colorScheme, .light)
                     .frame(height: NavigationRowMetrics.height)
                     .padding(.horizontal, NavigationRowMetrics.horizontalInset)
                     .offset(y: CGFloat(selectedIndex) * NavigationRowMetrics.height)
-                    .animation(.spring(response: 0.36, dampingFraction: 0.6), value: selectedIndex)
+                    .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.6), value: selectedIndex)
             }
         }
     }
@@ -134,7 +133,7 @@ private struct RouteView: View {
                 if hovered, !selected {
                     // 悬停：白色半透明填充（与顶栏按钮一致的悬停语言）
                     Capsule()
-                        .fill(Color.white.opacity(0.12))
+                        .fill(Color.primary.opacity(0.08))
                 }
             } else if hovered {
                 Rectangle()
@@ -143,7 +142,7 @@ private struct RouteView: View {
         }
         .foregroundStyle(
             isNative
-                ? Color.white
+                ? Color.primary
                 : (selected ? Color.color3 : .color1)
         )
         .contentShape(Rectangle())

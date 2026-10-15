@@ -180,6 +180,7 @@ final class SidebarLayoutState: ObservableObject {
 }
 
 struct AppSidebarView: View {
+    @Environment(\.colorScheme) private var systemColorScheme
     @EnvironmentObject private var instanceManager: InstanceManager
     @ObservedObject private var router: AppRouter = .shared
     @ObservedObject private var layoutState: SidebarLayoutState = .shared
@@ -226,8 +227,8 @@ struct AppSidebarView: View {
         ZStack(alignment: .leading) {
             Group {
                 if ThemeManager.shared.theme.isNativeStyle {
-                    // 原生风格：深色玻璃侧栏（承载白色文字）
-                    GlassSidebarBackground(dark: true)
+                    // 系统导航材质随窗口外观和辅助功能设置变化。
+                    GlassSidebarBackground()
                 } else {
                     Rectangle()
                         .fill(ThemeManager.shared.theme.sidebarBackground)
@@ -235,19 +236,10 @@ struct AppSidebarView: View {
             }
             .frame(width: layoutState.width)
             .shadow(radius: ThemeManager.shared.theme.isNativeStyle ? 0 : 2)
-            .overlay(alignment: .trailing) {
-                // 原生风格：侧栏与内容区的细分隔线（材质色差微弱时提供明确分界）
-                if ThemeManager.shared.theme.isNativeStyle {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.12))
-                        .frame(width: 0.5)
-                }
-            }
             .zIndex(10)
 
             sidebar
-                // 原生风格：侧栏为深色玻璃，强制深色外观使语义色（.primary/.secondary）与材质白字适配
-                .environment(\.colorScheme, ThemeManager.shared.theme.isNativeStyle ? .dark : .light)
+                .environment(\.colorScheme, ThemeManager.shared.theme.isNativeStyle ? systemColorScheme : .light)
                 .opacity(animationProgress)
                 .scaleEffect(animationProgress * 0.04 + 0.96)
                 .zIndex(11)
@@ -264,7 +256,7 @@ struct AppSidebarView: View {
             }
         }
         .onChange(of: router.last) { _ in
-            // 侧栏宽度平滑过渡（顶栏分界线读取同一共享值，保持一致）
+            // 侧栏宽度随页面切换平滑过渡。
             layoutState.updateWidth(Self.sidebarWidth(for: router.last))
             switch router.last {
             case .launch, .tasks:

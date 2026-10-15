@@ -13,7 +13,7 @@ import SwiftUI
 enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
     /// PCL 经典主题（PCL2 风格浅蓝背景与前蓝配色）。
     case classic
-    /// Liquid Glass 主题（macOS 26 风格：材质卡片、柔和渐变背景、系统蓝）。
+    /// Liquid Glass 主题（壁纸材质背景、导航材质与玻璃控件）。
     case liquidGlass
 
     var description: String {
@@ -50,15 +50,10 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
 
     /// 卡片背景。
     ///
-    /// 原生风格**不使用 `Material`**：页面底已经是重模糊的玻璃（`GlassPageBackground`），
-    /// 材质会对同一画面做第二次模糊与降饱和——实机观感即"卡片发灰的奶雾"。
-    /// 改为不采样的半透明填充：透过卡片看到的本来就是页面玻璃的模糊画面，
-    /// 视觉上等价，却不再二次降饱和，卡片呈现为"玻璃上的玻璃片"。
-    /// 0.6：在保留玻璃透光观感的同时，为正文/次级文字提供稳定的对比度底座
-    /// （0.45–0.5 在亮壁纸下会让 .secondary 文字跌破可读线）。
+    /// 内容卡片保留半透明的语义底色，使壁纸可见且正文可读。
     var cardBackground: AnyShapeStyle {
         isNativeStyle
-            ? AnyShapeStyle(Color.white.opacity(0.6))
+            ? AnyShapeStyle(Color(nsColor: .controlBackgroundColor).opacity(0.7))
             : AnyShapeStyle(Color.colorGray8)
     }
 
@@ -69,7 +64,7 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
 
     /// 卡片描边（原生风格为细边框，经典主题无描边）。
     var cardBorder: Color? {
-        isNativeStyle ? Color.black.opacity(0.07) : nil
+        isNativeStyle ? Color.primary.opacity(0.08) : nil
     }
 
     /// 卡片阴影半径。
@@ -82,14 +77,13 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
         isNativeStyle ? 4 : 8
     }
 
-    /// 页面背景（经典主题使用；Liquid Glass 的原生玻璃层见 `GlassPageBackground`）。
+    /// 页面背景。Liquid Glass 主区域由 `GlassPageBackground` 绘制。
     var pageBackground: AnyShapeStyle {
         switch self {
         case .classic:
             AnyShapeStyle(Color(0xC0DEF5))
         case .liquidGlass:
-            // 原生风格：轻磨砂玻璃（材质层再叠加透明度，减少白雾感、更透出壁纸）
-            AnyShapeStyle(.ultraThinMaterial.opacity(0.72))
+            AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
         }
     }
 
@@ -97,7 +91,7 @@ enum AppTheme: String, Codable, CaseIterable, CustomStringConvertible {
     var sidebarBackground: AnyShapeStyle {
         switch self {
         case .classic: AnyShapeStyle(.white)
-        case .liquidGlass: AnyShapeStyle(.thinMaterial)
+        case .liquidGlass: AnyShapeStyle(.regularMaterial)
         }
     }
 
