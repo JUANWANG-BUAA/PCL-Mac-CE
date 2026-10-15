@@ -2,8 +2,6 @@
 //  TitleBarView.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/10.
-//
 
 import SwiftUI
 import Core
@@ -108,9 +106,6 @@ struct TitleBarView: View {
             .init("启动", .iconLaunchPage, .launch),
             .init("下载", .iconDownloadPage, .download)
         ]
-        if flagsManager.isEnabled(.multiplayer) {
-            items.append(.init("联机", .iconMultiplayerPage, .multiplayer))
-        }
         items.append(.init("设置", .iconSettingsPage, .settings))
         items.append(.init("更多", .iconMorePage, .more))
         return items

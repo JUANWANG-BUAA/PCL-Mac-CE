@@ -2,8 +2,6 @@
 //  DownloadSourceManager.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/6/24.
-//
 
 import Foundation
 

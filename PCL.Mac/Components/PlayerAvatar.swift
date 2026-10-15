@@ -2,8 +2,6 @@
 //  PlayerAvatar.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/18.
-//
 
 import SwiftUI
 import Core

@@ -2,8 +2,6 @@
 //  LocaleUtils.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/2/4.
-//
 
 import Foundation
 import CoreLocation

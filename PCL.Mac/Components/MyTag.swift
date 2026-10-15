@@ -2,8 +2,6 @@
 //  MyTag.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/18.
-//
 
 import SwiftUI
 

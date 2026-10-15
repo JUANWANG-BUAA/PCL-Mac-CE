@@ -2,8 +2,6 @@
 //  InstanceViewModel.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/4/16.
-//
 
 import Foundation
 import Core

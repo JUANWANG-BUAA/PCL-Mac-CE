@@ -2,8 +2,6 @@
 //  UpdateManager.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/26.
-//
 
 import Foundation
 import AppKit
@@ -11,22 +9,26 @@ import Core
 import ZIPFoundation
 
 class UpdateManager {
-    public static let shared: UpdateManager = .init(APIEndpoints.CylorineSite.launcherUpdate)
-
     /// 更新源是否已配置。
     ///
-    /// ⚠️ 原更新源随上游关闭（`cylorine.studio/meta/...` 已 404）。本项目的新更新源
-    /// 确定并部署后：把此开关改为 `true`，并把 `shared` 的初始化地址换成新源。
+    /// ⚠️ 原更新源随上游关闭（`cylorine.studio` 已下线）。本项目的新更新源
+    /// 确定并部署后：把地址登记到 `shared` 的初始化参数，并把此开关改为 `true`。
     public static let isSourceConfigured: Bool = false
 
-    private let updateMetadataURL: URL
+    /// 单例；未配置更新源时不携带地址（自更新链路停用，见 `isSourceConfigured`）。
+    public static let shared: UpdateManager = .init(nil)
 
-    private init(_ updateMetadataURL: URL) {
+    private let updateMetadataURL: URL?
+
+    private init(_ updateMetadataURL: URL?) {
         self.updateMetadataURL = updateMetadataURL
     }
 
     public func checkUpdates() async throws -> UpdateModel.Version? {
         if Metadata.debugMode || Metadata.bundleVersion == 0 { return nil }
+        guard let updateMetadataURL else {
+            throw SimpleError("更新源迁移中，暂无法检查更新。")
+        }
         let model: UpdateModel = try await HTTPClient.shared.get(updateMetadataURL, revalidate: true).decode(UpdateModel.self)
         return Metadata.bundleVersion >= model.latestVersion.bundleVersion ? nil : model.latestVersion
     }

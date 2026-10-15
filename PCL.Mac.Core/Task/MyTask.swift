@@ -2,8 +2,6 @@
 //  MyTask.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/3.
-//
 
 import Foundation
 import Combine

@@ -35,7 +35,7 @@ Metadata.bundleVersion >= model.latestVersion.bundleVersion ? nil : model.latest
 
 - **只比 `bundleVersion` 整数**，`name`（如 "1.1.1"）纯展示、不参与判断。
 - 所以语义版本回退（1.2.0 → 1.1.5）在这套机制下不会被识别为"需要降级"，也不会被阻止——只要整数变小就不提示。
-- JSON 契约见[自有后端](../api/own-backend.md#1-自更新元数据-updatejson)：**全部字段必填**，缺任何一个键则整体解码失败。
+- JSON 契约类型为 `Models/UpdateModel.swift`：**全部字段必填**，缺任何一个键则整体解码失败。
 
 ## 下载与校验
 

@@ -2,8 +2,6 @@
 //  MinecraftDownloadPage.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/5.
-//
 
 import SwiftUI
 import Core

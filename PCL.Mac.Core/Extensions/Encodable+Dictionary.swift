@@ -2,8 +2,6 @@
 //  Encodable+Dictionary.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/5/16.
-//
 
 import Foundation
 

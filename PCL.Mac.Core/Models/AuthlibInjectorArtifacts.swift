@@ -2,8 +2,6 @@
 //  AuthlibInjectorArtifacts.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/4/14.
-//
 
 import Foundation
 

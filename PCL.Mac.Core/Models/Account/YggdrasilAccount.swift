@@ -2,8 +2,6 @@
 //  YggdrasilAccount.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/4/7.
-//
 
 import Foundation
 

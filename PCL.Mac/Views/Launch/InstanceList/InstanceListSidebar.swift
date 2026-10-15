@@ -2,8 +2,6 @@
 //  InstanceListSidebar.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/27.
-//
 
 import SwiftUI
 @preconcurrency import Core

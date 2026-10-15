@@ -2,8 +2,6 @@
 //  AppWindow.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/29.
-//
 
 import SwiftUI
 import Core

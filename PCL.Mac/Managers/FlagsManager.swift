@@ -2,8 +2,6 @@
 //  FlagsManager.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/7/14.
-//
 
 import Foundation
 import Core
@@ -59,5 +57,4 @@ class FlagsManager: ObservableObject {
 
 enum FeatureFlag: String, Codable, CaseIterable {
     case deduplicateLibraries
-    case multiplayer
 }

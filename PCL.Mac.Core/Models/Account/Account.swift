@@ -2,8 +2,6 @@
 //  Account.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/14.
-//
 
 import Foundation
 

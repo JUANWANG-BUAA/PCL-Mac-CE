@@ -23,13 +23,10 @@
 
 | 依赖 | 谁控制 | 一旦关掉的后果 | 位置 |
 |---|---|---|---|
-| `api.cylorine.studio/cave` | 作者 | 百宝箱回声洞报错 | `Core/Services/CLAPIClient.swift:17-19` |
-| `api.cylorine.studio/easytier/{status,peers}` | 作者 | 联机拿不到节点，只剩用户自备 peer | `CLAPIClient.swift:21-35` |
-| **EasyTier 管理员关房** | **作者持 Ed25519 私钥** | 可远程关掉任意房间，客户端无条件接受 | `ViewModels/MultiplayerViewModel.swift:225-242` |
-| SwiftScaffolding 信令后端 | 作者（主机名不在本仓库） | 联机房间发现失效 | 客户端库已 vendor（`Vendor/SwiftScaffolding`，ADR-009）；**信令服务端**仍为上游私有设施 |
 | 微软 client ID（缺省为 Prism 公共 ID） | Prism Launcher 团队注册的公共客户端，本项目非注册方 | 若微软封禁该 ID，依赖它的第三方启动器共同受影响；可轻量切换（ADR-010） | `Core/Services/MicrosoftAuthService.swift`，`MS_CLIENT_ID` / `PCLMAC_MS_CLIENT_ID` 可覆盖 |
 
-> 实测 `https://api.cylorine.studio` 返回 **200**。所以现状是"主域已死、子域还活"，两者命运不绑定 —— 别假设联机功能也坏了。
+> 原 `api.cylorine.studio`（回声洞 / EasyTier 节点）与 SwiftScaffolding 信令服务端的依赖
+> 已随联机与回声洞功能整体移除（ADR-011），不再存在于代码中。
 
 ## 第三方基础设施（非单点，但不可控）
 
@@ -38,7 +35,6 @@
 | `bmclapi2.bangbang93.com` | 社区志愿镜像（bangbang93） | 停服则中国区下载退化到官方源 |
 | `mod.mcimirror.top` | 社区志愿镜像 | 同上 |
 | `authlib-injector.yushi.moe` | 个人维护（yushijinhun） | 第三方登录无法注入 |
-| `gitee.com/yizhimcqiu/easytier-mirror` | **第三方搬运**，非 EasyTier 官方，**仓库已删除（2026-10-14 复测 404）** | ~~搬运仓库消失 → 联机内核装不上~~ **已修复**：`EasyTierManager` 下载镜像失败自动回退官方 GitHub Release zip（见 [ADR-002](../decisions/adr-002-refactor.md)） |
 | `launchermeta/piston-*` 的 Java 列表 URL | 内含**硬编码 commit hash** `2ec0cc96…71` | Mojang 变更该路径即失效（`ViewModels/JavaSettingsViewModel.swift:34`） |
 | `repo1.maven.org` | Maven Central | 本身稳定，但**不在镜像改写表**，中国区慢 |
 
@@ -46,16 +42,7 @@
 
 `CylorineStudio/PCL.Mac.Refactor` 已转私有，本机凭据不可读；`PCL.Mac.Core` 的 MIT 与整体 PCL 许可约束仍然生效。详见 [ADR-001](../decisions/adr-001-baseline.md)。
 
-## 最小替换集（按功能反推的事实清单）
+## 最小替换集（历史记录）
 
-如果只想让"现有功能全部可用"，需要提供的接口就是这五个：
-
-```
-GET  {origin}/meta/PCL.Mac/update.json      → UpdateModel（全字段必填）
-GET  {origin}/meta/mc/version_lookup/sha1/… → {"version": String}
-GET  {origin}/cave                          → {code,msg,data:[String]}
-GET  {origin}/easytier/status               → {code,msg,data:{available,time,message}}
-GET  {origin}/easytier/peers                → {code,msg,data:[String]}
-```
-
-其中只有第一个的 URL 可以通过构造器注入，其余三处的根地址是 `private let` 或内联字面量，**必须改源码**。见[自有后端](../api/own-backend.md#5-耦合点清单改造时的最小替换面)。
+原"五个端点"的最小替换集已随功能移除作废（回声洞 / 联机已删，版本反查已删，
+自更新源待本项目部署后另行登记，ADR-011）。上游后端契约的历史记录见 ADR-001 / ADR-008。

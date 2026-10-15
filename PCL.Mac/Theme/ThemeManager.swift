@@ -2,8 +2,6 @@
 //  ThemeManager.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/10/14.
-//
 
 import SwiftUI
 import Core

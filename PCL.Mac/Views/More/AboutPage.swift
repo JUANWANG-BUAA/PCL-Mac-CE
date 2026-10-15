@@ -2,8 +2,6 @@
 //  AboutPage.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/7.
-//
 
 import SwiftUI
 import Core
@@ -59,11 +57,6 @@ struct AboutPage: View {
                         "SwiftScaffolding", "Copyright (c) 2025-2026 CylorineStudio\nLicensed under the MIT License.",
                         sourceURL: "https://github.com/CylorineStudio/SwiftScaffolding",
                         licenseURL: "https://github.com/CylorineStudio/SwiftScaffolding/blob/main/LICENSE"
-                    )
-                    LicenseListItem(
-                        "EasyTier", "Copyright (c) 2024-present Easytier Programme within The Commons Conservancy\nLicensed under the LGPL 3.0 License.",
-                        sourceURL: "https://github.com/EasyTier/EasyTier",
-                        licenseURL: "https://github.com/EasyTier/EasyTier/blob/main/LICENSE"
                     )
                     LicenseListItem(
                         "TOMLDecoder", "Copyright (c) 2019 TOMLDecoder contributors\nLicensed under the MIT License.",

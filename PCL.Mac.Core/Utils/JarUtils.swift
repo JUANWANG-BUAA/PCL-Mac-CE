@@ -2,8 +2,6 @@
 //  JarUtils.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/2/17.
-//
 
 import Foundation
 import ZIPFoundation

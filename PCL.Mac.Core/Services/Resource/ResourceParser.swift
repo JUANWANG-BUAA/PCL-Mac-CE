@@ -2,8 +2,6 @@
 //  ResourceParser.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/6/15.
-//
 
 import Foundation
 import ZIPFoundation

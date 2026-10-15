@@ -2,8 +2,6 @@
 //  DemoHomepageView.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/7/12.
-//
 
 import SwiftUI
 

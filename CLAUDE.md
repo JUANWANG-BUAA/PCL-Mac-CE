@@ -42,10 +42,10 @@ PCL.Mac imports `Core` (PCL.Mac.Core). PCL.Mac.Core imports `SwiftScaffolding` f
 ### Directory layout (PCL.Mac — UI module)
 
 - `App/` — App entry point (`@main`), `AppDelegate`, `AppWindow` (NSWindow subclass), `AppRouter` (navigation), `LauncherConfig` (persisted settings), `Secrets`
-- `Views/` — SwiftUI views organized by feature: `Download/`, `Launch/` (with `InstanceList/`, `InstanceSettings/`), `Settings/`, `More/`, `Multiplayer/`, `Tasks/`
+- `Views/` — SwiftUI views organized by feature: `Download/`, `Launch/` (with `InstanceList/`, `InstanceSettings/`), `Settings/`, `More/`, `Tasks/`
 - `ViewModels/` — `ObservableObject` view models, including `Instance/` subdirectory
 - `Models/` — UI-layer data models (`ListItem`, `UpdateModel`, `MessageBoxModel`, etc.)
-- `Managers/` — Singleton managers: `MinecraftLaunchManager`, `TaskManager`, `HintManager`, `MessageBoxManager`, `UpdateManager`, `EasyTierManager`, `EasterEggManager`, `FileDropHandler`
+- `Managers/` — Singleton managers: `MinecraftLaunchManager`, `TaskManager`, `HintManager`, `MessageBoxManager`, `UpdateManager`, `EasterEggManager`, `FileDropHandler`
 - `Components/` — Reusable SwiftUI components prefixed with `My` (`MyCard`, `MyButton`, `MyText`, `MyList`, `MyLoading`, `MyTag`, etc.)
 - `Extensions/` — SwiftUI `EnvironmentValues` keys, `Color` extensions, localization extensions
 - `Services/` — `UpdateService` (UI-layer service)
@@ -63,7 +63,7 @@ PCL.Mac imports `Core` (PCL.Mac.Core). PCL.Mac.Core imports `SwiftScaffolding` f
 
 ### Navigation
 
-`AppRouter` (singleton `ObservableObject`) manages navigation via `AppRoute` enum with a path stack. Root routes: `launch`, `download`, `multiplayer`, `settings`, `more`. Sub-pages are pushed onto the path. `AppRouterView` switches on the current route to render the appropriate page. `AppSidebarView` switches on the route to render the matching sidebar.
+`AppRouter` (singleton `ObservableObject`) manages navigation via `AppRoute` enum with a path stack. Root routes: `launch`, `download`, `settings`, `more`. Sub-pages are pushed onto the path. `AppRouterView` switches on the current route to render the appropriate page. `AppSidebarView` switches on the route to render the matching sidebar.
 
 `Sidebar` is a protocol (`protocol Sidebar: View { var width: CGFloat { get } }`) — each section implements its own sidebar. The sidebar's width animates on route changes via a white-dominant design.
 
@@ -76,7 +76,7 @@ PCL.Mac imports `Core` (PCL.Mac.Core). PCL.Mac.Core imports `SwiftScaffolding` f
 - **Concurrency**: `SWIFT_STRICT_CONCURRENCY = targeted` is enabled (see `Configs/Base.xcconfig`, roadmap: targeted → complete → Swift 6). Conventions: ViewModel/Manager `ObservableObject` classes are `@MainActor`; don't wrap `await MainActor.run { … }` inside their methods (already on main). Core value types exposed to App must be `Sendable`. Use `@preconcurrency import Core` / `@preconcurrency import SwiftScaffolding` at boundaries until the Sendable audit completes. `MyTask` model carriers are `@unchecked Sendable` by design (shared mutable state across subtasks) — see docs-book ADR-003.
 - **Naming**: never use backtick-escaped type names — use `Style` (`MyButton.Style`) / `Kind` (`HintModel.Kind`) suffixes for associated enums.
 - **Global logging**: `log()`, `err()`, `warn()`, `debug()` are global functions defined in `PCL.Mac.Core/Minecraft/Launch/LogManager.swift`. They write to rotating log files (`Log1.log` through `Log5.log`) in `~/Library/Application Support/PCL.Mac/Logs/`.
-- **Remote URL registry**: ALL remote endpoints live in `PCL.Mac.Core/Utils/APIEndpoints.swift` (program-requested APIs) and `PCL.Mac.Core/Utils/WebLinks.swift` (browser-opened links). Never inline `https://…` literals in services or views; add or reference a constant there instead. Dead endpoints are kept in place with a `⚠️` doc comment.
+- **Remote URL registry**: ALL remote endpoints live in `PCL.Mac.Core/Utils/APIEndpoints.swift` (program-requested APIs) and `PCL.Mac.Core/Utils/WebLinks.swift` (browser-opened links). Never inline `https://…` literals in services or views; add or reference a constant there instead. Dead endpoints are removed from code; their history is recorded in `docs-book` ADRs and the risk register.
 - **UI design tokens**: `PCL.Mac/Extensions/DesignTokens.swift` defines `Spacing`, `Radius`, `ShadowToken`, `Font.pcl(_:)`/`Font.cardTitle`, and semantic colors (`.danger`). The `My*` components are the token consumption boundary — prefer tokens over raw values in new UI code. The brand palette `Color.color1-8` / `colorGray1-8` (from PCL2-CE, issue #13) is the primitive layer; do not rename it.
 - **UI hints**: `hint()` global function (defined in `PCL.Mac/Managers/HintManager.swift`) shows a floating toast notification.
 - **Shared JSON coders**: `JSONDecoder.shared` / `JSONEncoder.shared` (ISO8601 dates, pretty-printed/sorted-key encoding). Always use these.

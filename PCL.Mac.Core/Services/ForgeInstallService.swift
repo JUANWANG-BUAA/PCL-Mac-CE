@@ -2,8 +2,6 @@
 //  ForgeInstallService.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/2/15.
-//
 
 import Foundation
 import ZIPFoundation

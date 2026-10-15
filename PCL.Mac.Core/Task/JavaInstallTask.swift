@@ -2,8 +2,6 @@
 //  JavaInstallTask.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/11.
-//
 
 import Foundation
 

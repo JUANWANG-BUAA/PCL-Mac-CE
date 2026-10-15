@@ -2,8 +2,6 @@
 //  UpdateService.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/26.
-//
 
 import SwiftUI
 import Core

@@ -2,8 +2,6 @@
 //  URLConstants.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/8.
-//
 
 import Foundation
 
@@ -28,7 +26,6 @@ public struct URLConstants {
     /// 普通下载（无实例上下文）的资源存放目录。
     public static let downloadCacheURL: URL = applicationSupportURL.appending(path: "DownloadCache")
     public static let authlibInjectorURL: URL = applicationSupportURL.appending(path: "authlib-injector.jar")
-    public static let easyTierURL: URL = applicationSupportURL.appending(path: "EasyTier")
 
     public static func createDirectories() throws {
         let fileManager: FileManager = .default
@@ -37,7 +34,6 @@ public struct URLConstants {
         try fileManager.createDirectory(at: cacheURL, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: tempURL, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: downloadCacheURL, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: easyTierURL, withIntermediateDirectories: true)
     }
 
     /// 一次性迁移：原上游版本的数据目录（`PCL.Mac.Refactor`）→ 本版本目录（`PCL.Mac`）。

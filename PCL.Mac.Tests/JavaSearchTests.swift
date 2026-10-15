@@ -2,8 +2,6 @@
 //  JavaSearchTests.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/9.
-//
 
 import Testing
 import Foundation

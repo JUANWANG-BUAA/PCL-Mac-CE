@@ -2,8 +2,6 @@
 //  MessageBoxView.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/23.
-//
 
 import SwiftUI
 

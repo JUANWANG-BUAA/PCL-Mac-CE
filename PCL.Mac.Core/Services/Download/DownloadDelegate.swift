@@ -2,8 +2,6 @@
 //  DownloadDelegate.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/16.
-//
 
 import Foundation
 

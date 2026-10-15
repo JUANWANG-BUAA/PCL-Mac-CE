@@ -2,8 +2,6 @@
 //  FileDropHandler.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/5/21.
-//
 
 import Foundation
 @preconcurrency import Core

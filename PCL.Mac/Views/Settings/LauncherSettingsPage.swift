@@ -2,8 +2,6 @@
 //  LauncherSettingsPage.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/7/9.
-//
 
 import SwiftUI
 import Core

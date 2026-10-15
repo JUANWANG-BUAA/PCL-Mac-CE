@@ -2,8 +2,6 @@
 //  LauncherConfig.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/26.
-//
 
 import Foundation
 import Core
@@ -51,11 +49,9 @@ class LauncherConfig: Codable {
     public var currentInstance: String?
     public var accounts: [Account] = []
     public var currentAccountId: UUID?
-    public var multiplayerDisclaimerAgreed: Bool = false
     public var hasMicrosoftAccount: Bool = false
     public var launchCount: Int = 0
     public var hasEnteredLauncher: Bool = false
-    public var multiplayerCustomPeer: String?
     public var ignoreLauncherUpdates: Bool = false
     public var downloadSourcePolicy: DownloadSourcePolicy = .officialFirst
     public var homepageType: HomepageType = .empty
@@ -80,11 +76,9 @@ class LauncherConfig: Codable {
                 self.currentAccountId = accounts[0].id
             }
         }
-        self.multiplayerDisclaimerAgreed = try container.decodeIfPresent(Bool.self, forKey: .multiplayerDisclaimerAgreed) ?? false
         self.hasMicrosoftAccount = try container.decodeIfPresent(Bool.self, forKey: .hasMicrosoftAccount) ?? false
         self.launchCount = try container.decodeIfPresent(Int.self, forKey: .launchCount) ?? 0
         self.hasEnteredLauncher = try container.decodeIfPresent(Bool.self, forKey: .hasEnteredLauncher) ?? false
-        self.multiplayerCustomPeer = try container.decodeIfPresent(String.self, forKey: .multiplayerCustomPeer)
         self.ignoreLauncherUpdates = try container.decodeIfPresent(Bool.self, forKey: .ignoreLauncherUpdates) ?? false
         self.downloadSourcePolicy = try container.decodeIfPresent(DownloadSourcePolicy.self, forKey: .downloadSourcePolicy) ?? .officialFirst
         self.homepageType = try container.decodeIfPresent(HomepageType.self, forKey: .homepageType) ?? .empty
@@ -100,11 +94,9 @@ class LauncherConfig: Codable {
         try container.encode(currentInstance, forKey: .currentInstance)
         try container.encode(accounts.map(AccountWrapper.init(_:)), forKey: .accounts)
         try container.encode(currentAccountId, forKey: .currentAccountId)
-        try container.encode(multiplayerDisclaimerAgreed, forKey: .multiplayerDisclaimerAgreed)
         try container.encode(hasMicrosoftAccount, forKey: .hasMicrosoftAccount)
         try container.encode(launchCount, forKey: .launchCount)
         try container.encode(hasEnteredLauncher, forKey: .hasEnteredLauncher)
-        try container.encode(multiplayerCustomPeer, forKey: .multiplayerCustomPeer)
         try container.encode(ignoreLauncherUpdates, forKey: .ignoreLauncherUpdates)
         try container.encode(downloadSourcePolicy, forKey: .downloadSourcePolicy)
         try container.encode(homepageType, forKey: .homepageType)
@@ -124,11 +116,9 @@ class LauncherConfig: Codable {
         case currentInstance
         case accounts
         case currentAccountId
-        case multiplayerDisclaimerAgreed
         case hasMicrosoftAccount
         case launchCount
         case hasEnteredLauncher
-        case multiplayerCustomPeer
         case ignoreLauncherUpdates
         case downloadSourcePolicy
         case homepageType

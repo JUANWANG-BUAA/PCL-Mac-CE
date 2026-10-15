@@ -2,8 +2,6 @@
 //  DownloadTests.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/24.
-//
 
 import Testing
 import Foundation

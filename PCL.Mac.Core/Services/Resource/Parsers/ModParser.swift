@@ -2,8 +2,6 @@
 //  ModParser.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/6/16.
-//
 
 import Foundation
 import ZIPFoundation

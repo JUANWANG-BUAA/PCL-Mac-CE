@@ -84,7 +84,3 @@ manifest.gameArguments（按 rules 过滤）            :66
 | 游戏输出重定向 | `MinecraftLauncher.swift:69` 起 `Pipe`；临时日志 `URLConstants.tempURL/game-log-<uuid>.log`（`:24`） | — |
 | 启动器日志 | `Core/Minecraft/Launch/LogManager.swift:51-59`，5 代轮转 `Log1-5.log`（`:78-84`）；INFO 同时 `print`（`:48`），WARN/ERROR 进 `os.Logger`（`:45-46`） | 含完整 argv，脱敏仅等值替换 accessToken（`:74`） |
 | 崩溃报告 | `Managers/MinecraftLaunchManager.swift:120-153`：`launcher-info.json`（`:125-132`，不含 token）+ `game-log.log` + 最新 `crash-reports/*.txt` | 可一键导出 zip |
-
-## 联机与启动的关系
-
-联机房主启动游戏走同一套 `MinecraftLaunchTask`，但玩家名与房间身份取全局当前账号（`ViewModels/MultiplayerViewModel.swift:254-259`），并把 `127.0.0.1:{serverPort}` 复制进剪贴板供玩家手动连接。详见[联机与 EasyTier](multiplayer.md)。

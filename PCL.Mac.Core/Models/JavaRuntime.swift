@@ -2,8 +2,6 @@
 //  JavaRuntime.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/8.
-//
 
 import Foundation
 

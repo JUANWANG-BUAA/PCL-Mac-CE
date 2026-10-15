@@ -65,12 +65,12 @@
 | 实例级元数据 | `.clmetadata.json`（uuid + version） | `:15,198-201` |
 | 配置解码失败 | 回退 `.default` 并置 dirty（不报错） | `:74-78` |
 | 版本判定 | 先看 `metadata.version` 是否在 `VersionManifest` 里，否则进 `detectVersion` | `:59-66` |
-| `detectVersion` | 清单 `manifest.version` → jar 内 `version.json` → 联网 SHA-1 反查 | `:154-179` |
+| `detectVersion` | 清单 `manifest.version` → jar 内 `version.json` | `:154-179` |
 | 全失败 | 静默吞掉，版本回退为**目录名** | `:67-69,86,175` |
 
-> 一个容易忽略的现状：`:59-66` 用了 `?? true`，所以 **`VersionManifest` 还没加载完时倾向认为"版本在清单里"，从而跳过反查**。冷启动瞬间加载实例列表，识别质量会略低于之后。
+> 一个容易忽略的现状：`:59-66` 用了 `?? true`，所以 **`VersionManifest` 还没加载完时倾向认为"版本在清单里"，从而跳过识别**。冷启动瞬间加载实例列表，识别质量会略低于之后。
 
-联网反查那一步依赖已下线的 `cylorine.studio`，详见[自有后端](own-backend.md#2-版本反查-version_lookup)。
+原第三道兜底（联网 SHA-1 反查，依赖已下线的 `cylorine.studio`）已随上游退场移除（ADR-009）。
 
 ## 仓库与实例模型
 

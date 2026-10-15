@@ -2,8 +2,6 @@
 //  JavaSettingsPage.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/6.
-//
 
 import SwiftUI
 import Core

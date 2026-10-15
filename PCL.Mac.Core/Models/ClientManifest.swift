@@ -2,8 +2,6 @@
 //  ClientManifest.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/21.
-//
 
 import Foundation
 import SwiftyJSON

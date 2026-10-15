@@ -112,7 +112,6 @@ sequenceDiagram
 | `repo1.maven.org/maven2` | macOS natives 补丁，中国区仍走境外 maven | `Core/Utils/NativesMapper.swift:38,48,61,64` |
 | Fabric `profile/json` | 写死官方域 | `Core/Task/MinecraftInstallTask.swift:403-408` |
 | `authlib-injector.yushi.moe` 及其 jar | 第三方登录注入器 | `Task/MinecraftLaunchTask.swift:282-288` |
-| EasyTier 二进制 | 本身就是 gitee 镜像 | `Managers/EasyTierManager.swift:29-47` |
 | 自更新包（github / mirror 两 URL） | 由 update.json 下发，不经改写表 | `Managers/UpdateManager.swift:30-36` |
 | Java 运行时列表 `all.json` | 直接取官方，未经 `DownloadSourceManager` | `ViewModels/JavaSettingsViewModel.swift:34` |
 
@@ -122,5 +121,4 @@ sequenceDiagram
 |---|---|---|
 | 版本清单 | `~/Library/Application Support/PCL.Mac.Refactor/Caches/version_manifest.json` | 无 TTL；靠 HTTP revalidate + 内存单例比对（`Core/Models/VersionManifest.swift:104-116`） |
 | 资源缓存 | `Core/Services/Cache/ResourceCache.swift` | — |
-| authlib-injector.jar | `…/PCL.Mac.Refactor/authlib-injector.jar` | 每次启动按 SHA 校验，不过则删并重下 |
-| EasyTier | `…/PCL.Mac.Refactor/EasyTier/` | `isInstalled` = 可执行 + SHA 校验通过 |
+| authlib-injector.jar | `…/PCL.Mac/authlib-injector.jar` | 每次启动按 SHA 校验，不过则删并重下 |

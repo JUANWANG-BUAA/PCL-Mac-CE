@@ -2,8 +2,6 @@
 //  AppDelegate.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/8.
-//
 
 import Foundation
 import AppKit
@@ -190,7 +188,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             LauncherConfig.shared.enabledFlags = FlagsManager.shared.enabledFlags
             try LauncherConfig.save()
         }
-        EasyTierManager.shared.terminateAll()
     }
 
     private func addEscapeMonitor() {

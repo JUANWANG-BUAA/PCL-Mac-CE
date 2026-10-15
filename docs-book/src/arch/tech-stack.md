@@ -29,7 +29,7 @@
 
 | 包 | 版本 | 用途 | 备注 |
 |---|---|---|---|
-| [SwiftScaffolding](https://github.com/CylorineStudio/SwiftScaffolding) | 0.2.0 | 红石联机（Scaffolding-MC）协议的 Swift 实现 | 作者自己的库，**仍是公开仓库**；其信令后端主机在本仓库不可见 |
+| [SwiftScaffolding](https://github.com/CylorineStudio/SwiftScaffolding) | 0.2.1（vendor 于 `Vendor/SwiftScaffolding`，ADR-009） | 日志（`SwiftScaffolding.Logger`） | 上游作者的 MIT 库；联机协议部分随功能移除（ADR-011），仅余日志能力 |
 | [SwiftyJSON](https://github.com/SwiftyJSON/SwiftyJSON) | 5.0.2 | 宽松 JSON 解析 | `HTTPClient.Response.json()` 的返回类型 |
 | [ZIPFoundation](https://github.com/weichsel/ZIPFoundation) | 0.9.20 | zip 解压（整合包、自更新包） | `Extensions/Archive+EntryExtract.swift` |
 | [TOMLDecoder](https://github.com/dduan/TOMLDecoder) | 0.4.4 | 解析 mods.toml（Forge 模组元数据） | `Services/Resource/Parsers/ModParser.swift` |
@@ -40,7 +40,6 @@
 
 | 二进制 | 来源 | 版本固定方式 | 校验 |
 |---|---|---|---|
-| EasyTier `easytier-core` / `easytier-cli` | `gitee.com/yizhimcqiu/easytier-mirror` v2.5.0 | **URL 里写死 v2.5.0** | **SHA-1 硬编码在源码**（`Managers/EasyTierManager.swift:31,36,44,49`），按 arm64/x86_64 各一份 |
 | `authlib-injector.jar` | `authlib-injector.yushi.moe` | 取 `artifacts.json` 里 `build_number` 最大者 | 服务端下发的 `checksums`，本地支持 sha1/sha256/sha512（`Core/Utils/FileUtils.swift:52-64`） |
 | JRE | 系统 Java / Homebrew / SDKMAN / Mojang `java-runtime` 列表 / 用户手动添加 | `JavaSearcher` + `Configs` | Mojang 运行时的 manifest 走 piston-meta |
 

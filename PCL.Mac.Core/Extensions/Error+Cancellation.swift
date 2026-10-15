@@ -2,8 +2,6 @@
 //  Error+Cancellation.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/5/10.
-//
 
 import Foundation
 

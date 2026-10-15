@@ -23,8 +23,9 @@ ADR-008 完成了 UI 入口层面的切割（死链、头像、更新闸门）�
    `Vendor/SwiftScaffolding/`（剔除 `.git` 与其自身 CI），pbxproj 改为
    `XCLocalSwiftPackageReference`，`Package.resolved` 移除该 pin。MIT 许可
    允许再分发，`LICENSE` 与 `Resources/licenses/` 声明保持原样。
-   **注意**：vendor 的只是客户端库；联机信令后端仍是上游主机上的服务
-   （Scaffolding-MC 公开协议），服务侧依赖见 [自有后端](../api/own-backend.md)。
+   **注意**：vendor 的只是客户端库；联机信令服务端属上游主机上的服务
+   （Scaffolding-MC 公开协议）——该依赖已随联机功能移除（ADR-011），
+   vendor 仅余日志能力。
 2. **Bundle ID 换为自有命名空间**：`io.github.juanwang-buaa.pcl-mac`（及
    `.core` / `.tests`，共 6 处配置）。本项目零 `UserDefaults` 使用、配置走
    文件路径持久化，改 ID 无偏好迁移成本；对已装用户仅表现为 LaunchServices

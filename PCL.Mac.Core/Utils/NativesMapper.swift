@@ -2,8 +2,6 @@
 //  NativesMapper.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/2/10.
-//
 
 // 直接从老项目里抄的
 // 这段代码现在只有上帝能看懂了.jpg

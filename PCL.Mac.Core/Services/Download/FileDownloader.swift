@@ -2,8 +2,6 @@
 //  FileDownloader.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/7/4.
-//
 
 import Foundation
 

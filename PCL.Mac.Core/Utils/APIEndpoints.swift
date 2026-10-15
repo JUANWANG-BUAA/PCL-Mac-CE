@@ -2,8 +2,6 @@
 //  APIEndpoints.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/10/14.
-//
 
 import Foundation
 
@@ -12,11 +10,10 @@ import Foundation
 /// 项目曾把 HTTP 根地址以字面量形式散落在 20+ 个文件中，同域名字面量重复出现，
 /// 换源必须逐文件检索。现在所有远程地址集中于此，各服务只引用本注册表。
 ///
-/// 状态标注（实测于 2026-10）：
-/// - `cylorine.studio` 主域已下线（GitHub Pages 404），其下的更新源 / 版本反查 /
-///   帮助页均为死链；`api.cylorine.studio` 子域仍存活，两者命运不绑定。
-/// - `gitee.com/yizhimcqiu/easytier-mirror` 仓库已删除（404），EasyTier 下载需走
-///   官方 GitHub Release 兜底。
+/// 已退场端点（历史记录见 docs-book 的 ADR 与风险登记册，不再在代码中登记）：
+/// - `cylorine.studio` 主域（原上游官网：更新源 / 版本反查 / 帮助页，已下线）；
+/// - `api.cylorine.studio`（原上游私有后端：回声洞 / EasyTier 节点，随功能移除）；
+/// - `gitee.com/yizhimcqiu/easytier-mirror`（EasyTier 搬运仓库，已删除）。
 public enum APIEndpoints {
     // MARK: Mojang 官方
 
@@ -138,28 +135,6 @@ public enum APIEndpoints {
         }
     }
 
-    // MARK: 自有后端
-
-    /// 作者自建后端 API（存活）。
-    public enum CylorineAPI {
-        public static let root: URL = .init(string: "https://api.cylorine.studio")!
-    }
-
-    /// 作者自建静态站点。
-    ///
-    /// ⚠️ **主域已下线（404）**：更新源、版本反查、帮助页均不可用，保留仅为集中管理。
-    public enum CylorineSite {
-        public static let root: URL = .init(string: "https://cylorine.studio")!
-
-        /// 启动器更新元数据（死链）。
-        public static let launcherUpdate: URL = root.appending(path: "meta/PCL.Mac/update.json")
-
-        /// 版本 jar SHA-1 反查（死链）。
-        public static func versionLookup(sha1: String) -> URL {
-            root.appending(path: "meta/mc/version_lookup/sha1/\(sha1)")
-        }
-    }
-
     // MARK: 镜像源
 
     /// 社区镜像源。
@@ -170,22 +145,5 @@ public enum APIEndpoints {
         public static let mcim: URL = .init(string: "https://mod.mcimirror.top")!
         /// Cloudflare 出口 IP 探测，用于判断中国大陆地区。
         public static let cloudflareTrace: URL = .init(string: "https://www.cloudflare-cn.com/cdn-cgi/trace")!
-    }
-
-    // MARK: EasyTier
-
-    /// EasyTier 联机内核。
-    public enum EasyTier {
-        public static let version: String = "v2.5.0"
-
-        /// ⚠️ gitee 搬运仓库已删除（404），仅作历史候选保留。
-        public static func giteeMirror(component: String, architecture: String) -> URL {
-            .init(string: "https://gitee.com/yizhimcqiu/easytier-mirror/releases/download/\(version)/easytier-\(component)-macos-\(architecture)")!
-        }
-
-        /// 官方 GitHub Release 压缩包（内含 `easytier-macos-<arch>/` 目录）。
-        public static func officialRelease(architecture: String) -> URL {
-            .init(string: "https://github.com/EasyTier/EasyTier/releases/download/\(version)/easytier-macos-\(architecture)-\(version).zip")!
-        }
     }
 }

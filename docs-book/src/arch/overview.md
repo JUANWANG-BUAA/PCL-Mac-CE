@@ -24,8 +24,7 @@ graph TB
         MSG["微软链: login.microsoftonline → Xbox → XSTS → api.minecraftservices"]
         MOD["Mod 平台: api.modrinth / api.curseforge"]
         LDR["加载器: meta.fabricmc / files.minecraftforge / maven.neoforged"]
-        OWN["作者后端: cylorine.studio + api.cylorine.studio"]
-        MISC["authlib-injector.yushi.moe / gitee EasyTier / cloudflare-cn"]
+        MISC["authlib-injector.yushi.moe / cloudflare-cn"]
     end
     subgraph DISK["本地"]
         CFG["~/Library/Application Support/PCL.Mac.Refactor/config.json"]

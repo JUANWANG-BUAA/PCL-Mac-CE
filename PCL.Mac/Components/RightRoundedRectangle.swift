@@ -2,8 +2,6 @@
 //  RightRoundedRectangle.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/26.
-//
 
 import SwiftUI
 

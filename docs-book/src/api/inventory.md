@@ -27,26 +27,16 @@
 | `bmclapi2.bangbang93.com` | 中国大陆镜像 | 🟡 社区志愿 | — |
 | `mod.mcimirror.top` | Modrinth/ForgeCDN 镜像 | 🟡 社区志愿 | — |
 | `authlib-injector.yushi.moe` | 第三方登录注入器 | 🟡 个人维护 | **否（漏网）** |
-| `gitee.com/yizhimcqiu/easytier-mirror` | EasyTier 二进制镜像 | 🟡 第三方搬运 | 否（本身即镜像） |
 | `www.cloudflare-cn.com` | 出口 IP 地区判定 | 🟢 | 否 |
-| `cylorine.studio` | 自更新源、版本反查、帮助页、头像 | 🔴 **已下线** | 否 |
-| `api.cylorine.studio` | 回声洞、联机节点与状态 | 🟡 **作者私有，随时可关** | 否 |
 | 用户输入的 Yggdrasil 服务器 | 第三方登录 | ⚫ | 否 |
 
 > **镜像改写表**在 `Core/Services/Download/Source/DownloadSource.swift:89-115`。它只覆盖**下载**，不覆盖 API 请求；且新增官方域名必须同步改这张表才会被镜像，否则中国区仍走境外源。
 
-## 1. 自有后端（本次改造的主目标）
+## 1. 自有后端（已全部退场）
 
-| 端点 | 方法 | 用途 | 调用点 | 契约 |
-|---|---|---|---|---|
-| `cylorine.studio/meta/PCL.Mac/update.json` | GET(revalidate) | 启动器自更新元数据 | `Managers/UpdateManager.swift:14,24` | 见[自更新](../run/update-flow.md)，**全字段必填** |
-| `cylorine.studio/meta/mc/version_lookup/sha1/{sha1}` | GET | 按 jar SHA-1 反查版本号 | `Core/Services/MinecraftInstanceLoader.swift:173` | `{"version": "..."}`，深度兜底 |
-| `api.cylorine.studio/cave` | GET | 回声洞台词 | `Core/Services/CLAPIClient.swift:17-19` | 信封 `{code,msg,data}`，data 为 `[String]` |
-| `api.cylorine.studio/easytier/status` | GET | 联机服务可用性公告 | `CLAPIClient.swift:21-31` | `available:Bool`、`time`(ISO8601)、`message` |
-| `api.cylorine.studio/easytier/peers` | GET | EasyTier peer 列表 | `CLAPIClient.swift:33-35` | `[String]` |
-| `cylorine.studio/img/avatar/*.png`、`/helps/*`、`/projects/*`、`/privacy` | GET | 头像与外链文档 | `Views/More/AboutPage.swift:20,25,27,31` 等 | 纯展示 |
-
-统一信封与错误语义在 `CLAPIClient.swift:39-67`：`code != 0` → 抛 `apiError(code,msg)`；`data` 缺失 → `missingData`。
+原上游的 `cylorine.studio` 主域与 `api.cylorine.studio` 子域（自更新源 / 版本反查 /
+回声洞 / EasyTier 节点）已随上游关闭与功能移除全部退场（ADR-008 / ADR-011），
+调用代码已删；历史契约记录见各 ADR 与[风险登记册](../risk/dead-dependencies.md)。
 
 ## 2. Mojang 元数据与安装
 
@@ -129,7 +119,6 @@ CurseForge（根 `api.curseforge.com`，**每个请求带 `x-api-key`**，`Async
 | 端点 | 用途 | 行 |
 |---|---|---|
 | `www.cloudflare-cn.com/cdn-cgi/trace` | 出口 IP 地区判定（解析 `loc=CN`），超时 10s | `Core/Utils/LocaleUtils.swift:29` |
-| `gitee.com/yizhimcqiu/easytier-mirror/releases/download/v2.5.0/easytier-{cli,core}-macos-{aarch64,x86_64}` | EasyTier 二进制，SHA-1 写死 | `Managers/EasyTierManager.swift:29,34,42,47` |
 | `textures.minecraft.net`（由档案属性下发） | 皮肤 PNG | `ViewModels/AccountViewModel.swift:97` |
 | 任意 URL | `NetworkImage` 通用图片加载 | `Components/NetworkImage.swift:27` |
 
@@ -138,4 +127,4 @@ CurseForge（根 `api.curseforge.com`，**每个请求带 `x-api-key`**，`Async
 1. **没有 base URL 注册表**：24 个域名散落在 20+ 文件里以字面量出现，`launchermeta` 重复 3 次、`cylorine.studio` 3 次、`api.minecraftservices` 2 次。唯一可注入根地址的是 `CurseForgeAPIClient`（init 默认参数）。
 2. **API 请求没有重试**：`HTTPClient` 用 `URLSession.shared` 单次请求；重试/退避/换源只存在于 `FileDownloader`。任何一次网络抖动都会直接冒到 UI。
 3. **两条镜像漏网路径**：`repo1.maven.org`（natives 补丁）与 Fabric `profile/json`，中国区仍走境外源。
-4. **`cylorine.studio` 主域已死**，`api.cylorine.studio` 仍活——两者命运不绑定，见[死依赖与单点](../risk/dead-dependencies.md)。
+4. **原自有后端已全部退场**（`cylorine.studio` 主域下线、`api.cylorine.studio` 随功能移除，ADR-011），见[死依赖与单点](../risk/dead-dependencies.md)。

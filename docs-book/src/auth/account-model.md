@@ -62,7 +62,7 @@
 
 `Core/Models/Minecraft/MinecraftInstance.swift:45-58` 的实例配置只有三个字段：`jvmHeapSize` / `javaURL` / `jvmArguments`，**没有任何账号字段**。`PCL.Mac.Core` 全目录 grep `account` 只命中协议本体与启动选项（`Core/Minecraft/Launch/LaunchOptions.swift:28`、`LaunchPrecheck.swift:18`）。
 
-启动与联机都只读全局当前账号：`LaunchSidebar.swift:70-74` → `MinecraftLaunchTask.swift:375,383-385`；联机房客名取 `currentAccount?.profile.name ?? "Anonymous"`（`MultiplayerViewModel.swift:254-259`）。全仓库**没有账号选择器 UI**。
+启动只读全局当前账号：`LaunchSidebar.swift:70-74` → `MinecraftLaunchTask.swift:375,383-385`。全仓库**没有账号选择器 UI**。（联机功能已移除，见 ADR-011。）
 
 ## 皮肤与头像
 

@@ -2,8 +2,6 @@
 //  TasksPage.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/9.
-//
 
 import SwiftUI
 import Core

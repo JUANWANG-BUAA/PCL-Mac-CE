@@ -2,8 +2,6 @@
 //  ModpackImportTask.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/23.
-//
 
 import Foundation
 import ZIPFoundation

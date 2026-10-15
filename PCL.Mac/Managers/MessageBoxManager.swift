@@ -2,8 +2,6 @@
 //  MessageBoxManager.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/20.
-//
 
 import Foundation
 import AppKit

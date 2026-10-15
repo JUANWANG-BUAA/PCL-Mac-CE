@@ -2,8 +2,6 @@
 //  DownloadSpeedManager.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/24.
-//
 
 import Foundation
 

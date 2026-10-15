@@ -2,8 +2,6 @@
 //  CardContainer.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/7.
-//
 
 import SwiftUI
 

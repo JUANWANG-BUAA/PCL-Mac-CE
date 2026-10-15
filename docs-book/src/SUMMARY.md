@@ -14,7 +14,6 @@
 - [网络层与镜像源体系](api/network-layer.md)
 - [Mojang 元数据与安装源](api/mojang-metadata.md)
 - [Mod 平台与加载器](api/mod-platforms.md)
-- [自有后端 cylorine.studio](api/own-backend.md)
 
 ## 鉴权与 Token
 
@@ -27,7 +26,6 @@
 
 - [游戏启动流程](run/launch-flow.md)
 - [启动器自更新](run/update-flow.md)
-- [联机与 EasyTier](run/multiplayer.md)
 - [配置持久化与 flags](run/persistence.md)
 
 ## 风险
@@ -48,3 +46,4 @@
 - [ADR-008 与已关闭的直系上游（CylorineStudio/PCL.Mac）切割](decisions/adr-008-upstream-detachment.md)
 - [ADR-009 上游身份资产本地化：Bundle ID、数据目录、版本序列与 SwiftScaffolding vendor](decisions/adr-009-own-identity.md)
 - [ADR-010 微软登录 client_id 处置：Prism 公共 ID + 构建期注入通道](decisions/adr-010-ms-client-id.md)
+- [ADR-011 移除回声洞与联机功能，全面替换上游痕迹](decisions/adr-011-remove-upstream-features.md)

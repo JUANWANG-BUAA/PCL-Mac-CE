@@ -2,8 +2,6 @@
 //  MoreSidebar.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/7.
-//
 
 import SwiftUI
 

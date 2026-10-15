@@ -2,8 +2,6 @@
 //  MyExtraTextButton.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/2/12.
-//
 
 import SwiftUI
 

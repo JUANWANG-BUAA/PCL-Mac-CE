@@ -2,8 +2,6 @@
 //  AccountViewModel.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/1/15.
-//
 
 import SwiftUI
 import Combine

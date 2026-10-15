@@ -2,8 +2,6 @@
 //  MyCard.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/4.
-//
 
 import SwiftUI
 
@@ -228,7 +226,7 @@ struct MyCard<Content: View, Action: View>: View {
                 ZStack(alignment: .center) {
                     Rectangle()
                         .fill(.red)
-                    MyText(String(repeating: "关注风花喵 关注风花谢谢喵\n", count: 16))
+                    MyText(String(repeating: "这是一段用于预览的示例文本。\n", count: 16))
                         .frame(maxHeight: .infinity)
                 }
                 .frame(maxHeight: .infinity)

@@ -2,8 +2,6 @@
 //  DownloadSidebar.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/10.
-//
 
 import SwiftUI
 import Core

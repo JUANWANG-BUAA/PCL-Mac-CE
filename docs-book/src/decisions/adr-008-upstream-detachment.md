@@ -78,6 +78,6 @@
 - **资产注意**：`Resources/PCL.ttf`（PCLEnglish 品牌字体）随"软件"受 PCL 许可约束，
   改名/再分发时其处置须随 LICENSE 一并考虑，不可当自有资产。
 - **后续依赖**：`api.cylorine.studio`（回声洞 / EasyTier 节点）是作者私有设施，
-  仍存活但不属于本项目的长期依赖，迁移或下线计划见 [自有后端](../api/own-backend.md)。
+  依赖已随功能移除彻底退场（ADR-011）。
 
 验证：构建 ✅ · 全量测试 ✅ · SwiftLint 修改文件 0 违规。

@@ -2,8 +2,6 @@
 //  CurseForgeModpackIndex.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/5/2.
-//
 
 import Foundation
 

@@ -2,8 +2,6 @@
 //  OtherSettingsPage.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/26.
-//
 
 import SwiftUI
 import Core
@@ -36,7 +34,6 @@ struct OtherSettingsPage: View {
 
                 VStack(alignment: .leading) {
                     MyComboBox(checked: binding(of: .deduplicateLibraries), text: "去除同一清单中的重复依赖库")
-                    MyComboBox(checked: binding(of: .multiplayer), text: "联机功能")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 4)

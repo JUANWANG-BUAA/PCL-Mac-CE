@@ -2,8 +2,6 @@
 //  ResourcesSearchViewModel.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/3/16.
-//
 
 import Foundation
 import Core

@@ -25,8 +25,8 @@
 | M6 | Yggdrasil 登录**失败路径不清理明文密码**（只有成功路径清） | `AccountViewModel.swift:297-309` |
 | M7 | 玩家档案**从不验签**：`unsigned=true`，`signature` 字段解析了但不用 | `YggdrasilService.swift:160-162`、`PlayerProfile.swift:47` |
 | M8 | 原始响应体整段进错误文案 → 弹窗 + 落日志，可做**日志换行注入**与文案仿冒 | `YggdrasilService.swift:225-228`、`MicrosoftAuthService.swift:144-154`、`AccountViewModel.swift:178-182,301-308` |
-| M9 | `multiplayer` flag 是软门控，只隐藏按钮不禁功能 | `Managers/FlagsManager.swift:50-57`、`Views/TitleBarView.swift:44-45` |
-| M10 | 联机接受**作者私钥签名的强制关房指令**（硬编码 Ed25519 公钥 + 15 秒时间窗） | `MultiplayerViewModel.swift:225-242` |
+| ~~M9~~ | ~~`multiplayer` flag 软门控~~ | **已随联机功能移除失效（ADR-011）** |
+| ~~M10~~ | ~~联机接受作者私钥签名的强制关房指令~~ | **已随联机功能移除失效（ADR-011）** |
 | M11 | `hasMicrosoftAccount` 单向 sticky，永不复位 → 正版劝导逻辑与实际账号状态脱钩 | `App/LauncherConfig.swift:55`、`AccountViewModel.swift:71-82,150` |
 | M12 | `--clientId ${clientid}` / `--xuid ${auth_xuid}` 无值供给，字面量进 argv（1.20.2+） | `Core/Minecraft/Launch/MinecraftLauncher.swift:25-43` 对照 `ClientManifest` gameArguments |
 | M13 | 微软 client ID 硬编码且 `init()` 无参 → 无法替换为自己的应用注册 | `MicrosoftAuthService.swift:14,19` |
@@ -36,14 +36,14 @@
 
 | # | 发现 | 位置 |
 |---|---|---|
-| Q1 | **5 类编译告警**：3× unstructured throwing task 未使用（`Views/Multiplayer/MultiplayerPage.swift`）、4× weak 捕获与外层强捕获不一致（`ViewModels/MultiplayerViewModel.swift`、`Managers/MinecraftLaunchManager.swift`）、1× isolated conformance 传入 `@concurrent`（`Managers/TaskManager.swift`）。当前 Swift 5 模式只是 warning，**切 Swift 6 语言模式大概率编不过** | 构建日志 |
+| Q1 | **编译告警**：weak 捕获与外层强捕获不一致（`Managers/MinecraftLaunchManager.swift`）、isolated conformance 传入 `@concurrent`（`Managers/TaskManager.swift`）。当前 Swift 5 模式只是 warning，**切 Swift 6 语言模式大概率编不过**（联机相关告警已随功能移除消失，ADR-011） | 构建日志 |
 | Q2 | 测试 8 文件 / 285 行 / **11 用例**，且部分用例打真实网络（`PCL.Mac.Tests/DownloadTests.swift:16-85`）；账号、鉴权、启动装配**零覆盖** | — |
 | Q3 | 四处 `catch let e as DecodingError` **永远进不去**（HTTPClient 已包装成 `ResponseError`）→ 解码失败原因丢失 | `YggdrasilService.swift:60-63,122-125,146-148,165-167` |
 | Q4 | 新增账号类型若漏改 `is` 链 → `fatalError()` 闪退而非报错 | `Core/Models/Account/Account.swift:56-69` |
 | Q5 | 无 base URL 注册表；`Core/Utils/URLConstants.swift` 名字误导（全是本地路径） | 见[接口总表](../api/inventory.md) |
 | Q6 | `NativesMapper.swift` 作者自留注释："直接从老项目里抄的 / 这段代码现在只有上帝能看懂了.jpg" | `Core/Utils/NativesMapper.swift:8-9` |
-| Q7 | 上报 vendor 串写 `SwiftScaffolding 0.2.1`，实际依赖是 `0.2.0` —— 手工维护已不同步 | `MultiplayerViewModel.swift:24` |
-| Q8 | 每个头像实例各自 new `AccountViewModel`，列表逐个重复请求纹理；启动/联机也各自 new | `Components/PlayerAvatar.swift:12,33-42`、`MinecraftLaunchTask.swift:195`、`MultiplayerViewModel.swift:256` |
+| ~~Q7~~ | ~~上报 vendor 串版本不同步~~ | **已随联机功能移除失效（ADR-011）** |
+| Q8 | 每个头像实例各自 new `AccountViewModel`，列表逐个重复请求纹理；启动也各自 new | `Components/PlayerAvatar.swift:12,33-42`、`MinecraftLaunchTask.swift:195` |
 | Q9 | `LaunchPrecheck.checkAccount` 收下 `profile` 却完全不用，预检与账号状态脱钩 | `Core/Minecraft/Launch/LaunchPrecheck.swift:33-39` |
 | Q10 | 自更新只留 `.backup` 文件、**无自动回滚**；且要求当前 `.app` 所在目录可写 | `Managers/UpdateManager.swift:42-47` |
 

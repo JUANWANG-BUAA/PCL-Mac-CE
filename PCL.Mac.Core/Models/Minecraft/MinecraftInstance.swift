@@ -2,8 +2,6 @@
 //  MinecraftInstance.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/4/15.
-//
 
 import Foundation
 

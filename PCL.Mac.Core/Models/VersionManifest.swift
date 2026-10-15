@@ -2,8 +2,6 @@
 //  VersionManifest.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/2.
-//
 
 import Foundation
 import SwiftyJSON

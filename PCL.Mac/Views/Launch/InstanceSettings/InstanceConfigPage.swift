@@ -2,8 +2,6 @@
 //  InstanceConfigPage.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/2/2.
-//
 
 import SwiftUI
 import Core

@@ -2,8 +2,6 @@
 //  TaskManager.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/12/11.
-//
 
 import Foundation
 import Combine

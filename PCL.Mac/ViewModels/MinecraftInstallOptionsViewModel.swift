@@ -2,8 +2,6 @@
 //  MinecraftInstallOptionsViewModel.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/2/13.
-//
 
 import Foundation
 import Core

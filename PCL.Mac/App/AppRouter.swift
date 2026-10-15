@@ -2,8 +2,6 @@
 //  AppRouter.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2025/11/9.
-//
 
 import SwiftUI
 import Core
@@ -25,7 +23,7 @@ enum InstallContext: Hashable, Equatable, CustomStringConvertible {
 
 enum AppRoute: Identifiable, Hashable, Equatable {
     // 根页面
-    case launch, download, multiplayer, settings, more, tasks
+    case launch, download, settings, more, tasks
 
     // 启动页面的子页面
     case instanceList(repositoryId: UUID), instanceSettings(id: String)
@@ -38,9 +36,6 @@ enum AppRoute: Identifiable, Hashable, Equatable {
     /// 资源搜索页（Mod / 资源包 / 光影包 / 整合包），`context` 区分普通下载与实例定向下载。
     case resourceDownload(type: ResourceType, context: InstallContext)
     case projectInstall(project: ProjectListItemModel, context: InstallContext)
-
-    // 联机页面的子页面
-    case multiplayerSub, multiplayerSettings
 
     // 设置页面的子页面
     case launcherSettings, javaSettings, otherSettings
@@ -60,7 +55,7 @@ enum AppRoute: Identifiable, Hashable, Equatable {
 @MainActor
 class AppRouter: ObservableObject {
     static let shared: AppRouter = .init()
-    private static let rootRoutes: [AppRoute] = [.launch, .download, .multiplayer, .settings, .more]
+    private static let rootRoutes: [AppRoute] = [.launch, .download, .settings, .more]
 
     @Published private(set) var path: [AppRoute] = [.launch]
 
@@ -95,7 +90,6 @@ class AppRouter: ObservableObject {
         path = [newRoot]
         // 各根页面的默认子页面
         if newRoot == .download { append(.minecraftDownload) }
-        if newRoot == .multiplayer { append(.multiplayerSub) }
         if newRoot == .settings { append(.launcherSettings) }
         if newRoot == .more { append(.about) }
     }
@@ -138,10 +132,6 @@ struct AppRouterView: View {
         case .instanceList(let repositoryId):
             InstanceListPage(instanceManager: instanceManager, repositoryId: repositoryId)
                 .id(repositoryId)
-        case .multiplayerSub:
-            MultiplayerPage()
-        case .multiplayerSettings:
-            MultiplayerSettingsPage()
         case .launcherSettings:
             LauncherSettingsPage()
         case .javaSettings:
@@ -205,7 +195,6 @@ struct AppSidebarView: View {
         case .instanceList: 300
         case .instanceSettings, .instanceConfig, .installedResources: 140
         case .minecraftDownload, .resourceDownload: 150
-        case .multiplayer, .multiplayerSub, .multiplayerSettings: 150
         case .settings, .launcherSettings, .javaSettings, .otherSettings: 140
         case .more, .about, .toolbox: 140
         case .tasks: 220
@@ -225,7 +214,6 @@ struct AppSidebarView: View {
         case .instanceList: InstanceListSidebar(instanceManager: instanceManager)
         case .instanceSettings(let id), .instanceConfig(let id), .installedResources(let id, _): InstanceSettingsSidebar(id: id)
         case .minecraftDownload, .resourceDownload: DownloadSidebar()
-        case .multiplayer, .multiplayerSub, .multiplayerSettings: MultiplayerSidebar()
         case .settings, .launcherSettings, .javaSettings, .otherSettings: SettingsSidebar()
         case .more, .about, .toolbox: MoreSidebar()
         case .tasks: TasksSidebar()

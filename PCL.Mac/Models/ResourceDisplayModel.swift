@@ -2,8 +2,6 @@
 //  ResourceDisplayModel.swift
 //  PCL.Mac
 //
-//  Created by AnemoFlower on 2026/6/7.
-//
 
 import Foundation
 import AppKit

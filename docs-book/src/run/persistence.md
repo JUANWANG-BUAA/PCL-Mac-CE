@@ -21,11 +21,9 @@
 | `currentInstance: String?` | nil | 当前实例 id | 51 |
 | `accounts: [Account]` | `[]` | 经 `AccountWrapper` 编解码 | 52,73,99 |
 | `currentAccountId: UUID?` | nil，非法则回退 `accounts[0]` | 当前账号 | 53,74-81 |
-| `multiplayerDisclaimerAgreed: Bool` | false | 联机免责声明 | 54,82 |
 | `hasMicrosoftAccount: Bool` | false | **单向 sticky，永不复位** | 55,83 |
 | `launchCount: Int` | 0 | 正版劝导弹窗阈值 | 56,84 |
 | `hasEnteredLauncher: Bool` | false | — | 57,85 |
-| `multiplayerCustomPeer: String?` | nil | 用户自备 EasyTier peer | 58,86 |
 | `ignoreLauncherUpdates: Bool` | false | "不再提示" | 59,87 |
 | `downloadSourcePolicy` | `.officialFirst` | 镜像策略 | 60,88 |
 | `homepageType` | `.empty`（可选 `.demo`） | 主页类型（#215） | 61,89,136-145 |
@@ -45,7 +43,7 @@
 
 ### 这条设计的现实后果
 
-1. 运行期所有字段修改都只在内存（Combine 同步仓库 `:126-137`；`homepageType`/`downloadSourcePolicy` 在 `Views/Settings/LauncherSettingsPage.swift:25-26,38`；`ignoreLauncherUpdates` 在 `Services/UpdateService.swift:56`；`multiplayerDisclaimerAgreed` 在 `Views/Multiplayer/MultiplayerPage.swift:228`；`launchCount` 在 `Task/MinecraftLaunchTask.swift:317`）。
+1. 运行期所有字段修改都只在内存（Combine 同步仓库 `:126-137`；`homepageType`/`downloadSourcePolicy` 在 `Views/Settings/LauncherSettingsPage.swift:25-26,38`；`ignoreLauncherUpdates` 在 `Services/UpdateService.swift:56`；`launchCount` 在 `Task/MinecraftLaunchTask.swift:317`）。
 2. **崩溃或强杀 = 本次会话的全部设置与登录丢失**。
 3. **单个账号解码失败会连带丢全部账号**：`:28-43` 是整体解码，例如某个 `YggdrasilAccount.authServerURL` 解析不出来（`Core/Models/Account/YggdrasilAccount.swift:14`）→ 整个 `config.json` 判为损坏 → 写空配置覆盖，且 `try? save`（`:41`）吞掉写盘错误。备份文件是唯一的救济。
 
@@ -79,10 +77,11 @@ v1.1.1 没有 `LauncherConfig` 的导入导出功能（全仓库无 `importConfi
 | flag | 默认 | 实际控制 | 行 |
 |---|---|---|---|
 | `deduplicateLibraries` | **开** | `ClientManifest.deduplicateLibraries` → 清单库去重算法（`Core/Models/ClientManifest.swift:14,101-113`） | `:50-53` |
-| `multiplayer` | **关** | **仅**决定标题栏"联机"按钮是否渲染（`Views/TitleBarView.swift:44-45`），`applyChange` 无副作用 | `:54-57` |
+
+（`multiplayer` flag 已随联机功能移除，ADR-011。）
 
 - 定义 `enum FeatureFlag: String, Codable, CaseIterable`（`:60-63`）；默认集合 `defaultFlags = [.deduplicateLibraries]`（`:14`）。
 - 生命周期：`AppDelegate.swift:73` 用 `LauncherConfig.shared.enabledFlags` 构造 `FlagsManager.shared`（**可变全局**）；退出时 `AppDelegate.swift:184` 回灌并保存。
 - UI 入口：设置页「调试 → 功能开关」两个复选框 + 顶部黄色警示（`Views/Settings/OtherSettingsPage.swift:35,38-39,58-63`）。
 
-**现状结论**：这套 flags **不是** feature flag 平台，只是两个全局布尔开关，且其中一个（`multiplayer`）没有真正的禁用能力。它的设计意图是给"风险修复"留退路（比如去重逻辑出问题可以关掉），目前只有 `deduplicateLibraries` 做到了这一点。
+**现状结论**：这套 flags **不是** feature flag 平台，只是全局布尔开关。它的设计意图是给"风险修复"留退路（比如去重逻辑出问题可以关掉），目前只剩 `deduplicateLibraries` 一个。
