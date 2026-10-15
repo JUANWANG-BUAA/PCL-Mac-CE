@@ -20,8 +20,7 @@ PCL Mac CE（社区版）是 [Plain Craft Launcher](https://github.com/Meloong-G
 
 ## 下载
 
-发布渠道待定（原发布页随上游关闭，新的发布地址确定后在此更新）。<br>
-已发布版本的签名与公证信息会在新发布页说明。
+项目发布页：[PCL Mac CE Releases](https://github.com/JUANWANG-BUAA/PCL-Mac-CE/releases)。首个版本尚未正式发布；正式下载仅以该页面的签名、公证安装包为准。
 
 ## 环境要求
 

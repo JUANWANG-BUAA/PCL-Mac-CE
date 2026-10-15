@@ -47,6 +47,19 @@ jobs:
       - name: Set version
         run: echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> $GITHUB_ENV
 
+      - name: Check signing credentials
+        if: ${{ inputs.build_configuration == 'Release' }}
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          SIGNING_TEAM: ${{ secrets.MACOS_SIGNING_TEAM }}
+        run: |
+          test -n "$CERTIFICATE" || { echo "Missing MACOS_CERTIFICATE" >&2; exit 1; }
+          test -n "$CERTIFICATE_PASSWORD" || { echo "Missing MACOS_CERTIFICATE_PASSWORD" >&2; exit 1; }
+          test -n "$SIGNING_IDENTITY" || { echo "Missing MACOS_SIGNING_IDENTITY" >&2; exit 1; }
+          test -n "$SIGNING_TEAM" || { echo "Missing MACOS_SIGNING_TEAM" >&2; exit 1; }
+
       - name: Generate Secrets.properties
         run: |
           cat > ./Resources/Secrets.properties <<'EOF'

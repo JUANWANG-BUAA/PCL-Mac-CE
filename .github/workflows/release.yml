@@ -21,7 +21,8 @@ jobs:
             -only-testing:PCLMacCE.Tests/ClientManifestTests \
             -only-testing:PCLMacCE.Tests/MyTaskTests \
             -only-testing:PCLMacCE.Tests/LauncherConfigPersistenceTests \
-            -only-testing:PCLMacCE.Tests/ModpackPathTests
+            -only-testing:PCLMacCE.Tests/ModpackPathTests \
+            -only-testing:PCLMacCE.Tests/AuditRegressionTests
 
   build:
     uses: ./.github/workflows/build.yml
@@ -52,6 +53,16 @@ jobs:
           name: PCLMacCE-artifact.zip
           path: ./artifact
           skip-decompress: true
+
+      - name: Check release credentials
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          SIGNING_TEAM: ${{ secrets.MACOS_SIGNING_TEAM }}
+        run: |
+          test -n "$NOTARY_APPLE_ID"
+          test -n "$NOTARY_PASSWORD"
+          test -n "$SIGNING_TEAM"
       
       - name: Notarize app
         run: |
@@ -84,6 +95,10 @@ jobs:
         run: |
           ditto -c -k --sequesterRsrc --keepParent ./artifact/PCLMacCE.app "./PCLMacCE-${{ env.TAG_NAME }}.zip"
           ditto -c -k --sequesterRsrc --keepParent ./artifact/build.xcarchive ./build.xcarchive.zip
+
+      - name: Generate SHA-256 checksums
+        run: |
+          shasum -a 256 "PCLMacCE-${{ env.TAG_NAME }}.zip" "PCLMacCE-${{ env.TAG_NAME }}.dmg" > SHA256SUMS.txt
       
       - name: Create release
         run: |
@@ -91,6 +106,7 @@ jobs:
             "PCLMacCE-${{ env.TAG_NAME }}.dmg" \
             "PCLMacCE-${{ env.TAG_NAME }}.zip" \
             "build.xcarchive.zip" \
+            "SHA256SUMS.txt" \
             --title $VERSION_NUMBER \
             --generate-notes \
             --draft
