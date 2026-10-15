@@ -49,8 +49,6 @@ class FlagsManager: ObservableObject {
         switch flag {
         case .deduplicateLibraries:
             ClientManifest.deduplicateLibraries = enabled
-        default:
-            break
         }
     }
 }

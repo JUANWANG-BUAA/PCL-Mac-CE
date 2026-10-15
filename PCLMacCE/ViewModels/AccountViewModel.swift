@@ -85,7 +85,19 @@ class AccountViewModel: ObservableObject {
 
     /// 获取账号皮肤数据。
     public func skinData(for account: Account) async -> Data {
-        let defaultSkin: Data = .init(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAdVBMVEUAAAAKvLwAzMwmGgokGAgrHg0zJBE/KhW3g2uzeV5SPYn///+qclmbY0mQWT8Af38AaGhVVVWUYD52SzOBUzmPXj5JJRBCHQp3QjVqQDA0JRIoKCg3Nzc/Pz9KSko6MYlBNZtGOqUDenoFiIgElZUApKQAr6/wvakZAAAAAXRSTlMAQObYZgAAAolJREFUeNrt1l1rHucZReFrj/whu5hSCCQtlOTE/f+/Jz4q9Cu0YIhLcFVpVg+FsOCVehi8jmZgWOzZz33DM4CXlum3gH95GgeAzQZVeL4gTm6Cbp4vqFkD8HwBazPY8wWbMq9utu3mNZ5fotVezbzOE3kBEFbaZuc8kb00NTMUbWJp678Xf2GV7RRtx1TDQQ6XBNvsmL2+2vHq1TftmMPIyAWujtN2cl274ua2jpVpZneXEjjo7XW1q53V9ds4ODO5xIuhvGHvfLI3aixauig415uuO2+vl9+cncfsFw25zL650fXn687jqnXuP68/X3+eV3zE7y6u9eB73MlfAcfbTf3yR8CfAX+if8S/H5/EAbAxj5LN48tULvEBOh8V1AageMTXe2YHAOwHbZxrzPkSR3+ffr8TR2JDzE/4Fj8CDgEwDsW+q+9GsR07hhg2CsALBgMo2v5wNxXnQXMeGQVW7gUAyKI2m6KDsJ8Au3++F5RZO+kKNQjQcLLWgjwUjBXLltFgWWMUUlviocBgNoxNGgMjSxiYAA7zgLFo2hgIENiDU8gQCzDOmViGFAsEuBcQSDCothhpJaDRA8E5fHqH2nTbYm5fHLo1V0u3B7DAuheoeScRYabjjjuzs17cHVaTrTXmK78m9swP34d9oK/dfeXSIH2PW/MXwPvxN/bJlxw8zlYAcEyeI6gNgA/O8P8neN8xe1IHP2gTzegjvhUDfuRygmwEs2GE4mkCDIAzm2R4yAuPsIdR9k8AvMc+3L9+2UEjo4WP0FpgP19O0MzCsqxIoMsdDBvYcQyGmO0ZJRoYCKjLJWY0BAhYwGUBCgkh8MRdOKt+ruqMwAB2OcEX94U1TPbYJP0PkyyAI1S6cSIAAAAASUVORK5CYII=")!
+        let defaultSkinBase64: String =
+            "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAdVBMVEUAAAAKvLwAzMwmGgokGAgrHg0zJBE/KhW3g2uzeV5SPYn///+qclmbY0"
+            + "mQWT8Af38AaGhVVVWUYD52SzOBUzmPXj5JJRBCHQp3QjVqQDA0JRIoKCg3Nzc/Pz9KSko6MYlBNZtGOqUDenoFiIgElZUApKQAr6/wvakZAAAA"
+            + "AXRSTlMAQObYZgAAAolJREFUeNrt1l1rHucZReFrj/whu5hSCCQtlOTE/f+/Jz4q9Cu0YIhLcFVpVg+FsOCVehi8jmZgWOzZz33DM4CXlum3gH"
+            + "95GgeAzQZVeL4gTm6Cbp4vqFkD8HwBazPY8wWbMq9utu3mNZ5fotVezbzOE3kBEFbaZuc8kb00NTMUbWJp678Xf2GV7RRtx1TDQQ6XBNvsmL2+"
+            + "2vHq1TftmMPIyAWujtN2cl274ua2jpVpZneXEjjo7XW1q53V9ds4ODO5xIuhvGHvfLI3aixauig415uuO2+vl9+cncfsFw25zL650fXn687jqn"
+            + "XuP68/X3+eV3zE7y6u9eB73MlfAcfbTf3yR8CfAX+if8S/H5/EAbAxj5LN48tULvEBOh8V1AageMTXe2YHAOwHbZxrzPkSR3+ffr8TR2JDzE/4"
+            + "Fj8CDgEwDsW+q+9GsR07hhg2CsALBgMo2v5wNxXnQXMeGQVW7gUAyKI2m6KDsJ8Au3++F5RZO+kKNQjQcLLWgjwUjBXLltFgWWMUUlviocBgNo"
+            + "xNGgMjSxiYAA7zgLFo2hgIENiDU8gQCzDOmViGFAsEuBcQSDCothhpJaDRA8E5fHqH2nTbYm5fHLo1V0u3B7DAuheoeScRYabjjjuzs17cHVaT"
+            + "rTXmK78m9swP34d9oK/dfeXSIH2PW/MXwPvxN/bJlxw8zlYAcEyeI6gNgA/O8P8neN8xe1IHP2gTzegjvhUDfuRygmwEs2GE4mkCDIAzm2R4yA"
+            + "uPsIdR9k8AvMc+3L9+2UEjo4WP0FpgP19O0MzCsqxIoMsdDBvYcQyGmO0ZJRoYCKjLJWY0BAhYwGUBCgkh8MRdOKt+ruqMwAB2OcEX94U1TPbY"
+            + "JP0PkyyAI1S6cSIAAAAASUVORK5CYII="
+        let defaultSkin: Data = .init(base64Encoded: defaultSkinBase64)!
         do {
             guard let textures: Data = account.profile.property(forName: "textures")
                 .flatMap({ Data(base64Encoded: $0) }) else {
@@ -121,7 +133,9 @@ class AccountViewModel: ObservableObject {
                 try await pollAuthorization(service: service)
                 hint("授权成功！正在完成后续登录步骤……")
                 let response = try await service.authenticate()
-                let account: MicrosoftAccount = .init(profile: response.profile, accessToken: response.accessToken, refreshToken: response.refreshToken)
+                let account: MicrosoftAccount = .init(
+                    profile: response.profile, accessToken: response.accessToken, refreshToken: response.refreshToken
+                )
                 log("添加正版账号成功")
                 hint("账号添加成功！", type: .finish)
                 LauncherConfig.shared.hasMicrosoftAccount = true
@@ -249,24 +263,30 @@ class AccountViewModel: ObservableObject {
         }
     }
 
-    public func addYggdrasilAccount() async {
-        let trimmedServerLocation = yggdrasilServer.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard var authServerURL = URL(string: trimmedServerLocation) else {
+    /// 解析并校验用户输入的验证服务器地址；非法时提示并返回 nil。
+    private func parsedAuthServerURL(from input: String) -> URL? {
+        guard var url = URL(string: input) else {
             hint("验证服务器地址错误！", type: .critical)
-            return
+            return nil
         }
-        if let scheme: String = authServerURL.scheme {
+        if let scheme: String = url.scheme {
             guard scheme == "https" || scheme == "http" else {
                 hint("服务器地址无效！", type: .critical)
-                return
+                return nil
             }
         } else {
-            guard let newURL = URL(string: "https://\(trimmedServerLocation)") else {
+            guard let newURL = URL(string: "https://\(input)") else {
                 hint("服务器地址无效！", type: .critical)
-                return
+                return nil
             }
-            authServerURL = newURL
+            url = newURL
         }
+        return url
+    }
+
+    public func addYggdrasilAccount() async {
+        let trimmedServerLocation = yggdrasilServer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard var authServerURL = parsedAuthServerURL(from: trimmedServerLocation) else { return }
         let username: String = yggdrasilUsername.trimmingCharacters(in: .whitespacesAndNewlines)
         let password: String = yggdrasilPassword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !username.isEmpty && !password.isEmpty else {

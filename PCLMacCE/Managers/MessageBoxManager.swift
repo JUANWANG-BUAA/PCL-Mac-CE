@@ -55,7 +55,10 @@ class MessageBoxManager: ObservableObject {
             title: title,
             content: .list(items: items),
             level: .info,
-            buttons: [.init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal), .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)]
+            buttons: [
+                .init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal),
+                .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)
+            ]
         )
         guard case .listSelection(let index) = result else {
             warn("期望 result 类型（listSelection）与实际类型（\(result)）不匹配")
@@ -79,7 +82,10 @@ class MessageBoxManager: ObservableObject {
             title: title,
             content: .input(initialContent: initialContent, placeholder: placeholder),
             level: .info,
-            buttons: [.init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal), .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)]
+            buttons: [
+                .init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal),
+                .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)
+            ]
         )
         guard case .input(let text) = result else {
             warn("期望 result 类型（input）与实际类型（\(result)）不匹配")

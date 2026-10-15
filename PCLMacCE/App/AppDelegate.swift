@@ -6,7 +6,6 @@
 import Foundation
 import AppKit
 import Core
-import SwiftScaffolding
 import Combine
 
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -20,7 +19,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var window: AppWindow!
-    private lazy var shouldInit: Bool = ProcessInfo.processInfo.environment["PCL_MAC_TESTING"] == nil && ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1"
+    private lazy var shouldInit: Bool =
+        ProcessInfo.processInfo.environment["PCL_MAC_TESTING"] == nil
+        && ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1"
     private var keyMonitor: Any?
 
     private var instanceManager: InstanceManager!
@@ -82,10 +83,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         executeAsyncTask("刷新地区信息", silent: true) {
             await DownloadSourceManager.shared.refreshRegion()
-        }
-
-        executeTask("开启 SwiftScaffolding 日志", silent: true) {
-            try SwiftScaffolding.Logger.enableLogging(url: URLConstants.logsDirectoryURL.appending(path: "swift-scaffolding.log"))
         }
         executeTask("清理临时文件") {
             for url in try FileManager.default.contentsOfDirectory(at: URLConstants.tempURL, includingPropertiesForKeys: nil) {

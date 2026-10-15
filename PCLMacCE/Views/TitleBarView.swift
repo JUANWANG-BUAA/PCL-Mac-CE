@@ -64,7 +64,7 @@ struct TitleBarView: View {
                             .scaledToFit()
                             .foregroundStyle(isNative ? Color.primary : .white)
                             .frame(height: 19)
-                        MyTag("Mac", labelColor: isNative ? .primary : .color2, backgroundColor: isNative ? Color.primary.opacity(0.22) : .white)
+                        MyTag("CE", labelColor: isNative ? .primary : .color2, backgroundColor: isNative ? Color.primary.opacity(0.22) : .white)
 
                         if Metadata.debugMode {
                             MyTag("Debug", backgroundColor: .green)

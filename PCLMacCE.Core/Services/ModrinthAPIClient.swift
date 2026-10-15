@@ -78,7 +78,8 @@ public class ModrinthAPIClient {
     ///   - revalidate: 是否验证本地缓存有效性。
     /// - Returns: 该 project 的所有 `ModrinthVersion`（`[ModrinthVersion]`）。
     public func versions(ofProject slug: String, revalidate: Bool = false) async throws -> [ModrinthVersion] {
-        return try await HTTPClient.shared.get(apiRoot.appending(path: "/v2/project/\(slug)/version"), revalidate: revalidate).decode([ModrinthVersion].self)
+        let url: URL = apiRoot.appending(path: "/v2/project/\(slug)/version")
+        return try await HTTPClient.shared.get(url, revalidate: revalidate).decode([ModrinthVersion].self)
     }
 
     /// 获取指定 project 的所有 `ModrinthVersion`。

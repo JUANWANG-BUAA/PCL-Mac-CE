@@ -39,7 +39,7 @@ Xcode build configs in `Configs/`: `Base.xcconfig` → `Debug.xcconfig` / `Relea
 | **PCLMacCE** | App/UI layer: SwiftUI views, view models, UI managers, routing |
 | **PCLMacCE.Core** | Core logic: models, services, Minecraft/Java management, task framework, utilities. No UI dependencies. |
 
-PCLMacCE imports `Core` (PCLMacCE.Core). PCLMacCE.Core imports `SwiftScaffolding` for global logging functions.
+PCLMacCE imports `Core` (PCLMacCE.Core). PCLMacCE.Core has no UI dependencies; global logging lives in `LogManager` (PCLMacCE.Core/Minecraft/Launch/LogManager.swift).
 
 ### Directory layout (PCLMacCE — UI module)
 
@@ -75,7 +75,7 @@ PCLMacCE imports `Core` (PCLMacCE.Core). PCLMacCE.Core imports `SwiftScaffolding
 
 ### Key patterns
 
-- **Concurrency**: `SWIFT_STRICT_CONCURRENCY = targeted` is enabled (see `Configs/Base.xcconfig`, roadmap: targeted → complete → Swift 6). Conventions: ViewModel/Manager `ObservableObject` classes are `@MainActor`; don't wrap `await MainActor.run { … }` inside their methods (already on main). Core value types exposed to App must be `Sendable`. Use `@preconcurrency import Core` / `@preconcurrency import SwiftScaffolding` at boundaries until the Sendable audit completes. `MyTask` model carriers are `@unchecked Sendable` by design (shared mutable state across subtasks) — see docs-book ADR-003.
+- **Concurrency**: `SWIFT_STRICT_CONCURRENCY = targeted` is enabled (see `Configs/Base.xcconfig`, roadmap: targeted → complete → Swift 6). Conventions: ViewModel/Manager `ObservableObject` classes are `@MainActor`; don't wrap `await MainActor.run { … }` inside their methods (already on main). Core value types exposed to App must be `Sendable`. Use `@preconcurrency import Core` at boundaries until the Sendable audit completes. `MyTask` model carriers are `@unchecked Sendable` by design (shared mutable state across subtasks) — see docs-book ADR-003.
 - **Naming**: never use backtick-escaped type names — use `Style` (`MyButton.Style`) / `Kind` (`HintModel.Kind`) suffixes for associated enums.
 - **Global logging**: `log()`, `err()`, `warn()`, `debug()` are global functions defined in `PCLMacCE.Core/Minecraft/Launch/LogManager.swift`. They write to rotating log files (`Log1.log` through `Log5.log`) in `~/Library/Application Support/PCLMacCE/Logs/`.
 - **Remote URL registry**: ALL remote endpoints live in `PCLMacCE.Core/Utils/APIEndpoints.swift` (program-requested APIs) and `PCLMacCE.Core/Utils/WebLinks.swift` (browser-opened links). Never inline `https://…` literals in services or views; add or reference a constant there instead. Dead endpoints are removed from code; their history is recorded in `docs-book` ADRs and the risk register.

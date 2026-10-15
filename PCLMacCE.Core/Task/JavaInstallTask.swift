@@ -10,7 +10,10 @@ public enum JavaInstallTask {
         download: MojangJavaList.JavaDownload
     ) -> MyTask<Model> {
         let tempDirectory: URL = URLConstants.tempURL.appending(path: "JavaInstall-\(UUID().uuidString)")
-        let bundleDestination: URL = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Java/JavaVirtualMachines/mojang-\(download.version).bundle")
+        let vmDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Java/JavaVirtualMachines")
+        let bundleDestination: URL = vmDirectory
+            .appending(path: "mojang-\(download.version).bundle")
         return .init(
             name: "Java 安装 - \(download.version)", model: .init(),
             .init(0, "获取 Java 清单") { _, model in
@@ -31,7 +34,9 @@ public enum JavaInstallTask {
                     case .link(let target):
                         let parent: URL = tempDirectory.appending(path: path).deletingLastPathComponent()
                         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-                        try FileManager.default.createSymbolicLink(at: tempDirectory.appending(path: path), withDestinationURL: parent.appending(path: target).standardized)
+                        let source: URL = tempDirectory.appending(path: path)
+                        let destination: URL = parent.appending(path: target).standardized
+                        try FileManager.default.createSymbolicLink(at: source, withDestinationURL: destination)
                     }
                 }
                 try await FileDownloader.shared.download(files: downloadItems, progressHandler: task.setProgress(_:))

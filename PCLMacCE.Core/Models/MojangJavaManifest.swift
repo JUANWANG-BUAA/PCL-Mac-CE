@@ -40,7 +40,8 @@ public struct MojangJavaManifest: Decodable {
             case "directory":
                 self = .directory
             case "file":
-                let downloadContainer = try container.nestedContainer(keyedBy: DownloadsCodingKeys.self, forKey: .downloads).nestedContainer(keyedBy: DownloadCodingKeys.self, forKey: .raw)
+                let downloads = try container.nestedContainer(keyedBy: DownloadsCodingKeys.self, forKey: .downloads)
+                let downloadContainer = try downloads.nestedContainer(keyedBy: DownloadCodingKeys.self, forKey: .raw)
                 self = .file(
                     url: try downloadContainer.decode(URL.self, forKey: .url),
                     sha1: try downloadContainer.decodeIfPresent(String.self, forKey: .sha1),

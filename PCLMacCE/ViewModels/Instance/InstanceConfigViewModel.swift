@@ -8,12 +8,14 @@ import Core
 
 @MainActor
 class InstanceConfigViewModel: ObservableObject {
-    @Published public var instance: MinecraftInstance
+    /// 目标实例；实例被删除或尚未加载完成时为 nil（页面显示占位状态）。
+    @Published public var instance: MinecraftInstance?
     @Published public var jvmHeapSize: String = ""
     @Published public var jvmArguments: String = ""
     @Published public var javaDescription: String = "无"
 
     public var description: String {
+        guard let instance else { return "实例不存在或尚未加载" }
         if let modLoader: ModLoader = instance.modLoader {
             return "\(instance.version.description)，\(modLoader)"
         }
@@ -21,10 +23,8 @@ class InstanceConfigViewModel: ObservableObject {
     }
 
     public var icon: ImageResource {
-        if let modLoader: ModLoader = instance.modLoader {
-            return modLoader.icon
-        }
-        return .iconGrassBlock
+        guard let modLoader: ModLoader = instance?.modLoader else { return .iconGrassBlock }
+        return modLoader.icon
     }
 
     public let id: String
@@ -33,22 +33,29 @@ class InstanceConfigViewModel: ObservableObject {
     public init(instanceManager: InstanceManager, id: String) {
         self.instanceManager = instanceManager
         self.id = id
-        self.instance = instanceManager.currentRepository.instance(named: id)! // TODO: 改为安全解包
-        self.jvmHeapSize = instance.config.jvmHeapSize.description
-        self.jvmArguments = instance.config.jvmArguments.joinedToArgumentLine()
+        // 优先当前仓库；实例列表与配置页可能处于不同仓库上下文，故回退到全部仓库查找
+        let instance = instanceManager.currentRepository.instance(named: id)
+            ?? instanceManager.repositories.values.compactMap { $0.instance(named: id) }.first
+        if instance == nil {
+            err("实例 \(id) 不存在或尚未加载，配置页显示占位状态。")
+        }
+        self.instance = instance
+        self.jvmHeapSize = instance?.config.jvmHeapSize.description ?? ""
+        self.jvmArguments = instance?.config.jvmArguments.joinedToArgumentLine() ?? ""
         do {
-            self.javaDescription = try instance.config.javaURL.map({ try JavaSearcher.load(from: $0) })?.description ?? "无"
+            self.javaDescription = try instance?.config.javaURL.map({ try JavaSearcher.load(from: $0) })?.description ?? "无"
         } catch {}
     }
 
     public func javaList() -> [JavaRuntime] {
         return JavaManager.shared.javaRuntimes
-            .filter { $0.executableURL != instance.config.javaURL }
+            .filter { $0.executableURL != instance?.config.javaURL }
             .sorted { $0.version > $1.version }
     }
 
     @MainActor
     public func setHeapSize(_ heapSize: UInt64) {
+        guard let instance else { return }
         // 限制在合理范围内：过小无法启动，过大超过物理内存
         let maxMB: UInt64 = UInt64(ProcessInfo.processInfo.physicalMemory / 1024 / 1024)
         let clamped: UInt64 = min(max(heapSize, Self.minHeapSizeMB), maxMB)
@@ -65,12 +72,14 @@ class InstanceConfigViewModel: ObservableObject {
 
     @MainActor
     public func setJvmArguments(_ arguments: String) {
+        guard let instance else { return }
         instance.config.jvmArguments = arguments.splitToArguments()
         instance.markDirty()
     }
 
     @MainActor
     public func switchJava(to runtime: JavaRuntime) throws {
+        guard let instance else { return }
         if runtime.majorVersion < instance.manifest.javaVersion.majorVersion {
             throw Error.invalidJavaVersion(min: instance.manifest.javaVersion.majorVersion)
         }

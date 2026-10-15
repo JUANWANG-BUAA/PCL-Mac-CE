@@ -211,7 +211,10 @@ public class YggdrasilService {
         headers: [String: String]? = nil,
         body: [String: Any?]? = nil
     ) async throws -> HTTPClient.Response {
-        let response = try await HTTPClient.shared.request(url: authServerURL.appending(path: path), method: method, headers: headers, body: body, using: .json, revalidate: false, timeout: 30)
+        let url: URL = authServerURL.appending(path: path)
+        let response = try await HTTPClient.shared.request(
+            url: url, method: method, headers: headers, body: body, using: .json, revalidate: false, timeout: 30
+        )
         if !(200..<300).contains(response.statusCode) {
             if let json: JSON = try? response.json(),
                let error: String = json["error"].string {

@@ -68,44 +68,12 @@ public class ResourceLoadService {
         }
         guard isDirectory.boolValue == true else { throw .foundFile }
 
-        guard let enumerator = FileManager.default.enumerator(
-            at: directoryURL,
-            includingPropertiesForKeys: [.isRegularFileKey]
-        ) else { throw .failedToCreateEnumerator }
-
-        func enumerateFiles(body: (URL) throws -> Void) {
-            for case let fileURL as URL in enumerator {
-                guard validPathExtensions.contains(fileURL.pathExtension) && (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
-                do {
-                    try body(fileURL)
-                } catch {
-                    err("处理文件 \(fileURL.lastPathComponent) 失败：\(error.localizedDescription)")
-                }
-            }
-        }
-
-        var total = 0
-        var cached = 0
-        var loaded = 0
-        var unsupported = 0
-        var failed = 0
-
-        defer { debug("资源目录加载完成，共 \(total) 个文件，\(cached) 个命中缓存，\(loaded) 个加载成功，\(unsupported) 个无法识别，\(failed) 个加载失败") }
+        var stats: LoadStats = .init()
+        defer { debug("资源目录加载完成，共 \(stats.total) 个文件，\(stats.cached) 个命中缓存，\(stats.loaded) 个加载成功，\(stats.unsupported) 个无法识别，\(stats.failed) 个加载失败") }
 
         var result: [URL: Resource] = [:]
         var hashes: [URL: String] = [:]
-        enumerateFiles { url in
-            total += 1
-            try autoreleasepool {
-                let hash = try FileUtils.sha1(of: url)
-                if let resource = cache.resource(forHash: hash) {
-                    cached += 1
-                    result[url] = resource
-                } else {
-                    hashes[url] = hash
-                }
-            }
-        }
+        try scanCachedResources(in: directoryURL, result: &result, hashes: &hashes, stats: &stats)
 
         if hashes.isEmpty {
             return result
@@ -122,20 +90,61 @@ public class ResourceLoadService {
         for (fileURL, hash) in hashes {
             do {
                 guard let resource = try parseFile(at: fileURL, remoteInfo: remoteLookupResult[hash], sha1: hash) else {
-                    unsupported += 1
+                    stats.unsupported += 1
                     warn("无法识别 \(fileURL.lastPathComponent) 的类型")
                     continue
                 }
                 result[fileURL] = resource
-                loaded += 1
+                stats.loaded += 1
                 cache.store(resource, forHash: hash)
             } catch {
                 err("处理资源 \(fileURL.lastPathComponent) 失败：\(error.localizedDescription)")
-                failed += 1
+                stats.failed += 1
             }
         }
 
         return result
+    }
+
+    /// 加载统计。
+    private struct LoadStats {
+        var total = 0
+        var cached = 0
+        var loaded = 0
+        var unsupported = 0
+        var failed = 0
+    }
+
+    /// 扫描目录文件：命中本地缓存的直接入结果，未命中的记录哈希待远端查询。
+    private func scanCachedResources(
+        in directoryURL: URL,
+        result: inout [URL: Resource],
+        hashes: inout [URL: String],
+        stats: inout LoadStats
+    ) throws(LoadError) {
+        guard let enumerator = FileManager.default.enumerator(
+            at: directoryURL,
+            includingPropertiesForKeys: [.isRegularFileKey]
+        ) else { throw .failedToCreateEnumerator }
+
+        for case let fileURL as URL in enumerator {
+            let isRegular: Bool = (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            guard validPathExtensions.contains(fileURL.pathExtension) && isRegular else { continue }
+            stats.total += 1
+            do {
+                try autoreleasepool {
+                    let hash = try FileUtils.sha1(of: fileURL)
+                    if let resource = cache.resource(forHash: hash) {
+                        stats.cached += 1
+                        result[fileURL] = resource
+                    } else {
+                        hashes[fileURL] = hash
+                    }
+                }
+            } catch {
+                err("处理文件 \(fileURL.lastPathComponent) 失败：\(error.localizedDescription)")
+            }
+        }
     }
 
     public enum LoadError: LocalizedError {

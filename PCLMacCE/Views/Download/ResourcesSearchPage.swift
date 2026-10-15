@@ -95,7 +95,8 @@ struct ResourcesSearchPage: View {
         case .instance:
             if let instance = targetInstance {
                 MyTip(
-                    text: "实例定向下载：正在为「\(instance.name)」（\(instance.version.id)\(instance.modLoader.map { " · \($0)" } ?? "")）挑选\(viewModel.type.localizedName)，列表仅显示兼容版本",
+                    text: "实例定向下载：正在为「\(instance.name)」（\(instance.version.id)"
+                        + "\(instance.modLoader.map { " · \($0)" } ?? "")）挑选\(viewModel.type.localizedName)，列表仅显示兼容版本",
                     theme: .blue,
                     actionLabel: "退出实例模式"
                 ) {

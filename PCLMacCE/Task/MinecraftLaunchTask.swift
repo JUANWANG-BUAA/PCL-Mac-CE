@@ -85,41 +85,14 @@ public enum MinecraftLaunchTask {
         log("最佳 Java 搜索结果：\(bestMatch)")
 
         let bestMatchIssues: [String] = issuesForBestMatch(bestMatch, recommendedArch: recommendedArch)
-
-        if javaRuntime == nil {
-            if bestMatchIssues.isEmpty {
-                log("已将当前 Java 设为最佳结果")
-                javaRuntime = bestMatch
-            } else {
-                javaRuntime = try await confirmSwitch(
-                    to: bestMatch,
-                    issues: bestMatchIssues,
-                    prompt: .noJava,
-                    task: task
-                )
-            }
-        } else if javaRuntime != bestMatch {
-            log("正在检查当前 Java")
-            if let issue = currentJavaIssue(for: javaRuntime, minMajorVersion: minMajorVersion, requiredArch: requiredArch) {
-                javaRuntime = try await confirmSwitch(
-                    to: bestMatch,
-                    issues: bestMatchIssues,
-                    prompt: .unsatisfied(issue),
-                    task: task
-                ) ?? javaRuntime
-            }
-
-            if let runtime = javaRuntime,
-               runtime.architecture != recommendedArch,
-               bestMatch.architecture == recommendedArch {
-                javaRuntime = try await confirmSwitch(
-                    to: bestMatch,
-                    issues: bestMatchIssues,
-                    prompt: .performance(runtime: runtime),
-                    task: task
-                ) ?? javaRuntime
-            }
-        }
+        javaRuntime = try await resolveRuntime(
+            current: javaRuntime,
+            selection: .init(
+                bestMatch: bestMatch, issues: bestMatchIssues,
+                minMajorVersion: minMajorVersion, requiredArch: requiredArch, recommendedArch: recommendedArch
+            ),
+            task: task
+        )
 
         if let javaRuntime {
             model.instance.config.javaURL = javaRuntime.executableURL
@@ -130,6 +103,49 @@ public enum MinecraftLaunchTask {
             warn("javaRuntime 未被设置，但启动任务没有被取消")
             try task.cancel()
         }
+    }
+
+    /// Java 选择上下文：当前 Java 与最佳匹配之间的取舍所需信息。
+    private struct RuntimeSelection {
+        let bestMatch: JavaRuntime
+        let issues: [String]
+        let minMajorVersion: Int
+        let requiredArch: Architecture?
+        let recommendedArch: Architecture
+    }
+
+    /// 在当前 Java 与最佳匹配之间做出选择（必要时弹窗确认）。
+    private static func resolveRuntime(
+        current javaRuntime: JavaRuntime?,
+        selection: RuntimeSelection,
+        task: SubTask
+    ) async throws -> JavaRuntime? {
+        var javaRuntime = javaRuntime
+        if javaRuntime == nil {
+            if selection.issues.isEmpty {
+                log("已将当前 Java 设为最佳结果")
+                return selection.bestMatch
+            }
+            return try await confirmSwitch(to: selection.bestMatch, issues: selection.issues, prompt: .noJava, task: task)
+        }
+        if javaRuntime != selection.bestMatch {
+            log("正在检查当前 Java")
+            if let issue = currentJavaIssue(
+                for: javaRuntime, minMajorVersion: selection.minMajorVersion, requiredArch: selection.requiredArch
+            ) {
+                javaRuntime = try await confirmSwitch(
+                    to: selection.bestMatch, issues: selection.issues, prompt: .unsatisfied(issue), task: task
+                ) ?? javaRuntime
+            }
+            if let runtime = javaRuntime,
+               runtime.architecture != selection.recommendedArch,
+               selection.bestMatch.architecture == selection.recommendedArch {
+                javaRuntime = try await confirmSwitch(
+                    to: selection.bestMatch, issues: selection.issues, prompt: .performance(runtime: runtime), task: task
+                ) ?? javaRuntime
+            }
+        }
+        return javaRuntime
     }
 
     /// 检查最佳匹配 Java 存在的问题（如需要 Rosetta 转译）。
@@ -253,7 +269,9 @@ public enum MinecraftLaunchTask {
         model.options.manifest = model.manifest
         model.options.mainClass = model.manifest.mainClass
         try model.options.validate()
-        let entries: [LaunchPrecheck.Entry] = LaunchPrecheck.check(for: model.instance, with: model.options, hasMicrosoftAccount: LauncherConfig.shared.hasMicrosoftAccount)
+        let entries: [LaunchPrecheck.Entry] = LaunchPrecheck.check(
+            for: model.instance, with: model.options, hasMicrosoftAccount: LauncherConfig.shared.hasMicrosoftAccount
+        )
         log("共 \(entries.count) 个问题：\(entries)")
         for entry in entries {
             switch entry {
@@ -271,7 +289,9 @@ public enum MinecraftLaunchTask {
                         Task {
                             if await MessageBoxManager.shared.showTextAsync(
                                 title: "考虑一下正版？",
-                                content: "你已经启动了 \(LauncherConfig.shared.launchCount) 次 Minecraft 啦！\n如果觉得 Minecraft 还不错，可以购买正版支持一下，毕竟开发游戏也真的很不容易……不要一直白嫖啦。\n\n在登录一次正版账号后，就不会再出现这个提示了！",
+                                content: "你已经启动了 \(LauncherConfig.shared.launchCount) 次 Minecraft 啦！\n"
+                                    + "如果觉得 Minecraft 还不错，可以购买正版支持一下，毕竟开发游戏也真的很不容易……不要一直白嫖啦。\n\n"
+                                    + "在登录一次正版账号后，就不会再出现这个提示了！",
                                 level: .info,
                                 .yes(label: "支持正版游戏！", type: .highlight),
                                 .no(label: "下次一定")
@@ -326,6 +346,11 @@ public enum MinecraftLaunchTask {
         )
     }
 
+}
+
+// MARK: - 凭据与启动
+
+extension MinecraftLaunchTask {
     private static func checkAuthlibInjector(task: SubTask, model: Model) async throws {
         guard let yggdrasilAccount = model.account as? YggdrasilAccount else {
             return
@@ -347,11 +372,13 @@ public enum MinecraftLaunchTask {
 
         do {
             log("正在获取 Authlib Injector 版本列表")
-            let artifacts: AuthlibInjectorArtifacts = try await HTTPClient.shared.get(APIEndpoints.AuthlibInjector.artifacts).decode(AuthlibInjectorArtifacts.self)
+            let artifactsURL: URL = APIEndpoints.AuthlibInjector.artifacts
+            let artifacts: AuthlibInjectorArtifacts = try await HTTPClient.shared.get(artifactsURL).decode(AuthlibInjectorArtifacts.self)
             guard let buildNumber = artifacts.artifacts.max(by: { $0.buildNumber < $1.buildNumber })?.buildNumber else {
                 throw SimpleError("获取 Authlib Injector 最新版本失败：找不到任何有效版本。")
             }
-            let latestArtifact: AuthlibInjectorArtifact = try await HTTPClient.shared.get(APIEndpoints.AuthlibInjector.artifact(buildNumber: buildNumber)).decode(AuthlibInjectorArtifact.self)
+            let artifactURL: URL = APIEndpoints.AuthlibInjector.artifact(buildNumber: buildNumber)
+            let latestArtifact: AuthlibInjectorArtifact = try await HTTPClient.shared.get(artifactURL).decode(AuthlibInjectorArtifact.self)
             let downloadItem: DownloadItem = .init(
                 url: latestArtifact.downloadURL,
                 destination: authlibInjectorURL,

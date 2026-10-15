@@ -5,7 +5,7 @@
 
 import Foundation
 
-public enum ModrinthCompatibility: String, Codable {
+public enum ModrinthCompatibility: String, Codable, Sendable {
     case required, optional, unsupported, unknown
 }
 
@@ -44,7 +44,9 @@ public struct ModrinthProject: Decodable, Identifiable, Hashable, Equatable, Sen
         self.iconURL = try container.decodeIfPresent(String.self, forKey: .iconURL).flatMap(URL.init(string:))
         self.downloads = try container.decode(Int.self, forKey: .downloads)
 
-        self.lastUpdate = try decodeDate(from: container.decodeIfPresent(String.self, forKey: .dateModified) ?? container.decode(String.self, forKey: .updated), codingPath: container.codingPath)
+        let dateString = try container.decodeIfPresent(String.self, forKey: .dateModified)
+            ?? container.decode(String.self, forKey: .updated)
+        self.lastUpdate = try decodeDate(from: dateString, codingPath: container.codingPath)
         self.categories = try container.decode([String].self, forKey: .categories)
         self.clientCompatibility = try container.decode(ModrinthCompatibility.self, forKey: .clientSide)
         if let gameVersions: [String] = try container.decodeIfPresent([String].self, forKey: .gameVersions) {
@@ -101,7 +103,8 @@ public struct ModrinthVersion: Decodable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case projectId = "project_id", versionNumber = "version_number", gameVersions = "game_versions", type = "version_type", datePublished = "date_published"
+        case projectId = "project_id", versionNumber = "version_number", gameVersions = "game_versions",
+             type = "version_type", datePublished = "date_published"
         case id, name, downloads, dependencies, loaders, files
     }
 

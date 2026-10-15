@@ -166,7 +166,8 @@ public class FileDownloader {
                 await semaphore.wait()
                 group.addTask {
                     defer { Task { await semaphore.signal() } }
-                    try await self.download(item, preferMirror: preferMirror, progressHandler: await progressHandler.handler(withMultiplier: multiplier), checkDestination: false)
+                    let handler = await progressHandler.handler(withMultiplier: multiplier)
+                    try await self.download(item, preferMirror: preferMirror, progressHandler: handler, checkDestination: false)
                 }
             }
 

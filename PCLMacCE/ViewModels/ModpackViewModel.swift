@@ -56,7 +56,8 @@ class ModpackViewModel: ObservableObject {
     private func confirmModpackInfo(_ index: ModpackIndex) async -> Bool {
         await MessageBoxManager.shared.showTextAsync(
             title: "整合包信息",
-            content: "格式：\(index.format)\n名称：\(index.name)\n版本：\(index.version)\n作者：\(index.author ?? "未知")\n描述：\(index.description ?? "空")\n依赖：\(index.dependencyInfo)\n\n是否继续安装？",
+            content: "格式：\(index.format)\n名称：\(index.name)\n版本：\(index.version)\n作者：\(index.author ?? "未知")\n"
+                + "描述：\(index.description ?? "空")\n依赖：\(index.dependencyInfo)\n\n是否继续安装？",
             level: .info,
             .no(),
             .yes(label: "继续")

@@ -155,7 +155,10 @@ public class HTTPClient {
         revalidate: Bool = false,
         timeout: TimeInterval = 30
     ) async throws -> Response {
-        return try await request(url: url, method: "GET", headers: headers, body: params, using: .urlEncoded, throwOnError: throwOnError, revalidate: revalidate, timeout: timeout)
+        return try await request(
+            url: url, method: "GET", headers: headers, body: params, using: .urlEncoded,
+            throwOnError: throwOnError, revalidate: revalidate, timeout: timeout
+        )
     }
 
     /// 向目标 URL 发送 `POST` 请求。
@@ -175,7 +178,10 @@ public class HTTPClient {
         throwOnError: Bool = false,
         timeout: TimeInterval = 30
     ) async throws -> Response {
-        return try await request(url: url, method: "POST", headers: headers, body: body, using: encodeMethod, throwOnError: throwOnError, revalidate: false, timeout: timeout)
+        return try await request(
+            url: url, method: "POST", headers: headers, body: body, using: encodeMethod,
+            throwOnError: throwOnError, revalidate: false, timeout: timeout
+        )
     }
 
     private func encode(_ body: [String: Any], using method: EncodeMethod) throws -> (Data, String) {

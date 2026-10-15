@@ -5,7 +5,7 @@
 
 import Foundation
 
-public enum ResourceType: String, Codable {
+public enum ResourceType: String, Codable, Sendable {
     case mod, modpack, resourcepack, shader
 
     public var saveDirectory: String? {

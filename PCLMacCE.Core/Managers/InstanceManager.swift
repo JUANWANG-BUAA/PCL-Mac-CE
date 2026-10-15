@@ -18,7 +18,9 @@ public class InstanceManager: ObservableObject {
 
     public init(repositories: [UUID: MinecraftRepository], currentRepositoryId: UUID?) {
         if repositories.isEmpty {
-            let repository = MinecraftRepository(name: "默认目录", url: FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/minecraft"))
+            let minecraftURL: URL = FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: "Library/Application Support/minecraft")
+            let repository = MinecraftRepository(name: "默认目录", url: minecraftURL)
             self.repositories = [repository.id: repository]
             self.currentRepositoryId = repository.id
         } else {

@@ -26,7 +26,12 @@ class InstanceListViewModel: ObservableObject {
 
     public init(instanceManager: InstanceManager, repositoryId: UUID) {
         self.instanceManager = instanceManager
-        self.repository = instanceManager.repositories[repositoryId]! // TODO: 改为安全解包
+        if let repository = instanceManager.repositories[repositoryId] {
+            self.repository = repository
+        } else {
+            err("未找到仓库 \(repositoryId)，已回退到当前仓库。")
+            self.repository = instanceManager.currentRepository
+        }
 
         self.vanillaInstances = repository.instances.map { Self.processInstanceList(Array($0.values), modded: false) }
         self.moddedInstances = repository.instances.map { Self.processInstanceList(Array($0.values), modded: true) }

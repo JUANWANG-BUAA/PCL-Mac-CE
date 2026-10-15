@@ -23,9 +23,50 @@ class ResourceInstallViewModel: ObservableObject {
         self.project = project
     }
 
+    /// 解析依赖信息（仅保留必需且仍存在的项目）。
+    private func resolveDependencies(of version: ModrinthVersion) async throws -> [ProjectVersionModel.Dependency] {
+        var dependencies: [ProjectVersionModel.Dependency] = []
+        for dependency in version.dependencies {
+            guard let projectId: String = dependency.projectId,
+                  dependency.isRequired else {
+                continue
+            }
+            if let project = try await ModrinthAPIClient.shared.project(projectId) {
+                dependencies.append(.init(versionId: dependency.id, projectId: projectId, project: .init(project)))
+            } else {
+                warn("依赖 \(projectId) 在 Modrinth 上已不存在")
+                debug(version)
+            }
+        }
+        return dependencies
+    }
+
+    /// 将一个版本映射为所有（加载器 × 游戏版本）键。
+    private func versionKeys(for version: ModrinthVersion, selectedVersionType: MinecraftVersion.VersionType?) -> [VersionMapKey] {
+        var keys: [VersionMapKey] = []
+        for gameVersion in version.gameVersions {
+            if let type = VersionManifest.shared?.version(for: gameVersion)?.type,
+               !(type == .release || project.onlySupportsSnapshot || selectedVersionType.map { $0 != .release } ?? false) {
+                continue
+            }
+            if version.loaders.isEmpty && project.type != .mod {
+                keys.append(.init(loader: nil, version: .init(gameVersion)))
+                continue
+            }
+            for loader in version.loaders {
+                keys.append(.init(loader: loader, version: .init(gameVersion)))
+            }
+        }
+        return keys
+    }
+
     public func load(selectedInstance: MinecraftInstance? = nil) async throws {
-        let selectedInstanceKey: VersionMapKey? = project.type == .modpack ? nil : selectedInstance.map { .init(loader: $0.modLoader, version: $0.version) }
-        let selectedVersionType: MinecraftVersion.VersionType? = (selectedInstance?.version).flatMap { VersionManifest.shared?.version(for: $0.id) }?.type
+        let selectedInstanceKey: VersionMapKey? = project.type == .modpack
+            ? nil
+            : selectedInstance.map { .init(loader: $0.modLoader, version: $0.version) }
+        let manifestVersion: VersionManifest.Version? = (selectedInstance?.version)
+            .flatMap { VersionManifest.shared?.version(for: $0.id) }
+        let selectedVersionType: MinecraftVersion.VersionType? = manifestVersion?.type
         var selectedVersionGroup: VersionGroup? = selectedInstanceKey.map { ($0, []) }
 
         if let selected = selectedVersionGroup, project.type != .mod {
@@ -36,34 +77,8 @@ class ResourceInstallViewModel: ObservableObject {
 
         var versionMap: [VersionMapKey: [ProjectVersionModel]] = [:]
         for version in versions {
-            var dependencies: [ProjectVersionModel.Dependency] = []
-            for dependency in version.dependencies {
-                guard let projectId: String = dependency.projectId,
-                      dependency.isRequired else {
-                    continue
-                }
-                if let project = try await ModrinthAPIClient.shared.project(projectId) {
-                    dependencies.append(.init(versionId: dependency.id, projectId: projectId, project: .init(project)))
-                } else {
-                    warn("依赖 \(projectId) 在 Modrinth 上已不存在")
-                    debug(version)
-                }
-            }
-
-            var keys: [VersionMapKey] = []
-            for gameVersion in version.gameVersions {
-                if let type = VersionManifest.shared?.version(for: gameVersion)?.type,
-                   !(type == .release || project.onlySupportsSnapshot || selectedVersionType.map { $0 != .release } ?? false) {
-                    continue
-                }
-                if version.loaders.isEmpty && project.type != .mod {
-                    keys.append(.init(loader: nil, version: .init(gameVersion)))
-                    continue
-                }
-                for loader in version.loaders {
-                    keys.append(.init(loader: loader, version: .init(gameVersion)))
-                }
-            }
+            let dependencies: [ProjectVersionModel.Dependency] = try await resolveDependencies(of: version)
+            let keys: [VersionMapKey] = versionKeys(for: version, selectedVersionType: selectedVersionType)
             for key in keys {
                 let value: ProjectVersionModel = .init(
                     id: version.id,

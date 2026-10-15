@@ -8,7 +8,10 @@ import SwiftyJSON
 
 /// https://zh.minecraft.wiki/w/客户端清单文件格式
 public class ClientManifest: Decodable {
-    private static let oldVersionFlag: String = "-Dtop.cylorinestudio.cl.OldVersionFlag=1"
+    /// 旧版清单标记：由本启动器写入旧版（1.12-）清单的 JVM 参数，用于后续识别。
+    private static let oldVersionFlag: String = "-Dpclmacce.OldVersionFlag=1"
+    /// 历史标记值（上游时代写入），读取时兼容，避免旧清单失去识别。
+    private static let legacyOldVersionFlag: String = "-Dtop.cylorinestudio.cl.OldVersionFlag=1"
     public static var deduplicateLibraries: Bool = true
 
     public let gameArguments: [Argument]
@@ -69,7 +72,9 @@ public class ClientManifest: Decodable {
     public required init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         if container.contains(.minecraftArguments) { // 1.12-
-            self.gameArguments = try container.decode(String.self, forKey: .minecraftArguments).split(separator: " ").map { .init(value: [String($0)], rules: []) }
+            let rawArguments = try container.decode(String.self, forKey: .minecraftArguments)
+            self.gameArguments = rawArguments.split(separator: " ")
+                .map { .init(value: [String($0)], rules: []) }
             self.jvmArguments = [
                 Self.oldVersionFlag,
                 "-XX:+UnlockExperimentalVMOptions", "-XX:+UseG1GC", "-XX:-UseAdaptiveSizePolicy", "-XX:-OmitStackTraceInFastThrow",
@@ -168,7 +173,7 @@ public class ClientManifest: Decodable {
         }
 
         public required init(from decoder: any Decoder) throws {
-            let container: KeyedDecodingContainer<ClientManifest.Artifact.CodingKeys> = try decoder.container(keyedBy: ClientManifest.Artifact.CodingKeys.self)
+            let container = try decoder.container(keyedBy: ClientManifest.Artifact.CodingKeys.self)
             self.path = try container.decode(String.self, forKey: ClientManifest.Artifact.CodingKeys.path)
             self.sha1 = try container.decodeIfPresent(String.self, forKey: ClientManifest.Artifact.CodingKeys.sha1)
             self.size = try container.decodeIfPresent(Int.self, forKey: ClientManifest.Artifact.CodingKeys.size)
@@ -384,7 +389,11 @@ public class ClientManifest: Decodable {
 
     /// 创建一个新清单，继承本清单的所有属性，并使用指定的 libraries。
     public func setLibraries(to libraries: [Library]) -> ClientManifest {
-        return .init(gameArguments: gameArguments, jvmArguments: jvmArguments, assets: assets, assetIndex: assetIndex, downloads: downloads, id: id, javaVersion: javaVersion, libraries: libraries, logging: logging, mainClass: mainClass, inheritsFrom: inheritsFrom, version: version)
+        return .init(
+            gameArguments: gameArguments, jvmArguments: jvmArguments, assets: assets, assetIndex: assetIndex,
+            downloads: downloads, id: id, javaVersion: javaVersion, libraries: libraries, logging: logging,
+            mainClass: mainClass, inheritsFrom: inheritsFrom, version: version
+        )
     }
 }
 
@@ -392,7 +401,9 @@ public class ClientManifest: Decodable {
 
 public extension ClientManifest {
     func merge(to baseManifest: ClientManifest) -> ClientManifest {
-        let isOldVersion: Bool = baseManifest.jvmArguments.contains { $0.value.contains(Self.oldVersionFlag) }
+        let isOldVersion: Bool = baseManifest.jvmArguments.contains {
+            $0.value.contains(Self.oldVersionFlag) || $0.value.contains(Self.legacyOldVersionFlag)
+        }
         var librarySet: Set<HashableLibrary> = []
         let libraries: [Library] = (libraries + baseManifest.libraries)
             .filter { $0.isRulesSatisfied && librarySet.insert(.init(from: $0)).inserted }

@@ -62,7 +62,9 @@ struct MinecraftInstallOptionsPage: View {
                 isDownloading = true
                 let repository = instanceVM.currentRepository
                 let version: MinecraftVersion = .init(viewModel.version.id)
-                TaskManager.shared.execute(task: MinecraftInstallTask.create(name: viewModel.name, version: version, repository: repository, modLoader: viewModel.loader) { instance in
+                TaskManager.shared.execute(task: MinecraftInstallTask.create(
+                    name: viewModel.name, version: version, repository: repository, modLoader: viewModel.loader
+                ) { instance in
                     instanceVM.switchInstance(to: instance, in: repository)
                     if AppRouter.shared.last == .tasks {
                         AppRouter.shared.removeLast()
@@ -105,7 +107,10 @@ private struct ModLoaderCard: View {
             ZStack(alignment: .topLeading) {
                 MyCard(type.description, foldable: loadState == .finished, folded: true) {
                     if let versions {
-                        MyList(items: versions.map { ListItem(image: type.icon, name: $0.id, description: $0.beta ? "测试版" : "稳定版") }, selection: listSelection(versions))
+                        MyList(
+                            items: versions.map { ListItem(image: type.icon, name: $0.id, description: $0.beta ? "测试版" : "稳定版") },
+                            selection: listSelection(versions)
+                        )
                     }
                 }
                 .disableCardAppearAnimation()

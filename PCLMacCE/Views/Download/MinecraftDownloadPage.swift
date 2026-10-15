@@ -62,7 +62,12 @@ struct MinecraftDownloadPage: View {
         MyCard("\(category.localizedName)（\(versions.count)）") {
             LazyVStack(spacing: 0) {
                 ForEach(versions, id: \.id) { version in
-                    VersionView(version, description: version.type == .aprilFool ? viewModel.aprilFoolVersionDescription(version.id) : Self.dateFormatter.string(from: version.releaseTime))
+                    VersionView(
+                        version,
+                        description: version.type == .aprilFool
+                            ? viewModel.aprilFoolVersionDescription(version.id)
+                            : Self.dateFormatter.string(from: version.releaseTime)
+                    )
                 }
             }
         }

@@ -42,7 +42,9 @@ class MinecraftLaunchManager: ObservableObject {
     ) {
         if isLaunching { return }
         self.loadingViewModel.text = "正在启动游戏"
-        let task: MyTask<MinecraftLaunchTask.Model> = MinecraftLaunchTask.create(for: instance, using: account, in: repository) { [weak self] launcher, process in
+        let task: MyTask<MinecraftLaunchTask.Model> = MinecraftLaunchTask.create(
+            for: instance, using: account, in: repository
+        ) { [weak self] launcher, process in
             guard let self else { return }
             self.gameProcess = process
             process.terminationHandler = { [weak self] process in
@@ -143,7 +145,9 @@ class MinecraftLaunchManager: ObservableObject {
 
         let crashReportDirectory: URL = instance.url.appending(path: "crash-reports")
         if FileManager.default.fileExists(atPath: crashReportDirectory.path) {
-            let crashReports: [URL] = try FileManager.default.contentsOfDirectory(at: crashReportDirectory, includingPropertiesForKeys: [.contentModificationDateKey])
+            let crashReports: [URL] = try FileManager.default.contentsOfDirectory(
+                at: crashReportDirectory, includingPropertiesForKeys: [.contentModificationDateKey]
+            )
             if let latestCrashReport: URL = crashReports
                 .filter({ (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false })
                 .max(by: { lhs, rhs in

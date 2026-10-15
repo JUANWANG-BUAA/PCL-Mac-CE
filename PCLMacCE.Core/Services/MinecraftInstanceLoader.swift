@@ -25,21 +25,7 @@ public enum MinecraftInstanceLoader {
         var dirty = false
 
         let metadataURL = runningDirectory.appending(path: metadataFileName)
-        let metadata: InstanceMetadata?
-        if FileManager.default.fileExists(atPath: metadataURL.path) {
-            do {
-                let data = try Data(contentsOf: metadataURL)
-                metadata = try JSONDecoder.shared.decode(InstanceMetadata.self, from: data)
-            } catch {
-                err("加载元数据文件失败：\(error.localizedDescription)")
-                dirty = true
-                metadata = nil
-            }
-        } else {
-            log("元数据文件不存在")
-            dirty = true
-            metadata = nil
-        }
+        let metadata: InstanceMetadata? = loadMetadata(at: metadataURL, dirty: &dirty)
 
         let uuid = metadata?.uuid ?? UUID()
 
@@ -149,6 +135,23 @@ public enum MinecraftInstanceLoader {
         }
     }
 
+    /// 读取实例元数据；文件缺失或解析失败时置 `dirty` 并返回 nil。
+    private static func loadMetadata(at url: URL, dirty: inout Bool) -> InstanceMetadata? {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            log("元数据文件不存在")
+            dirty = true
+            return nil
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            return try JSONDecoder.shared.decode(InstanceMetadata.self, from: data)
+        } catch {
+            err("加载元数据文件失败：\(error.localizedDescription)")
+            dirty = true
+            return nil
+        }
+    }
+
     private static func detectVersion(runningDirectory: URL, manifest: ClientManifest) -> MinecraftVersion? {
         if let clVersion = manifest.version {
             return .init(clVersion)
@@ -165,8 +168,6 @@ public enum MinecraftInstanceLoader {
                     return .init(versionInfo["id"].stringValue)
                 }
             } catch {}
-            // 原末道兜底（cylorine.studio 的 sha1 版本反查）随上游站点下线已移除；
-            // 端点定义按死链保留约定仍在 APIEndpoints.CylorineSite 中登记
         }
 
         return nil

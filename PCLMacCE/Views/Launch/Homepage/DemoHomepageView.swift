@@ -80,7 +80,9 @@ struct DemoHomepageView: View {
                             )
 
                             let index: Int? = await MessageBoxManager.shared.showListAsync(title: "列表选择", items: listItems)
-                            let text: String? = await MessageBoxManager.shared.showInputAsync(title: "文本输入", initialContent: "111", placeholder: "请输入文本")
+                            let text: String? = await MessageBoxManager.shared.showInputAsync(
+                                title: "文本输入", initialContent: "111", placeholder: "请输入文本"
+                            )
                             if let index {
                                 hint("你选择的是：\(listItems[index].name)", type: .finish)
                             }

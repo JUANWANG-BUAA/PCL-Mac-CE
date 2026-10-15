@@ -67,6 +67,15 @@ public enum MinecraftInstallTask {
         modLoader: Loader?,
         completion: (@MainActor (MinecraftInstance) -> Void)?
     ) -> [SubTask] {
+        // Mod 加载器子任务由调用方经 appendModLoaderSubTasks 插入在下载与收尾之间
+        return makeDownloadSubTasks(version: version)
+            + makeFinalizeSubTasks(
+                name: name, version: version, repository: repository, modLoader: modLoader, completion: completion
+            )
+    }
+
+    /// 阶段一：预创建目录、拉取版本清单、下载资源索引与客户端本体。
+    private static func makeDownloadSubTasks(version: MinecraftVersion) -> [SubTask] {
         return [
             .init(0, "__pre", display: false) { _, model in
                 try FileManager.default.createDirectory(at: model.runningDirectory, withIntermediateDirectories: true)
@@ -106,16 +115,26 @@ public enum MinecraftInstallTask {
                     runningDirectory: model.runningDirectory,
                     progressHandler: task.setProgress(_:)
                 )
-            },
+            }
+        ]
+    }
 
-            // Mod Loader
-
+    /// 阶段二：清单改写、散列资源 / 依赖库下载、本地库解压与实例收尾。
+    private static func makeFinalizeSubTasks(
+        name: String,
+        version: MinecraftVersion,
+        repository: MinecraftRepository,
+        modLoader: Loader?,
+        completion: (@MainActor (MinecraftInstance) -> Void)?
+    ) -> [SubTask] {
+        return [
             .init(5, "__modify_manifest", display: false) { _, model in
                 let manifestURL: URL = model.runningDirectory.appending(path: "\(model.name).json")
                 if var dict: [String: Any] = try JSON(data: Data(contentsOf: manifestURL)).dictionaryObject {
                     dict["id"] = model.name
                     dict["version"] = model.version.id
-                    let manifestData: Data = try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .withoutEscapingSlashes, .sortedKeys])
+                    let options: JSONSerialization.WritingOptions = [.prettyPrinted, .withoutEscapingSlashes, .sortedKeys]
+                    let manifestData: Data = try JSONSerialization.data(withJSONObject: dict, options: options)
                     try manifestData.write(to: manifestURL, options: .atomic)
                 }
                 model.mappedManifest = NativesMapper.map(model.manifest)
@@ -187,7 +206,10 @@ public enum MinecraftInstallTask {
         case .forge:
             subTasks.append(
                 .init(3, "下载 Forge 安装器文件") { task, model in
-                    let service: ForgeInstallService = .init(minecraftVersion: model.version, version: modLoader.version, repository: model.repository, manifest: model.manifest, runningDirectory: model.runningDirectory)
+                    let service: ForgeInstallService = .init(
+                        minecraftVersion: model.version, version: modLoader.version, repository: model.repository,
+                        manifest: model.manifest, runningDirectory: model.runningDirectory
+                    )
                     model.forgeInstallService = service
                     try await service.downloadFiles(progressHandler: task.setProgress(_:))
                 }
@@ -201,7 +223,10 @@ public enum MinecraftInstallTask {
         case .neoforge:
             subTasks.append(
                 .init(3, "下载 NeoForge 安装器文件") { task, model in
-                    let service: NeoforgeInstallService = .init(minecraftVersion: model.version, version: modLoader.version, repository: model.repository, manifest: model.manifest, runningDirectory: model.runningDirectory)
+                    let service: NeoforgeInstallService = .init(
+                        minecraftVersion: model.version, version: modLoader.version, repository: model.repository,
+                        manifest: model.manifest, runningDirectory: model.runningDirectory
+                    )
                     model.forgeInstallService = service
                     try await service.downloadFiles(progressHandler: task.setProgress(_:))
                 }

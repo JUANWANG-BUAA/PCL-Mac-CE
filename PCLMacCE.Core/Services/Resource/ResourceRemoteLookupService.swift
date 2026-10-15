@@ -21,7 +21,8 @@ public class ResourceRemoteLookupService {
             return RemoteResourceInfo(project, version: modrinthVersion)
         }
 
-        // TODO: CurseForge
+        // CurseForge 暂未接入远程查源：官方指纹接口需要 Authorized key 且限流严格，
+        // 当前仅 Modrinth 支持哈希反查；CurseForge 资源在本地解析路径识别。
 
         return nil
     }
@@ -43,7 +44,7 @@ public class ResourceRemoteLookupService {
             }
         }
 
-        // TODO: CurseForge
+        // CurseForge 暂未接入远程查源（同 `lookup(hash:)` 的说明）。
 
         return result
     }

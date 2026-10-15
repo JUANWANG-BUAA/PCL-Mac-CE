@@ -19,25 +19,28 @@ struct InstanceConfigPage: View {
     var body: some View {
         CardContainer {
             MyCard(nil, padding: 10) {
-                MyListItem(.init(image: viewModel.icon, name: viewModel.instance.name, description: viewModel.description))
+                MyListItem(.init(image: viewModel.icon, name: viewModel.instance?.name ?? "实例不存在", description: viewModel.description))
             }
             MyCard(nil) {
                 HStack {
                     MyButton("打开实例目录") {
-                        NSWorkspace.shared.open(viewModel.instance.url)
+                        if let url = viewModel.instance?.url {
+                            NSWorkspace.shared.open(url)
+                        }
                     }
                     .frame(width: 120)
                     MyButton("删除实例", type: .red) {
+                        guard let instance = viewModel.instance else { return }
                         MessageBoxManager.shared.showText(
                             title: "确认",
-                            content: "你确定要删除这个实例（\(viewModel.instance.name)）吗？\n这个实例的所有存档、模组、资源包等将会永久消失！（真的很久！）",
+                            content: "你确定要删除这个实例（\(instance.name)）吗？\n这个实例的所有存档、模组、资源包等将会永久消失！（真的很久！）",
                             level: .error,
                             .no(),
                             .yes(type: .red)
                         ) { result in
                             if result == 1 {
                                 do {
-                                    try instanceVM.deleteInstance(viewModel.instance)
+                                    try instanceVM.deleteInstance(instance)
                                     hint("删除成功！", type: .finish)
                                     AppRouter.shared.removeLast()
                                 } catch {

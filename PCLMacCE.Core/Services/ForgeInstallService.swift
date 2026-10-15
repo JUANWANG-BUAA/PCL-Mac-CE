@@ -115,7 +115,9 @@ public class ForgeInstallService {
         let json: JSON = try .init(data: data)
         if json["install"].exists() { // 旧版本安装器，只需拷贝一个文件即可完成安装
             let forgeURL: URL = installerURL.appending(path: json["install"]["filePath"].stringValue)
-            let forgeDestination: URL = repository.librariesDirectory.appending(path: MavenCoordinateUtils.path(of: json["install"]["path"].stringValue))
+            let coordinate: String = json["install"]["path"].stringValue
+            let forgeDestination: URL = repository.librariesDirectory
+                .appending(path: MavenCoordinateUtils.path(of: coordinate))
             if !FileManager.default.fileExists(atPath: forgeDestination.path) {
                 try FileManager.default.createDirectory(at: forgeDestination.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try FileManager.default.copyItem(at: forgeURL, to: forgeDestination)
@@ -134,7 +136,8 @@ public class ForgeInstallService {
         let root = APIEndpoints.ForgeMaven.root
         let paths = [
             "net/minecraftforge/forge/\(minecraftVersion)-\(version)/forge-\(minecraftVersion)-\(version)-installer.jar",
-            "net/minecraftforge/forge/\(minecraftVersion)-\(version)-\(minecraftVersion)/forge-\(minecraftVersion)-\(version)-\(minecraftVersion)-installer.jar"
+            "net/minecraftforge/forge/\(minecraftVersion)-\(version)-\(minecraftVersion)/"
+                + "forge-\(minecraftVersion)-\(version)-\(minecraftVersion)-installer.jar"
         ]
 
         return paths.map(root.appending(path:))
@@ -209,7 +212,8 @@ public class ForgeInstallService {
     private func executeProcessor(_ processor: ForgeInstallProfile.Processor) throws {
         let classpath: String = (processor.classpath + [processor.jar]).map(parseMavenCoord(coord:)).joined(separator: ":")
         let mainClass: String = try JarUtils.mainClass(of: librariesURL.appending(path: MavenCoordinateUtils.path(of: processor.jar)))
-        let arguments: [String] = ["-cp", classpath, mainClass] + processor.args.map { parseValue($0).replacingPlaceholders(with: values, dollarPrefix: false) }
+        let arguments: [String] = ["-cp", classpath, mainClass]
+            + processor.args.map { parseValue($0).replacingPlaceholders(with: values, dollarPrefix: false) }
         let process: Process = .init()
         process.arguments = arguments
         process.executableURL = URL(fileURLWithPath: "/usr/bin/java")
