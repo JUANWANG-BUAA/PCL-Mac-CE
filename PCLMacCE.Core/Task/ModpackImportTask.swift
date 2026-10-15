@@ -39,8 +39,11 @@ public enum ModpackImportTask {
                         for file in index.files {
                             group.addTask {
                                 try await file.fetchInfo()
-                                guard let url = file.url, let path = file.path else { return nil }
-                                return .init(url: url, destination: model.runningDirectory.appending(path: path), checksums: file.checksums ?? [:])
+                                guard let url = file.url, let path = file.path else {
+                                    throw SimpleError("整合包资源缺少下载地址或目标路径。")
+                                }
+                                let destination = try validatedDestination(for: path, in: model.runningDirectory)
+                                return .init(url: url, destination: destination, checksums: file.checksums ?? [:])
                             }
                         }
                         for try await item in group {
@@ -56,16 +59,7 @@ public enum ModpackImportTask {
                     try await FileDownloader.shared.download(files: downloadItems, progressHandler: downloadProgressHandler)
                 },
                 .init(7, "应用整合包修改") { _, model in
-                    for dirName in index.overridesDirectories {
-                        let overridesDirectory: URL = modpackDirectory.appending(path: dirName)
-                        if FileManager.default.fileExists(atPath: overridesDirectory.path) {
-                            do {
-                                try apply(overridesDirectory, to: model.runningDirectory)
-                            } catch {
-                                throw Error.failedToApplyOverrides(underlying: error)
-                            }
-                        }
-                    }
+                    try applyOverrides(index.overridesDirectories, from: modpackDirectory, to: model.runningDirectory)
                 }
             ],
             at: subTasks.count - 2
@@ -75,10 +69,52 @@ public enum ModpackImportTask {
             name: "整合包安装：\(index.name)",
             model: minecraftInstallTask.model,
             subTasks
-        )
+        ) { _ in
+            // 复用安装子任务时也必须继承失败清理。
+            cleanupFailedImport(at: repository.versionsDirectory.appending(path: name))
+        }
+    }
+
+    private static func applyOverrides(_ names: [String], from source: URL, to destination: URL) throws {
+        for name in names {
+            let directory = try validatedDestination(for: name, in: source)
+            guard FileManager.default.fileExists(atPath: directory.path) else { continue }
+            do {
+                try apply(directory, to: destination)
+            } catch {
+                throw Error.failedToApplyOverrides(underlying: error)
+            }
+        }
+    }
+
+    private static func cleanupFailedImport(at url: URL) {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        do {
+            try FileManager.default.removeItem(at: url)
+        } catch {
+            err("清理失败的整合包实例失败：\(error.localizedDescription)")
+        }
     }
 
     public typealias Model = MinecraftInstallTask.Model
+
+    /// 索引来自外部整合包，不允许绝对路径、`.` / `..` 或反斜杠逃出实例目录。
+    static func validatedDestination(for path: String, in directory: URL) throws -> URL {
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard !path.hasPrefix("/"), !path.contains("\\"),
+              parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." }) else {
+            throw SimpleError("整合包包含非法文件路径：\(path)")
+        }
+        var destination = directory
+        for part in parts {
+            destination = destination.appending(path: String(part))
+            // 即使末尾文件尚不存在，也要逐级检查已存在的符号链接。
+            if (try? destination.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true {
+                throw SimpleError("整合包文件路径包含符号链接：\(path)")
+            }
+        }
+        return destination
+    }
 
     public enum Error: LocalizedError {
         case failedToCreateEnumerator
@@ -103,9 +139,14 @@ public enum ModpackImportTask {
         }
 
         for case let fileURL as URL in enumerator {
-            guard try fileURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == false else { continue }
+            let values = try fileURL.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            guard values.isSymbolicLink != true else {
+                throw SimpleError("整合包覆盖目录含符号链接：\(fileURL.lastPathComponent)")
+            }
+            guard values.isDirectory == false else { continue }
             do {
-                let dest: URL = destination.appending(path: fileURL.pathComponents.dropFirst(source.pathComponents.count).joined(separator: "/"))
+                let relativePath = fileURL.pathComponents.dropFirst(source.pathComponents.count).joined(separator: "/")
+                let dest = try validatedDestination(for: relativePath, in: destination)
                 if FileManager.default.fileExists(atPath: dest.path) {
                     try FileManager.default.removeItem(at: dest)
                 }
@@ -131,9 +172,10 @@ public enum SimpleModpackImportTask {
             name: "整合包安装：\(index.name)",
             .init(0, "拷贝整合包文件") { _, _ in
                 try FileManager.default.createDirectory(at: runningDirectory, withIntermediateDirectories: true)
+                try Data().write(to: runningDirectory.appending(path: ".incomplete"), options: .atomic)
 
                 for dirName in index.overridesDirectories {
-                    let overridesDirectory = modpackDirectory.appending(path: dirName)
+                    let overridesDirectory = try ModpackImportTask.validatedDestination(for: dirName, in: modpackDirectory)
                     if FileManager.default.fileExists(atPath: overridesDirectory.path) {
                         do {
                             try ModpackImportTask.apply(overridesDirectory, to: runningDirectory)

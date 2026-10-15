@@ -21,7 +21,6 @@ public class ForgeInstallService {
         self.manifest = manifest
         self.runningDirectory = runningDirectory
         self.tempDirectory = URLConstants.tempURL.appending(path: "forge-install-\(UUID().uuidString.lowercased())")
-        try? FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
     }
 
     deinit {
@@ -49,6 +48,7 @@ public class ForgeInstallService {
     /// 下载安装器及其所需文件。
     /// - Parameter progressHandler: 进度回调。
     public func downloadFiles(progressHandler: @MainActor @escaping (Double) -> Void) async throws {
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         let progressHandler: ConcurrentProgressHandler = await .init(totalHandler: progressHandler)
         await progressHandler.startCalculate()
         guard try await downloadInstaller(progressHandler: progressHandler.handler(withMultiplier: 0.3)) else {

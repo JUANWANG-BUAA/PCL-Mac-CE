@@ -13,14 +13,6 @@ public enum MinecraftInstallTask {
 
     /// 创建一个 Minecraft 实例安装任务。
     /// - Parameters:
-    ///   - name: 实例名。
-    ///   - version: Minecraft 版本。
-    ///   - minecraftDirectory: 实例所在的 Minecraft 目录。
-    ///   - modLoader: 需要附加的模组加载器。
-    ///   - completion: 任务完成回调，会在主线程执行。
-    /// - Returns: 实例安装任务。
-    /// 创建 Minecraft 安装任务。
-    /// - Parameters:
     ///   - name: 实例名称。
     ///   - version: 目标游戏版本。
     ///   - repository: 所在仓库。

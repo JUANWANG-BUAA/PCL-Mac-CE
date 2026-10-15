@@ -7,6 +7,22 @@ permissions:
   contents: write
 
 jobs:
+  offline_tests:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run offline regression tests (no Java or game launch)
+        run: |
+          xcodebuild test -project PCLMacCE.xcodeproj -scheme PCLMacCE \
+            -destination 'platform=macOS,arch=arm64' \
+            -only-testing:PCLMacCE.Tests/ArchitectureTests \
+            -only-testing:PCLMacCE.Tests/UUIDUtilsTest \
+            -only-testing:PCLMacCE.Tests/MinecraftVersionTests \
+            -only-testing:PCLMacCE.Tests/ClientManifestTests \
+            -only-testing:PCLMacCE.Tests/MyTaskTests \
+            -only-testing:PCLMacCE.Tests/LauncherConfigPersistenceTests \
+            -only-testing:PCLMacCE.Tests/ModpackPathTests
+
   build:
     uses: ./.github/workflows/build.yml
     with:
@@ -16,7 +32,7 @@ jobs:
   
   release:
     runs-on: macos-26
-    needs: build
+    needs: [build, offline_tests]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -46,8 +62,11 @@ jobs:
             --apple-id "${{ secrets.MACOS_NOTARY_APPLE_ID }}" \
             --password "${{ secrets.MACOS_NOTARY_PASSWORD }}" \
             --team-id "${{ secrets.MACOS_SIGNING_TEAM }}" \
-            --wait
+            --wait --output-format json > notary-result.json
+          jq -e '.status == "Accepted"' notary-result.json
           xcrun stapler staple "./artifact/PCLMacCE.app"
+          xcrun stapler validate "./artifact/PCLMacCE.app"
+          codesign --verify --deep --strict --verbose=2 "./artifact/PCLMacCE.app"
       
       - name: Create DMG
         run: |

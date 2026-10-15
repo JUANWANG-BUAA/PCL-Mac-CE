@@ -16,12 +16,9 @@ class ModpackViewModel: ObservableObject {
 
     @MainActor
     public func importModpack(at url: URL, repository: MinecraftRepository) async {
-        guard let curseforgeApiKey = Secrets.shared.curseforgeApiKey else {
-            hint("缺少 CurseForge API Key，无法开始整合包导入，请尝试从官方渠道重新下载 PCLMacCE！", type: .critical)
-            return
-        }
-
-        let service = ModpackImportService(curseforgeClient: .init(apiKey: curseforgeApiKey), modpackURL: url)
+        // Modrinth / 普通压缩包不依赖 CurseForge，不能被缺失的 API Key 阻断。
+        let curseforgeClient = Secrets.shared.curseforgeApiKey.map { CurseForgeAPIClient(apiKey: $0) }
+        let service = ModpackImportService(curseforgeClient: curseforgeClient, modpackURL: url)
         do {
             let index = try service.load()
             guard await confirmModpackInfo(index) else { return }
@@ -79,6 +76,8 @@ class ModpackViewModel: ObservableObject {
                 content: "很抱歉，PCLMacCE 暂时不支持安装这个整合包使用的 \(name) 加载器……",
                 level: .error
             )
+        case .missingCurseforgeClient:
+            hint("导入 CurseForge 整合包需要配置 CurseForge API Key。", type: .critical)
         case .unknownFormat:
             MessageBoxManager.shared.showText(
                 title: "不支持的整合包格式",
