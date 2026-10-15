@@ -27,7 +27,7 @@ jobs:
           set +e
 
           xcodebuild test \
-            -project PCL.Mac.xcodeproj -scheme PCL.Mac \
+            -project PCLMacCE.xcodeproj -scheme PCLMacCE \
             -resultBundlePath ./result.xcresult
           
           exit_code=$?
@@ -62,7 +62,7 @@ jobs:
           set +e
 
           xcodebuild test \
-            -project PCL.Mac.xcodeproj -scheme PCL.Mac \
+            -project PCLMacCE.xcodeproj -scheme PCLMacCE \
             -resultBundlePath ./result.xcresult
           
           exit_code=$?

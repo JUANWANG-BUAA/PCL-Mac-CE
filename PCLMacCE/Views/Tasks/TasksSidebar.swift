@@ -1,0 +1,52 @@
+//
+//  TasksSidebar.swift
+//  PCLMacCE
+//
+
+import SwiftUI
+
+struct TasksSidebar: Sidebar {
+    @ObservedObject private var taskManager: TaskManager = .shared
+
+    var body: some View {
+        VStack(spacing: 40) {
+            PanelView("剩余任务", "\(taskManager.tasks.count)")
+            PanelView("下载速度", formatSpeed(taskManager.downloadSpeed))
+        }
+    }
+
+    private func formatSpeed(_ speed: Int64) -> String {
+        let units: [String] = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"]
+        var value: Double = Double(speed)
+        var unitIndex: Int = 0
+
+        while value >= 1024 && unitIndex < units.count - 1 {
+            value /= 1024
+            unitIndex += 1
+        }
+
+        let formatted: String = .init(format: value < 10 && unitIndex > 0 ? "%.1f" : "%.0f", value)
+        return "\(formatted) \(units[unitIndex])"
+    }
+}
+
+private struct PanelView: View {
+    private let title: String
+    private let value: String
+
+    init(_ title: String, _ value: String) {
+        self.title = title
+        self.value = value
+    }
+
+    var body: some View {
+        let isNative = ThemeManager.shared.theme.isNativeStyle
+        VStack {
+            MyText(title, size: 14, color: isNative ? .secondary : .color2)
+            Rectangle()
+                .fill(isNative ? Color.primary.opacity(0.12) : Color.color2)
+                .frame(width: 180, height: isNative ? 1 : 2)
+            MyText(value, size: 20)
+        }
+    }
+}

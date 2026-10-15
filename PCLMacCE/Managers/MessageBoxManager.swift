@@ -1,0 +1,332 @@
+//
+//  MessageBoxManager.swift
+//  PCLMacCE
+//
+
+import Foundation
+import AppKit
+import Core
+
+class MessageBoxManager: ObservableObject {
+    public static let shared: MessageBoxManager = .init()
+    public static let cancelButtonID: Int = 1000
+    public static let okButtonID: Int = 1001
+    public static let copyButtonID: Int = 1002
+    @Published public private(set) var currentMessageBox: MessageBoxModel?
+    private let defaultButton: MessageBoxModel.Button = .yes()
+    private let semaphore: AsyncSemaphore = .init(value: 1)
+    private var callback: (@MainActor (MessageBoxResult) -> Void)?
+    /// 在弹出下一个弹窗时，是否需要等待。
+    private var shouldWait: Bool = false
+    /// 清除等待状态的 `DispatchWorkItem`。
+    private var clearWaitStateWorkItem: DispatchWorkItem?
+
+    /// 弹出一个带有纯文本内容的模态框。（Swift Concurrency）
+    /// - Parameters:
+    ///   - title: 模态框标题。
+    ///   - content: 文本内容。
+    ///   - level: 模态框等级，控制了模态框的颜色。
+    ///   - buttons: 按钮列表。
+    /// - Returns: 被点击的按钮的 `id`。
+    public func showTextAsync(
+        title: String,
+        content: String,
+        level: MessageBoxModel.Level = .info,
+        buttons: [MessageBoxModel.Button]
+    ) async -> Int {
+        let result: MessageBoxResult = await showAsync(title: title, content: .text(text: content), level: level, buttons: buttons)
+        guard case .button(let id) = result else {
+            warn("期望 result 类型（button）与实际类型（\(result)）不匹配")
+            return buttons[0].id
+        }
+        return id
+    }
+
+    /// 弹出一个带有列表的模态框。（Swift Concurrency）
+    /// - Parameters:
+    ///   - title: 模态框标题。
+    ///   - items: 列表项。
+    /// - Returns: 选择的列表项的索引。如果用户点击了取消，或发生内部错误，返回 `nil`。
+    public func showListAsync(
+        title: String,
+        items: [ListItem]
+    ) async -> Int? {
+        let result: MessageBoxResult = await showAsync(
+            title: title,
+            content: .list(items: items),
+            level: .info,
+            buttons: [.init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal), .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)]
+        )
+        guard case .listSelection(let index) = result else {
+            warn("期望 result 类型（listSelection）与实际类型（\(result)）不匹配")
+            return nil
+        }
+        return index
+    }
+
+    /// 弹出一个带有输入框的模态框。（Swift Concurrency）
+    /// - Parameters:
+    ///   - title: 模态框标题。
+    ///   - initialContent: 输入框的起始文本。
+    ///   - placeholder: 占位符。
+    /// - Returns: 输入的文本。如果用户点击了取消，或发生内部错误，返回 `nil`。
+    public func showInputAsync(
+        title: String,
+        initialContent: String? = nil,
+        placeholder: String? = nil
+    ) async -> String? {
+        let result: MessageBoxResult = await showAsync(
+            title: title,
+            content: .input(initialContent: initialContent, placeholder: placeholder),
+            level: .info,
+            buttons: [.init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal), .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)]
+        )
+        guard case .input(let text) = result else {
+            warn("期望 result 类型（input）与实际类型（\(result)）不匹配")
+            return nil
+        }
+        return text
+    }
+
+    /// 关闭当前模态框。
+    /// - Parameter result: 附带的结果。
+    @MainActor
+    public func complete(with result: MessageBoxResult) {
+        callback?(result)
+        callback = nil
+        currentMessageBox = nil
+        Task { await semaphore.signal() }
+
+        let workItem: DispatchWorkItem = .init {
+            self.shouldWait = false
+        }
+        self.clearWaitStateWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: workItem)
+    }
+
+    @MainActor
+    public func onButtonTap(_ button: MessageBoxModel.Button) {
+        log("按钮 \(button.label) 被点击")
+        if let onClick = button.onClick {
+            onClick()
+        } else {
+            complete(with: .button(id: button.id))
+        }
+    }
+
+    @MainActor
+    public func onListSelect(index: Int?) {
+        complete(with: .listSelection(index: index))
+    }
+
+    @MainActor
+    public func onInputFinished(text: String?) {
+        complete(with: .input(text: text))
+    }
+
+    private func showAsync(
+        title: String,
+        content: MessageBoxModel.Content,
+        level: MessageBoxModel.Level,
+        buttons: [MessageBoxModel.Button]
+    ) async -> MessageBoxResult {
+        await semaphore.wait()
+        clearWaitStateWorkItem?.cancel()
+        if shouldWait {
+            try? await Task.sleep(seconds: 0.5)
+        } else {
+            shouldWait = true
+        }
+        return await withCheckedContinuation { continuation in
+            _show(title: title, content: content, level: level, buttons: buttons) { continuation.resume(returning: $0) }
+        }
+    }
+
+    private func _show(
+        title: String,
+        content: MessageBoxModel.Content,
+        level: MessageBoxModel.Level,
+        buttons: [MessageBoxModel.Button],
+        callback: (@MainActor (MessageBoxResult) -> Void)?
+    ) {
+        log("正在显示模态框 \(title)")
+        let model: MessageBoxModel = .init(
+            title: title,
+            content: content,
+            level: level,
+            buttons: Self.insertingCopyButtonIfNeeded(title: title, content: content, level: level, into: buttons)
+        )
+        DispatchQueue.main.async {
+            self.currentMessageBox = model
+        }
+        self.callback = callback
+    }
+
+    /// 错误级别的文本弹窗自动前置“复制信息”按钮，便于把报错完整地转发给他人或 AI 诊断。
+    private static func insertingCopyButtonIfNeeded(
+        title: String,
+        content: MessageBoxModel.Content,
+        level: MessageBoxModel.Level,
+        into buttons: [MessageBoxModel.Button]
+    ) -> [MessageBoxModel.Button] {
+        guard case .text(let text) = content, level == .error,
+              !buttons.contains(where: { $0.id == copyButtonID }) else {
+            return buttons
+        }
+        let copyText: String = "PCL Mac CE 报错信息\n【\(title)】\n\(text)"
+        return [MessageBoxModel.Button(id: copyButtonID, label: "复制信息", type: .normal) {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(copyText, forType: .string)
+            hint("已复制到剪贴板", type: .finish)
+        }] + buttons
+    }
+
+    public enum MessageBoxResult {
+        case button(id: Int)
+        case listSelection(index: Int?)
+        case input(text: String?)
+    }
+
+    private init() {}
+}
+
+// MARK: - 传统回调版本
+extension MessageBoxManager {
+    /// 弹出一个带有纯文本内容的模态框。
+    /// - Parameters:
+    ///   - title: 模态框标题。
+    ///   - content: 文本内容。
+    ///   - level: 模态框等级，控制了模态框的颜色。
+    ///   - buttons: 按钮列表。
+    ///   - callback: 结果回调。
+    public func showText(
+        title: String,
+        content: String,
+        level: MessageBoxModel.Level = .info,
+        buttons: [MessageBoxModel.Button],
+        callback: (@MainActor (Int) -> Void)? = nil
+    ) {
+        show(title: title, content: .text(text: content), level: level, buttons: buttons) { result in
+            guard case .button(let id) = result else {
+                warn("期望 result 类型（button）与实际类型（\(result)）不匹配")
+                callback?(buttons[0].id)
+                return
+            }
+            callback?(id)
+        }
+    }
+
+    /// 弹出一个带有列表的模态框。
+    /// - Parameters:
+    ///   - title: 模态框标题。
+    ///   - items: 列表项。
+    ///   - callback: 结果回调。
+    public func showList(
+        title: String,
+        items: [ListItem],
+        callback: (@MainActor (Int?) -> Void)? = nil
+    ) {
+        show(
+            title: title,
+            content: .list(items: items),
+            level: .info,
+            buttons: [
+                .init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal),
+                .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)
+            ]
+        ) { result in
+            guard case .listSelection(let index) = result else {
+                warn("期望 result 类型（listSelection）与实际类型（\(result)）不匹配")
+                callback?(nil)
+                return
+            }
+            callback?(index)
+        }
+    }
+
+    /// 弹出一个带有输入框的模态框。
+    /// - Parameters:
+    ///   - title: 模态框标题。
+    ///   - initialContent: 输入框的起始文本。
+    ///   - placeholder: 占位符。
+    ///   - callback: 结果回调。
+    public func showInput(
+        title: String,
+        initialContent: String? = nil,
+        placeholder: String? = nil,
+        callback: (@MainActor (String?) -> Void)? = nil
+    ) {
+        show(
+            title: title,
+            content: .input(initialContent: initialContent, placeholder: placeholder),
+            level: .info,
+            buttons: [
+                .init(id: MessageBoxManager.cancelButtonID, label: "取消", type: .normal),
+                .init(id: MessageBoxManager.okButtonID, label: "确定", type: .highlight)
+            ]
+        ) { result in
+            guard case .input(let text) = result else {
+                warn("期望 result 类型（input）与实际类型（\(result)）不匹配")
+                callback?(nil)
+                return
+            }
+            callback?(text)
+        }
+    }
+
+    private func show(
+        title: String,
+        content: MessageBoxModel.Content,
+        level: MessageBoxModel.Level,
+        buttons: [MessageBoxModel.Button],
+        callback: (@MainActor (MessageBoxResult) -> Void)?
+    ) {
+        Task {
+            await semaphore.wait()
+            clearWaitStateWorkItem?.cancel()
+            if shouldWait {
+                try? await Task.sleep(seconds: 0.5)
+            } else {
+                shouldWait = true
+            }
+            _show(title: title, content: content, level: level, buttons: buttons, callback: callback)
+        }
+    }
+}
+
+extension MessageBoxManager {
+    /// 键盘快捷键通知：回车（确认）/ ESC（取消）。
+    /// 由 `AppDelegate` 的全局键盘监控发出，`MessageBoxView` 响应后走与点击相同的按钮逻辑。
+    public static let messageBoxConfirmNotification: Notification.Name = .messageBoxConfirm
+    public static let messageBoxCancelNotification: Notification.Name = .messageBoxCancel
+}
+
+extension Notification.Name {
+    /// 回车触发弹窗主按钮。
+    static let messageBoxConfirm: Notification.Name = .init("PCLMac.MessageBoxConfirm")
+    /// ESC 触发弹窗取消按钮。
+    static let messageBoxCancel: Notification.Name = .init("PCLMac.MessageBoxCancel")
+}
+
+extension MessageBoxManager {
+    public func showTextAsync(
+        title: String,
+        content: String,
+        level: MessageBoxModel.Level = .info,
+        _ buttons: MessageBoxModel.Button...
+    ) async -> Int {
+        let buttons: [MessageBoxModel.Button] = buttons.isEmpty ? [defaultButton] : buttons
+        return await showTextAsync(title: title, content: content, level: level, buttons: buttons)
+    }
+
+    public func showText(
+        title: String,
+        content: String,
+        level: MessageBoxModel.Level = .info,
+        _ buttons: MessageBoxModel.Button...,
+        callback: (@MainActor (Int) -> Void)? = nil
+    ) {
+        let buttons: [MessageBoxModel.Button] = buttons.isEmpty ? [defaultButton] : buttons
+        showText(title: title, content: content, level: level, buttons: buttons, callback: callback)
+    }
+}

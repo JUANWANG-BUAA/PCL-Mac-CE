@@ -64,8 +64,8 @@ jobs:
         run: |
           echo "Build number: $BUILD_NUMBER"
           COMMON_ARGS=(
-            -project PCL.Mac.xcodeproj
-            -scheme PCL.Mac
+            -project PCLMacCE.xcodeproj
+            -scheme PCLMacCE
             -configuration "${{ inputs.build_configuration }}"
             CURRENT_PROJECT_VERSION=$BUILD_NUMBER
             -archivePath build
@@ -85,15 +85,15 @@ jobs:
 
       - name: Prepare app artifact
         run: |
-          mkdir "PCL.Mac-artifact"
-          ditto ./build.xcarchive/Products/Applications/PCL.Mac.app ./PCL.Mac-artifact/PCL.Mac.app
-          ditto ./build.xcarchive ./PCL.Mac-artifact/build.xcarchive
-          ditto -c -k --sequesterRsrc ./PCL.Mac-artifact ./PCL.Mac-artifact.zip
+          mkdir "PCLMacCE-artifact"
+          ditto ./build.xcarchive/Products/Applications/PCLMacCE.app ./PCLMacCE-artifact/PCLMacCE.app
+          ditto ./build.xcarchive ./PCLMacCE-artifact/build.xcarchive
+          ditto -c -k --sequesterRsrc ./PCLMacCE-artifact ./PCLMacCE-artifact.zip
 
       - name: Upload app artifact
         if: ${{ inputs.upload_artifact }}
         uses: actions/upload-artifact@v7
         with:
-          name: PCL.Mac-artifact
-          path: ./PCL.Mac-artifact.zip
+          name: PCLMacCE-artifact
+          path: ./PCLMacCE-artifact.zip
           archive: false

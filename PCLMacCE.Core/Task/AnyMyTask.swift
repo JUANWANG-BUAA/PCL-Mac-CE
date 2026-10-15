@@ -1,0 +1,33 @@
+//
+//  AnyMyTask.swift
+//  PCLMacCE
+//
+
+import Foundation
+import Combine
+
+/// `MyTask` 泛型擦除类，用于在界面上显示。
+public class AnyMyTask: ObservableObject, Identifiable {
+    public typealias ModelType = any TaskModel
+    public typealias SubTask = (name: String, progress: Double, state: SubTaskState)
+
+    public let id: UUID
+    public let name: String
+    public let display: Bool
+    private let _subTasks: () -> [SubTask]
+    private var cancellable: AnyCancellable?
+
+    public init<Model>(_ task: MyTask<Model>, display: Bool) where Model: TaskModel {
+        self.id = task.id
+        self.name = task.name
+        self.display = display
+        self._subTasks = {
+            task.subTasks.filter({ $0.display }).map { (name: $0.name, progress: $0.progress, state: $0.state) }
+        }
+        self.cancellable = task.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+    }
+
+    public var subTasks: [SubTask] { _subTasks() }
+}

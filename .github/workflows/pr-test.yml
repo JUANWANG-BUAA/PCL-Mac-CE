@@ -5,9 +5,9 @@ on:
     paths:
       - "Configs/**"
       - ".github/workflows/**"
-      - "PCL.Mac/**"
-      - "PCL.Mac.Core/**"
-      - "PCL.Mac.xcodeproj/**"
+      - "PCLMacCE/**"
+      - "PCLMacCE.Core/**"
+      - "PCLMacCE.xcodeproj/**"
       - "Resources/**"
 
 jobs:

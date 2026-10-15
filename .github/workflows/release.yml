@@ -33,44 +33,44 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v8
         with:
-          name: PCL.Mac-artifact.zip
+          name: PCLMacCE-artifact.zip
           path: ./artifact
           skip-decompress: true
       
       - name: Notarize app
         run: |
-          ditto -x -k ./artifact/PCL.Mac-artifact.zip ./artifact
+          ditto -x -k ./artifact/PCLMacCE-artifact.zip ./artifact
           
-          ditto -c -k --sequesterRsrc --keepParent ./artifact/PCL.Mac.app ./PCL.Mac.zip
-          xcrun notarytool submit "./PCL.Mac.zip" \
+          ditto -c -k --sequesterRsrc --keepParent ./artifact/PCLMacCE.app ./PCLMacCE.zip
+          xcrun notarytool submit "./PCLMacCE.zip" \
             --apple-id "${{ secrets.MACOS_NOTARY_APPLE_ID }}" \
             --password "${{ secrets.MACOS_NOTARY_PASSWORD }}" \
             --team-id "${{ secrets.MACOS_SIGNING_TEAM }}" \
             --wait
-          xcrun stapler staple "./artifact/PCL.Mac.app"
+          xcrun stapler staple "./artifact/PCLMacCE.app"
       
       - name: Create DMG
         run: |
           mkdir dmg_temp
 
-          ditto ./artifact/PCL.Mac.app dmg_temp/PCL.Mac.app
+          ditto ./artifact/PCLMacCE.app dmg_temp/PCLMacCE.app
           ditto Packaging/DS_Store dmg_temp/.DS_Store
           ln -s /Applications "dmg_temp/将左边的 App 拖至此处"
           mkdir -p dmg_temp/.background
           cp Packaging/background.png dmg_temp/.background/background.png
 
-          hdiutil create -volname "PCL.Mac" -srcfolder "dmg_temp" -ov -format UDZO "PCL.Mac-${{ env.TAG_NAME }}.dmg"
+          hdiutil create -volname "PCLMacCE" -srcfolder "dmg_temp" -ov -format UDZO "PCLMacCE-${{ env.TAG_NAME }}.dmg"
       
       - name: Process artifact
         run: |
-          ditto -c -k --sequesterRsrc --keepParent ./artifact/PCL.Mac.app "./PCL.Mac-${{ env.TAG_NAME }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent ./artifact/PCLMacCE.app "./PCLMacCE-${{ env.TAG_NAME }}.zip"
           ditto -c -k --sequesterRsrc --keepParent ./artifact/build.xcarchive ./build.xcarchive.zip
       
       - name: Create release
         run: |
           gh release create $TAG_NAME \
-            "PCL.Mac-${{ env.TAG_NAME }}.dmg" \
-            "PCL.Mac-${{ env.TAG_NAME }}.zip" \
+            "PCLMacCE-${{ env.TAG_NAME }}.dmg" \
+            "PCLMacCE-${{ env.TAG_NAME }}.zip" \
             "build.xcarchive.zip" \
             --title $VERSION_NUMBER \
             --generate-notes \

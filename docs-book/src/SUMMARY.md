@@ -47,3 +47,4 @@
 - [ADR-009 上游身份资产本地化：Bundle ID、数据目录、版本序列与 SwiftScaffolding vendor](decisions/adr-009-own-identity.md)
 - [ADR-010 微软登录 client_id 处置：Prism 公共 ID + 构建期注入通道](decisions/adr-010-ms-client-id.md)
 - [ADR-011 移除回声洞与联机功能，全面替换上游痕迹](decisions/adr-011-remove-upstream-features.md)
+- [ADR-012 产品更名：PCL.Mac → PCL Mac CE（保留 PCL 前缀）](decisions/adr-012-rename-pcl-mac-ce.md)

@@ -1,0 +1,280 @@
+//
+//  MicrosoftAuthService.swift
+//  PCLMacCE
+//
+
+import Foundation
+import SwiftyJSON
+
+public class MicrosoftAuthService {
+    public private(set) var pollCount: Int?
+    public private(set) var pollInterval: Int?
+
+    /// 缺省 client ID：Prism Launcher 公开在其仓库中的公共客户端 ID。
+    ///
+    /// 来源：`PrismLauncher/PrismLauncher` 仓库根 `CMakeLists.txt`（继承自 MultiMC，
+    /// 注释声明“在构建中使用此 ID 即接受微软身份平台服务条款”），是其全部 fork
+    /// 共用的缺省值——注册不了自有 Entra 应用的社区项目的事实标准。
+    /// 实测与本项目端点/作用域完全兼容（见 docs-book ADR-010）。
+    ///
+    /// 后续注册了自有应用后，无需改代码：在 `Secrets.properties` 配置 `MS_CLIENT_ID`
+    /// 或设环境变量 `PCLMAC_MS_CLIENT_ID` 即可覆盖。
+    public static let defaultClientID: String = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb"
+
+    private let clientID: String
+    private var deviceCode: String?
+    private var oAuthToken: String?
+    private var refreshToken: String?
+
+    /// - Parameter clientID: 显式指定 client ID；缺省时依次读取环境变量
+    ///   `PCLMAC_MS_CLIENT_ID`、Bundle 内 `Secrets.properties` 的 `MS_CLIENT_ID`，
+    ///   均未配置时回落到 `defaultClientID`。
+    public init(clientID: String? = nil) {
+        self.clientID = clientID ?? Self.configuredClientID() ?? Self.defaultClientID
+    }
+
+    /// 构建期/运行时注入通道（优先级：显式参数 > 环境变量 > Secrets.properties）。
+    private static func configuredClientID() -> String? {
+        if let env = ProcessInfo.processInfo.environment["PCLMAC_MS_CLIENT_ID"], !env.isEmpty {
+            return env
+        }
+        if let properties = try? PropertiesLoader.load(at: URLConstants.resourcesURL.appending(path: "Secrets.properties")),
+           let id = properties["MS_CLIENT_ID"], !id.isEmpty {
+            return id
+        }
+        return nil
+    }
+
+    /// 开始登录并获取设备码。
+    /// - Returns: 用户授权代码和 `URL`。
+    public func start() async throws -> AuthorizationCode {
+        let json = try await post(
+            APIEndpoints.MicrosoftAuth.deviceCode,
+            [
+                "client_id": clientID,
+                "scope": "XboxLive.signin offline_access"
+            ],
+            encodeMethod: .urlEncoded
+        )
+        self.deviceCode = json["device_code"].stringValue
+        let expiresIn: Int = json["expires_in"].intValue
+        let interval: Int = json["interval"].intValue
+        self.pollCount = expiresIn / interval
+        self.pollInterval = interval
+        return .init(
+            code: json["user_code"].stringValue,
+            verificationURL: URL(string: json["verification_uri"].stringValue) ?? APIEndpoints.MicrosoftAuth.verificationFallback
+        )
+    }
+
+    /// 轮询用户验证状态。
+    /// - Returns: 用户是否完成了验证。
+    public func poll() async throws -> Bool {
+        guard let deviceCode else {
+            throw Error.internalError
+        }
+        let json: JSON = try await post(
+            APIEndpoints.MicrosoftAuth.token,
+            [
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                "client_id": clientID,
+                "device_code": deviceCode
+            ],
+            encodeMethod: .urlEncoded
+        )
+        if let accessToken = json["access_token"].string, let refreshToken = json["refresh_token"].string {
+            self.oAuthToken = accessToken
+            self.refreshToken = refreshToken
+            return true
+        }
+        return false
+    }
+
+    /// 完成后续登录步骤。
+    /// - Returns: 包含玩家档案、Minecraft 令牌和 OAuth 刷新令牌的结构体。
+    public func authenticate() async throws -> MinecraftAuthResponse {
+        guard let oAuthToken, let refreshToken else {
+            err("OAuth access token 或 refresh token 未设置")
+            throw Error.internalError
+        }
+        let xboxLiveAuthResponse: XboxLiveAuthResponse = try await authenticateXBL(with: oAuthToken)
+        let xstsAuthResponse: XboxLiveAuthResponse = try await authorizeXSTS(with: xboxLiveAuthResponse.token)
+        let minecraftToken: String = try await loginMinecraft(with: xstsAuthResponse)
+        guard let profile: PlayerProfile = try await getMinecraftProfile(with: minecraftToken) else {
+            throw Error.notPurchased
+        }
+        return .init(profile: profile, accessToken: minecraftToken, refreshToken: refreshToken)
+    }
+
+    /// 刷新 Minecraft 登录信息和令牌。
+    /// - Parameter token: OAuth 刷新令牌。
+    /// - Returns: 新的 `MinecraftAuthResponse`。
+    public func refresh(token: String) async throws -> MinecraftAuthResponse {
+        let json: JSON = try await post(
+            APIEndpoints.MicrosoftAuth.token,
+            [
+                "client_id": clientID,
+                "refresh_token": token,
+                "grant_type": "refresh_token",
+                "scope": "XboxLive.signin offline_access"
+            ],
+            encodeMethod: .urlEncoded
+        )
+        guard let oAuthToken = json["access_token"].string,
+              let refreshToken = json["refresh_token"].string else {
+            err("响应中不存在 error，但也不包含 access_token 键")
+            throw Error.internalError
+        }
+        let xboxLiveAuthResponse: XboxLiveAuthResponse = try await authenticateXBL(with: oAuthToken)
+        let xstsAuthResponse: XboxLiveAuthResponse = try await authorizeXSTS(with: xboxLiveAuthResponse.token)
+        let minecraftToken: String = try await loginMinecraft(with: xstsAuthResponse)
+        guard let profile: PlayerProfile = try await getMinecraftProfile(with: minecraftToken) else {
+            throw Error.notPurchased
+        }
+        return .init(profile: profile, accessToken: minecraftToken, refreshToken: refreshToken)
+    }
+
+    public struct AuthorizationCode {
+        public let code: String
+        public let verificationURL: URL
+    }
+
+    public struct MinecraftAuthResponse {
+        public let profile: PlayerProfile
+        public let accessToken: String
+        public let refreshToken: String
+    }
+
+    public enum Error: Swift.Error {
+        case xboxAuthenticationFailed(code: UInt32)
+        case apiError(description: String)
+        /// 刷新令牌已过期或被撤销，必须重新登录。
+        case grantExpired
+        case internalError
+        case notPurchased
+    }
+
+    private struct XboxLiveAuthResponse {
+        public let token: String
+        public let uhs: String
+    }
+
+    private func post(_ url: URLConvertible, _ body: [String: Any], encodeMethod: HTTPClient.EncodeMethod = .json) async throws -> JSON {
+        let response = try await HTTPClient.shared.post(url, body: body, using: encodeMethod)
+        let json: JSON = try response.json()
+        guard let string: String = .init(data: response.data, encoding: .utf8) else { throw Error.internalError }
+
+        if let error: String = json["error"].string {
+            if error == "authorization_pending" || error == "slow_down" {
+                return json
+            }
+
+            if error == "invalid_grant" {
+                err("刷新令牌已过期或被撤销，需要重新登录")
+                throw Error.grantExpired
+            }
+
+            let description: String = json["error_description"].string ?? json["errorMessage"].stringValue
+            err("调用 API 失败：\(response.statusCode) \(error)，错误描述：\(description)")
+            throw Error.apiError(description: description)
+        }
+        if let xerr: UInt32 = json["XErr"].uInt32 {
+            err("Xbox Live 验证失败，错误代码：\(xerr)，响应体：\(string)")
+            throw Error.xboxAuthenticationFailed(code: xerr)
+        }
+        if !(200..<300).contains(response.statusCode) {
+            err("调用 API 失败：发生未知错误：\(string)")
+            throw Error.apiError(description: string)
+        }
+        return json
+    }
+
+    private func authenticateXBL(with accessToken: String) async throws -> XboxLiveAuthResponse {
+        let json: JSON = try await post(
+            APIEndpoints.XboxAuth.userAuthenticate,
+            [
+                "Properties": [
+                    "AuthMethod": "RPS",
+                    "SiteName": "user.auth.xboxlive.com",
+                    "RpsTicket": "d=\(accessToken)"
+                ],
+                "RelyingParty": "http://auth.xboxlive.com",
+                "TokenType": "JWT"
+            ]
+        )
+        guard let uhs: String = json["DisplayClaims"]["xui"].arrayValue.first?["uhs"].string else {
+            err("\(APIEndpoints.XboxAuth.userAuthenticate) 返回的响应体中没有 uhs")
+            throw Error.internalError
+        }
+        return XboxLiveAuthResponse(token: json["Token"].stringValue, uhs: uhs)
+    }
+
+    private func authorizeXSTS(with accessToken: String) async throws -> XboxLiveAuthResponse {
+        let json: JSON = try await post(
+            APIEndpoints.XboxAuth.xstsAuthorize,
+            [
+                "Properties": [
+                    "SandboxId": "RETAIL",
+                    "UserTokens": [
+                        accessToken
+                    ]
+                ],
+                "RelyingParty": "rp://api.minecraftservices.com/",
+                "TokenType": "JWT"
+            ]
+        )
+        guard let uhs: String = json["DisplayClaims"]["xui"].arrayValue.first?["uhs"].string else {
+            err("\(APIEndpoints.XboxAuth.xstsAuthorize) 返回的响应体中没有 uhs")
+            throw Error.internalError
+        }
+        return XboxLiveAuthResponse(token: json["Token"].stringValue, uhs: uhs)
+    }
+
+    private func loginMinecraft(with xstsAuthResponse: XboxLiveAuthResponse) async throws -> String {
+        let json: JSON = try await post(
+            APIEndpoints.MojangServices.apiRoot.appending(path: "authentication/login_with_xbox"),
+            [
+                "identityToken": "XBL3.0 x=\(xstsAuthResponse.uhs);\(xstsAuthResponse.token)"
+            ]
+        )
+        return json["access_token"].stringValue
+    }
+
+    private func getMinecraftProfile(with token: String) async throws -> PlayerProfile? {
+        let json: JSON = try await HTTPClient.shared.get(
+            APIEndpoints.MojangServices.apiRoot.appending(path: "minecraft/profile"),
+            headers: [
+                "Authorization": "Bearer \(token)"
+            ]
+        ).json()
+        if let error = json["error"].string {
+            if error == "NOT_FOUND" {
+                return nil
+            } else {
+                err("发生未知错误：\(error) \(json["errorMessage"].stringValue)")
+                throw Error.apiError(description: json["errorMessage"].stringValue)
+            }
+        }
+        // 该接口返回的 JSON 不是标准档案格式，需要根据 UUID 再获取一次
+        let id: String = json["id"].stringValue
+        let data: Data = try await HTTPClient.shared.get(APIEndpoints.MojangServices.sessionServerProfile(id: id)).data
+        return try JSONDecoder.shared.decode(PlayerProfile.self, from: data)
+    }
+}
+
+extension MicrosoftAuthService.Error: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .xboxAuthenticationFailed(let code):
+            "Xbox Live 验证失败（错误代码 \(code)）。"
+        case .apiError(let description):
+            "微软账号服务返回错误：\(description)"
+        case .grantExpired:
+            "登录已过期，请重新登录该账号。"
+        case .internalError:
+            "内部错误。"
+        case .notPurchased:
+            "该微软账号尚未购买 Minecraft。"
+        }
+    }
+}

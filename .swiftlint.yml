@@ -1,4 +1,4 @@
-# SwiftLint 配置（PCL.Mac）
+# SwiftLint 配置（PCLMacCE）
 # 目标：中文优先项目的合理工程基线，而非机械套用默认值。
 # 设计原则：
 #   1. 复杂度类规则（cyclomatic_complexity / body_length）保留并适度放宽——
@@ -9,7 +9,7 @@
 excluded:
   - docs-book
   - Packaging
-  - PCL.Mac.xcodeproj
+  - PCLMacCE.xcodeproj
   - "**/.build"
 
 # 行宽：中文注释与长字符串较多，忽略注释/URL/函数声明
