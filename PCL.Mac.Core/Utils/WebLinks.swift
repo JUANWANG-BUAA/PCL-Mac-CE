@@ -34,7 +34,6 @@ public enum WebLinks {
     /// 爱发电赞助页。
     public enum Afdian {
         public static let ltCat: URL = .init(string: "https://afdian.com/a/LTCat")!
-        public static let anemoFlower: URL = .init(string: "https://afdian.com/a/AnemoFlower")!
         public static let bangbang93: URL = .init(string: "https://afdian.com/a/bangbang93")!
     }
 

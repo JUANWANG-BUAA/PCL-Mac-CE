@@ -53,6 +53,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // 原上游版本（PCL.Mac.Refactor）的数据目录一次性迁移，必须在建目录与加载配置前执行
+        URLConstants.migrateLegacyApplicationSupport()
         do {
             try URLConstants.createDirectories()
         } catch {
@@ -68,7 +70,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             exit(1)
         }
         LogManager.shared.enableLogging()
-        log("正在启动 PCL.Mac.Refactor \(Metadata.appVersion)")
+        log("正在启动 PCL.Mac \(Metadata.appVersion)")
 
         debug("系统信息：macOS \(ProcessInfo.processInfo.operatingSystemVersionString) \(Architecture.systemArchitecture())")
 

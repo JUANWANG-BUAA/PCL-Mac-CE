@@ -62,7 +62,7 @@ public enum MinecraftInstanceLoader {
         } else if VersionManifest.shared?.contains(id) ?? true {
             version = .init(id)
         } else {
-            version = await detectVersion(runningDirectory: runningDirectory, manifest: manifest)
+            version = detectVersion(runningDirectory: runningDirectory, manifest: manifest)
         }
         if version == nil {
             warn("获取实例版本失败")
@@ -151,7 +151,7 @@ public enum MinecraftInstanceLoader {
         }
     }
 
-    private static func detectVersion(runningDirectory: URL, manifest: ClientManifest) async -> MinecraftVersion? {
+    private static func detectVersion(runningDirectory: URL, manifest: ClientManifest) -> MinecraftVersion? {
         if let clVersion = manifest.version {
             return .init(clVersion)
         }
@@ -167,12 +167,8 @@ public enum MinecraftInstanceLoader {
                     return .init(versionInfo["id"].stringValue)
                 }
             } catch {}
-
-            do {
-                let sha1 = try FileUtils.sha1(of: jarURL)
-                let lookupResult = try await HTTPClient.shared.get(APIEndpoints.CylorineSite.versionLookup(sha1: sha1)).json()
-                return .init(lookupResult["version"].stringValue)
-            } catch {}
+            // 原末道兜底（cylorine.studio 的 sha1 版本反查）随上游站点下线已移除；
+            // 端点定义按死链保留约定仍在 APIEndpoints.CylorineSite 中登记
         }
 
         return nil

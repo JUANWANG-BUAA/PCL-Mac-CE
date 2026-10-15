@@ -1,5 +1,3 @@
 blank_issues_enabled: false
-contact_links:
-  - name: 其他
-    url: https://github.com/CylorineStudio/PCL.Mac.Refactor/discussions/new/choose
-    about: 如果你的问题不属于以上类别，请前往 Discussions 获取帮助。
+# 原指向 CylorineStudio/PCL.Mac.Refactor Discussions 的"其他"入口已随上游转私有移除；
+# 本项目自身的仓库确定后，在此补上新 Discussions 链接（见 docs-book ADR-008 待办）。

@@ -26,7 +26,7 @@
 | `api.cylorine.studio/cave` | 作者 | 百宝箱回声洞报错 | `Core/Services/CLAPIClient.swift:17-19` |
 | `api.cylorine.studio/easytier/{status,peers}` | 作者 | 联机拿不到节点，只剩用户自备 peer | `CLAPIClient.swift:21-35` |
 | **EasyTier 管理员关房** | **作者持 Ed25519 私钥** | 可远程关掉任意房间，客户端无条件接受 | `ViewModels/MultiplayerViewModel.swift:225-242` |
-| SwiftScaffolding 信令后端 | 作者（主机名不在本仓库） | 联机房间发现失效 | SPM 依赖 `CylorineStudio/SwiftScaffolding` |
+| SwiftScaffolding 信令后端 | 作者（主机名不在本仓库） | 联机房间发现失效 | 客户端库已 vendor（`Vendor/SwiftScaffolding`，ADR-009）；**信令服务端**仍为上游私有设施 |
 | 微软 client ID `dd28b3f2-…` | 借用作者注册的公开 client | 若被微软封禁，正版登录全断，且**无法换成自己的** | `Core/Services/MicrosoftAuthService.swift:14` |
 
 > 实测 `https://api.cylorine.studio` 返回 **200**。所以现状是"主域已死、子域还活"，两者命运不绑定 —— 别假设联机功能也坏了。

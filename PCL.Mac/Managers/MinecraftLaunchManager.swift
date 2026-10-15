@@ -129,7 +129,7 @@ class MinecraftLaunchManager: ObservableObject {
         defer { try? FileManager.default.removeItem(at: reportURL) }
 
         let launcherInfo: LauncherInfo = .init(
-            launcher: "PCL.Mac.Refactor",
+            launcher: "PCL.Mac",
             launcherVersion: Metadata.appVersion,
             minecraftVersion: instance.version.id,
             javaVersion: options.javaRuntime.version,

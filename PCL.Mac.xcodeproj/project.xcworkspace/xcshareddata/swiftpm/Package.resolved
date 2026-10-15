@@ -2,15 +2,6 @@
   "originHash" : "b6de9ce77edf9c080abf0fd7fe502d423762a5581187b008950fa2e8ef09320f",
   "pins" : [
     {
-      "identity" : "swiftscaffolding",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/CylorineStudio/SwiftScaffolding",
-      "state" : {
-        "revision" : "e5f44ced067bc37fede891035ddc3b5f75800669",
-        "version" : "0.2.1"
-      }
-    },
-    {
       "identity" : "swiftyjson",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/SwiftyJSON/SwiftyJSON",

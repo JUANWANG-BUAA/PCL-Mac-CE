@@ -1,0 +1,126 @@
+//
+//  ByteBuffer.swift
+//  SwiftScaffolding
+//
+//  Created by 温迪 on 2025/10/27.
+//
+
+import Foundation
+
+public class ByteBuffer {
+    public private(set) var data: Data
+    private var index: Int
+    
+    // MARK: - 初始化
+    
+    /// 构造一个 `ByteBuffer` 用于读取 `Data`。
+    public init(data: Data) {
+        self.data = data
+        self.index = 0
+    }
+    
+    /// 构造一个 `ByteBuffer` 用于写入数据。
+    public init() {
+        self.data = Data()
+        self.index = 0
+    }
+    
+    // MARK: - 读取
+    
+    /// 读取 `n` 个字节的数据。
+    ///
+    /// - Parameter length: 读取的数据长度。
+    /// - Returns: 长度为 `length` 字节的 `Data`。
+    /// - Throws: 若剩余字节不足，抛出 `ConnectionError.notEnoughBytes` 错误。
+    public func readData(length: any BinaryInteger) throws -> Data {
+        guard let intLength: Int = .init(exactly: length) else {
+            throw ConnectionError.notEnoughBytes
+        }
+        if intLength == 0 { return Data() }
+        if index + intLength > data.count {
+            throw ConnectionError.notEnoughBytes
+        }
+        defer { index += intLength }
+        return data.subdata(in: index..<index + intLength)
+    }
+    
+    /// 读取一个 `UInt8`。
+    ///
+    /// - Throws: 若剩余字节不足，抛出 `ConnectionError.notEnoughBytes` 错误。
+    public func readUInt8() throws -> UInt8 {
+        let data: Data = try readData(length: 1)
+        let value: UInt8 = data.withUnsafeBytes { $0.load(as: UInt8.self) }
+        return value
+    }
+    
+    /// 读取一个 `UInt16`（大端序）。
+    ///
+    /// - Throws: 若剩余字节不足，抛出 `ConnectionError.notEnoughBytes` 错误。
+    public func readUInt16() throws -> UInt16 {
+        let data: Data = try readData(length: 2)
+        let value: UInt16 = data.withUnsafeBytes { $0.load(as: UInt16.self).bigEndian }
+        return value
+    }
+    
+    /// 读取一个 `UInt32`（大端序）。
+    ///
+    /// - Throws: 若剩余字节不足，抛出 `ConnectionError.notEnoughBytes` 错误。
+    public func readUInt32() throws -> UInt32 {
+        let data: Data = try readData(length: 4)
+        let value: UInt32 = data.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        return value
+    }
+    
+    /// 读取一个 **UTF-8** 字符串。
+    ///
+    /// - Parameter length: 字符串长度。
+    /// - Throws:
+    ///   - 若剩余字节不足，抛出 `ConnectionError.notEnoughBytes` 错误。
+    ///   - 若解析字符串失败，抛出 `ConnectionError.failedToDecodeString` 错误。
+    public func readString(_ length: (any BinaryInteger)? = nil) throws -> String {
+        let length: any BinaryInteger = length ?? data.count
+        let data: Data = try readData(length: length)
+        guard let string: String = .init(data: data, encoding: .utf8) else {
+            throw ConnectionError.failedToDecodeString
+        }
+        return string
+    }
+    
+    // MARK: - 写入
+    
+    /// 写入一段 `Data`
+    /// - Parameter data: 写入的 `Data`
+    public func writeData(_ data: Data) {
+        self.data.append(data)
+    }
+    
+    /// 写入一个 UInt8
+    /// - Parameter value: 要写入的 UInt8
+    public func writeUInt8(_ value: UInt8) {
+        var v: UInt8 = value
+        let d: Data = Data(bytes: &v, count: MemoryLayout<UInt8>.size)
+        writeData(d)
+    }
+    
+    /// 写入一个 UInt16（大端序）
+    /// - Parameter value: 要写入的 UInt16
+    public func writeUInt16(_ value: UInt16) {
+        var v: UInt16 = value.bigEndian
+        let d: Data = Data(bytes: &v, count: MemoryLayout<UInt16>.size)
+        writeData(d)
+    }
+    
+    /// 写入一个 UInt32（大端序）
+    /// - Parameter value: 要写入的 UInt32
+    public func writeUInt32(_ value: UInt32) {
+        var v: UInt32 = value.bigEndian
+        let d: Data = Data(bytes: &v, count: MemoryLayout<UInt32>.size)
+        writeData(d)
+    }
+    
+    /// 写入一个 **UTF-8** 字符串。
+    public func writeString(_ str: String) {
+        let data: Data = str.data(using: .utf8)!
+        writeData(data)
+    }
+}

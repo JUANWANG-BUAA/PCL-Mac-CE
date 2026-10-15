@@ -75,13 +75,13 @@ PCL.Mac imports `Core` (PCL.Mac.Core). PCL.Mac.Core imports `SwiftScaffolding` f
 
 - **Concurrency**: `SWIFT_STRICT_CONCURRENCY = targeted` is enabled (see `Configs/Base.xcconfig`, roadmap: targeted → complete → Swift 6). Conventions: ViewModel/Manager `ObservableObject` classes are `@MainActor`; don't wrap `await MainActor.run { … }` inside their methods (already on main). Core value types exposed to App must be `Sendable`. Use `@preconcurrency import Core` / `@preconcurrency import SwiftScaffolding` at boundaries until the Sendable audit completes. `MyTask` model carriers are `@unchecked Sendable` by design (shared mutable state across subtasks) — see docs-book ADR-003.
 - **Naming**: never use backtick-escaped type names — use `Style` (`MyButton.Style`) / `Kind` (`HintModel.Kind`) suffixes for associated enums.
-- **Global logging**: `log()`, `err()`, `warn()`, `debug()` are global functions defined in `PCL.Mac.Core/Minecraft/Launch/LogManager.swift`. They write to rotating log files (`Log1.log` through `Log5.log`) in `~/Library/Application Support/PCL.Mac.Refactor/Logs/`.
+- **Global logging**: `log()`, `err()`, `warn()`, `debug()` are global functions defined in `PCL.Mac.Core/Minecraft/Launch/LogManager.swift`. They write to rotating log files (`Log1.log` through `Log5.log`) in `~/Library/Application Support/PCL.Mac/Logs/`.
 - **Remote URL registry**: ALL remote endpoints live in `PCL.Mac.Core/Utils/APIEndpoints.swift` (program-requested APIs) and `PCL.Mac.Core/Utils/WebLinks.swift` (browser-opened links). Never inline `https://…` literals in services or views; add or reference a constant there instead. Dead endpoints are kept in place with a `⚠️` doc comment.
 - **UI design tokens**: `PCL.Mac/Extensions/DesignTokens.swift` defines `Spacing`, `Radius`, `ShadowToken`, `Font.pcl(_:)`/`Font.cardTitle`, and semantic colors (`.danger`). The `My*` components are the token consumption boundary — prefer tokens over raw values in new UI code. The brand palette `Color.color1-8` / `colorGray1-8` (from PCL2-CE, issue #13) is the primitive layer; do not rename it.
 - **UI hints**: `hint()` global function (defined in `PCL.Mac/Managers/HintManager.swift`) shows a floating toast notification.
 - **Shared JSON coders**: `JSONDecoder.shared` / `JSONEncoder.shared` (ISO8601 dates, pretty-printed/sorted-key encoding). Always use these.
 - **Secrets**: Loaded from `Resources/Secrets.properties` or environment variables prefixed `PCLMAC_`. Currently only `CURSE_FORGE_API_KEY`.
-- **LauncherConfig**: JSON-based persistence at `~/Library/Application Support/PCL.Mac.Refactor/config.json`. Codable with backup on load failure.
+- **LauncherConfig**: JSON-based persistence at `~/Library/Application Support/PCL.Mac/config.json`. Codable with backup on load failure.
 - **`Optional.unwrap()`**: Throws `SimpleError` on nil — preferred over force-unwrap for better error messages.
 - **Chinese-first codebase**: Comments, user-facing strings, and commit messages are in Chinese.
 

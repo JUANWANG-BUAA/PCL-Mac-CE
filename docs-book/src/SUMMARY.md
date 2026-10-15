@@ -46,3 +46,4 @@
 - [ADR-006 可用性与健壮性扫尾轮](decisions/adr-006-usability.md)
 - [ADR-007 主题系统、静态分析基线与复杂度治理](decisions/adr-007-theming-quality.md)
 - [ADR-008 与已关闭的直系上游（CylorineStudio/PCL.Mac）切割](decisions/adr-008-upstream-detachment.md)
+- [ADR-009 上游身份资产本地化：Bundle ID、数据目录、版本序列与 SwiftScaffolding vendor](decisions/adr-009-own-identity.md)
