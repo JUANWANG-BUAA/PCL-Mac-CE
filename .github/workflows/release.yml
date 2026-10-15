@@ -50,7 +50,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v8
         with:
-          name: PCLMacCE-artifact.zip
+          name: PCLMacCE-artifact
           path: ./artifact
           skip-decompress: true
 
