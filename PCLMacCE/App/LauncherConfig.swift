@@ -26,23 +26,32 @@ class LauncherConfig: Codable {
         } catch {
             err("加载配置文件失败：\(error.localizedDescription)")
             do {
-                if FileManager.default.fileExists(atPath: backupURL.path) {
-                    try FileManager.default.removeItem(at: backupURL)
-                }
-                try FileManager.default.copyItem(at: url, to: backupURL)
+                // 原备份不能先删除：读取或写入失败时仍保留上一次可恢复的副本。
+                let originalData = try Data(contentsOf: url)
+                try originalData.write(to: backupURL, options: .atomic)
                 log("备份配置文件成功：\(backupURL.path)")
             } catch {
                 err("备份配置文件失败：\(error.localizedDescription)")
+                // 未保全原始文件时禁止后续自动保存，避免覆盖唯一的损坏配置。
+                saveBlockedReason = error
             }
             loadError = error
             let config = LauncherConfig()
-            try? save(config, to: url)
+            if saveBlockedReason == nil {
+                do {
+                    try save(config, to: url)
+                } catch {
+                    err("重建配置文件失败：\(error.localizedDescription)")
+                }
+            }
             return config
         }
     }()
 
     public static let backupURL: URL = URLConstants.applicationSupportURL.appending(path: "config.bak.json")
     public private(set) static var loadError: Error?
+    /// 原配置备份失败时阻止任何自动保存，保留原文件供人工恢复。
+    public private(set) static var saveBlockedReason: Error?
 
     public var minecraftRepositories: [MinecraftRepository] = []
     public var currentRepositoryId: UUID?
@@ -107,7 +116,10 @@ class LauncherConfig: Codable {
 
     public static func save(_ config: LauncherConfig = .shared, to url: URL = URLConstants.configURL) throws {
         let data = try JSONEncoder.shared.encode(config)
-        try data.write(to: url)
+        if let saveBlockedReason, url == URLConstants.configURL {
+            throw SimpleError("原配置文件未能备份，已停止自动保存以防覆盖：\(saveBlockedReason.localizedDescription)")
+        }
+        try data.write(to: url, options: .atomic)
     }
 
     private enum CodingKeys: String, CodingKey {

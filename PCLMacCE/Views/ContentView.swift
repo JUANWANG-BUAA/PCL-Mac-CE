@@ -22,6 +22,13 @@ struct ContentView: View {
                 AppSidebarView()
                 AppRouterView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // 主区域只叠加轻微的非采样底色，不再对整窗玻璃做第二次材质模糊。
+                    // 保留壁纸透光，同时降低亮暗壁纸对正文对比度的影响。
+                    .background {
+                        if ThemeManager.shared.theme.isNativeStyle {
+                            Color.white.opacity(0.22)
+                        }
+                    }
                     // 内容区遮罩：页面玻璃与卡片材质在失焦 / 过渡期会"回退态 → 真实态"地
                     // settle（亮度突变）；盖上后 settle 发生在遮罩之下（见 GlassCoverState）
                     .overlay { GlassCoverOverlay(dark: false) }

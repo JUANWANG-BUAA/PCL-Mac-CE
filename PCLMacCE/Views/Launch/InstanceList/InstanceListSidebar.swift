@@ -90,9 +90,9 @@ struct InstanceListSidebar: Sidebar {
 private struct ImportButton: View {
     private let icon: ImageResource
     private let label: String
-    private let perform: () throws -> Void
+    private let perform: () -> Void
 
-    public init(_ icon: ImageResource, _ label: String, perform: @escaping () throws -> Void) {
+    public init(_ icon: ImageResource, _ label: String, perform: @escaping () -> Void) {
         self.icon = icon
         self.label = label
         self.perform = perform
@@ -113,7 +113,7 @@ private struct ImportButton: View {
             .padding(.vertical, 2)
         }
         .onTapGesture {
-            try? perform()
+            perform()
         }
     }
 }

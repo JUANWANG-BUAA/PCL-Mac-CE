@@ -151,7 +151,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             MessageBoxManager.shared.showText(
                 title: "加载配置文件失败",
                 content: "很抱歉，PCLMacCE 无法加载启动器配置文件……\n原因可能是文件损坏、代码破坏性变更，或者权限问题。\n"
-                    + "PCLMacCE 创建了一个备份文件（\(LauncherConfig.backupURL.path)）以免配置丢失。\n\n"
+                    + (LauncherConfig.saveBlockedReason == nil
+                        ? "原配置文件已备份至 \(LauncherConfig.backupURL.path)。\n\n"
+                        : "备份失败，已停止自动保存以保护原配置文件；请检查文件权限并手动备份后再操作。\n\n")
                     + "错误信息：\(loadError.localizedDescription)",
                 level: .error
             )
