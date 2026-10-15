@@ -1,5 +1,6 @@
-# SwiftLint 配置（PCLMacCE）
+# SwiftLint 配置（PCL Mac CE）
 # 目标：中文优先项目的合理工程基线，而非机械套用默认值。
+# 现状：全仓 0 违规（ADR-013 起由 CI 强制，--strict 运行）；
 # 设计原则：
 #   1. 复杂度类规则（cyclomatic_complexity / body_length）保留并适度放宽——
 #      它们用于发现"该拆分的函数"，是本项目的主要质量闸门；

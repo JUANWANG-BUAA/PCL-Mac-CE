@@ -11,6 +11,20 @@ on:
       - "Resources/**"
 
 jobs:
+  lint:
+    name: SwiftLint
+    runs-on: macos-26
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run SwiftLint
+        run: |
+          if ! command -v swiftlint >/dev/null 2>&1; then
+            brew install swiftlint
+          fi
+          swiftlint lint --config .swiftlint.yml --strict --quiet
+
   build:
     uses: ./.github/workflows/build.yml
     with:

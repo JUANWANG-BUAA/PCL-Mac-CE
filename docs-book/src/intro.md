@@ -17,7 +17,7 @@ PCL Mac CE（原 PCL.Mac）的**现状（as-is）**架构手册。只记录"代�
 | 等价于 | 上游 `CylorineStudio/PCL.Mac.Refactor` 的 `416cde35`（tree 完全一致，已逐字节校验） |
 | 上游现状 | 已转私有，本机凭据不可读；详见 [ADR-001](decisions/adr-001-baseline.md) |
 | 维护者 | JUANWANG（[github.com/JUANWANG-BUAA](https://github.com/JUANWANG-BUAA)）——原项目停更后接手，持续开发中；与上游的切割边界见 [ADR-008](decisions/adr-008-upstream-detachment.md) |
-| 规模 | 186 个 Swift 文件 / 约 17.9k 行主代码 / 83 个 Core 文件 |
+| 规模 | 186 个 Swift 文件（App 93 + Core 84 + 测试 9）/ 约 19.1k 行主代码 |
 
 > 注意：`dev` 与 `main`（停在 v1.1.0）**没有共同祖先**——上游历史在镜像仓库里被从根重写过。文件内容可信，SHA 谱系不可信。
 >

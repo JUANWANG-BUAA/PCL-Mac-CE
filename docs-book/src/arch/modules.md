@@ -20,10 +20,10 @@
 
 | 目录 | 文件 | 职责 | 代表文件 |
 |---|---|---|---|
-| `App/` | 7 | 生命周期与全局装配 | `AppDelegate.swift`（**启动时序与唯一落盘时机**）、`App.swift`、`AppWindow.swift`、`AppRouter.swift`、`RootView.swift`、`LauncherConfig.swift`（15 字段配置单例）、`Secrets.swift`（读 `Secrets.properties` / 环境变量） |
-| `Views/` | 27 | 页面与侧栏，按功能分 5 组 | `Launch/`（主页、实例列表、实例设置、侧栏）、`Download/`（原版游戏、加载器选项、资源搜索、资源安装）、`Settings/`、`More/`（关于、百宝箱）、`Tasks/`；顶层 `ContentView.swift`、`TitleBarView.swift`、`Sidebar.swift`、`MessageBoxView.swift` |
-| `Components/` | 19 | 自绘控件库（`My*` 前缀） | `MyCard`、`MyButton`、`MyList`、`MyNavigationList`、`MySelect`、`MyComboBox`、`MySearchBox`、`MyTextField`、`MyTip`、`MyLoading`、`MyTag`、`MyExtraTextButton`、`PaginatedContainer`、`PlayerAvatar`、`NetworkImage`、`WindowButton`、`RightRoundedRectangle` |
-| `ViewModels/` | 15 | MVVM 的 VM 层 | `AccountViewModel.swift`（登录编排 + 皮肤读取）、`ToolboxViewModel.swift`、`SettingsViewModel.swift`、`LaunchViewModel.swift`、`Instance/*` 四个、`MinecraftDownloadPageViewModel`、`MinecraftInstallOptionsViewModel`、`ResourceInstallViewModel`、`ResourcesSearchViewModel`、`ModpackViewModel`、`JavaSettingsViewModel`、`MyLoadingViewModel` |
+| `App/` | 7 | 生命周期与全局装配 | `AppDelegate.swift`（**启动时序与唯一落盘时机**）、`App.swift`、`AppWindow.swift`、`AppRouter.swift`、`RootView.swift`、`LauncherConfig.swift`（14 字段配置单例）、`Secrets.swift`（读 `Secrets.properties` / 环境变量） |
+| `Views/` | 28 | 页面与侧栏，按功能分 5 组 | `Launch/`（主页、实例列表、实例设置、侧栏）、`Download/`（原版游戏、加载器选项、资源搜索、资源安装）、`Settings/`、`More/`（关于、百宝箱）、`Tasks/`；顶层 `ContentView.swift`、`TitleBarView.swift`、`Sidebar.swift`、`MessageBoxView.swift` |
+| `Components/` | 20 | 自绘控件库（`My*` 前缀） | `MyCard`、`MyButton`、`MyList`、`MyNavigationList`、`MySelect`、`MyComboBox`、`MySearchBox`、`MyTextField`、`MyTip`、`MyLoading`、`MyTag`、`MyExtraTextButton`、`PaginatedContainer`、`PlayerAvatar`、`NetworkImage`、`WindowButton`、`RightRoundedRectangle` |
+| `ViewModels/` | 14 | MVVM 的 VM 层 | `AccountViewModel.swift`（登录编排 + 皮肤读取）、`ToolboxViewModel.swift`、`SettingsViewModel.swift`、`LaunchViewModel.swift`、`Instance/*` 四个、`MinecraftDownloadPageViewModel`、`MinecraftInstallOptionsViewModel`、`ResourceInstallViewModel`、`ResourcesSearchViewModel`、`ModpackViewModel`、`JavaSettingsViewModel`、`MyLoadingViewModel` |
 | `Managers/` | 8 | 有状态的全局服务 | `FlagsManager.swift`（实验开关）、`UpdateManager.swift` + `UpdateService` 配合、`TaskManager.swift`、`MessageBoxManager.swift`、`HintManager.swift`、`MinecraftLaunchManager.swift`（崩溃报告）、`FileDropHandler.swift`、`EasterEggManager.swift` |
 | `Models/` | 7 | UI 侧模型 | `UpdateModel.swift`（自更新 JSON 契约）、`MessageBoxModel`、`HintModel`、`ResourceDisplayModel`、`ProjectListItemModel`、`ProjectVersionModel`、`ListItem` |
 | `Services/` | 2 | 应用侧服务 | `UpdateService.swift`（更新流程编排）、`CapeSelection.swift`（披风） |

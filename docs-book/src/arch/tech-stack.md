@@ -29,7 +29,6 @@
 
 | 包 | 版本 | 用途 | 备注 |
 |---|---|---|---|
-| [SwiftScaffolding](https://github.com/CylorineStudio/SwiftScaffolding) | 0.2.1（vendor 于 `Vendor/SwiftScaffolding`，ADR-009） | 日志（`SwiftScaffolding.Logger`） | 上游作者的 MIT 库；联机协议部分随功能移除（ADR-011），仅余日志能力 |
 | [SwiftyJSON](https://github.com/SwiftyJSON/SwiftyJSON) | 5.0.2 | 宽松 JSON 解析 | `HTTPClient.Response.json()` 的返回类型 |
 | [ZIPFoundation](https://github.com/weichsel/ZIPFoundation) | 0.9.20 | zip 解压（整合包、自更新包） | `Extensions/Archive+EntryExtract.swift` |
 | [TOMLDecoder](https://github.com/dduan/TOMLDecoder) | 0.4.4 | 解析 mods.toml（Forge 模组元数据） | `Services/Resource/Parsers/ModParser.swift` |
@@ -75,6 +74,6 @@
 
 - 整体：v1.1.1 起采用 PCL 官方的 **《PCL 分发有限许可》+《PCL 存储库合理使用指南》**（#223 换的），版权方为"成都瓜皮龙科技有限公司"。
 - `PCL.Mac.Core/`：**MIT**，使用其代码需保留许可与署名。
-- 依赖各自的 MIT / Apache-2.0 / zlib 等许可（`SwiftScaffolding` 用 MIT，见其 LICENSE）。
+- 依赖各自的 MIT / Apache-2.0 / zlib 等许可（各自见 `Resources/licenses/`）。
 
 > 这一条对"能不能二次分发、能不能改名发布"有直接约束，改造前务必读 `LICENSE` 原文。

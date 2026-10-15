@@ -21,7 +21,9 @@ ADR-008 完成了 UI 入口层面的切割（死链、头像、更新闸门）�
 
 1. **SwiftScaffolding vendor 化**：按 pin 的 `e5f44ce`（v0.2.1）整包复制到
    `Vendor/SwiftScaffolding/`（剔除 `.git` 与其自身 CI），pbxproj 改为
-   `XCLocalSwiftPackageReference`，`Package.resolved` 移除该 pin。MIT 许可
+   `XCLocalSwiftPackageReference`，`Package.resolved` 移除该 pin。
+   > 注：本 vendor 决策已被 [ADR-013](adr-013-cleanup-quality-docs.md) 取代——该库
+   > 在联机移除后无实际功能，已随残留二次清除整体移除。MIT 许可
    允许再分发，`LICENSE` 与 `Resources/licenses/` 声明保持原样。
    **注意**：vendor 的只是客户端库；联机信令服务端属上游主机上的服务
    （Scaffolding-MC 公开协议）——该依赖已随联机功能移除（ADR-011），
