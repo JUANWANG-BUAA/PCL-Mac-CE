@@ -103,15 +103,33 @@ public extension VersionManifest {
     @discardableResult
     static func load(revalidate: Bool = false) async throws -> VersionManifest {
         let cacheURL = URLConstants.cacheURL.appending(path: "version_manifest.json")
+        let etagURL = URLConstants.cacheURL.appending(path: "version_manifest.json.etag")
         let url = DownloadSourceManager.shared.versionManifestURL()!
 
-        let response = try await HTTPClient.shared.get(url, revalidate: revalidate)
+        // 携带上次的 ETag 协商：上游未变化时返回 304，直接复用本地缓存，
+        // 省去每次启动下载数百 KB 清单并解析的开销
+        var headers: [String: String?]?
+        if revalidate,
+           let etag = (try? String(contentsOf: etagURL, encoding: .utf8))?
+               .trimmingCharacters(in: .whitespacesAndNewlines), !etag.isEmpty {
+            headers = ["If-None-Match": etag]
+        }
+        let response = try await HTTPClient.shared.get(url, headers: headers, revalidate: revalidate)
+        if response.statusCode == 304 {
+            let manifest: VersionManifest = try JSONDecoder.shared.decode(VersionManifest.self, from: Data(contentsOf: cacheURL))
+            log("版本清单未变化（ETag 304），复用本地缓存")
+            Self.shared = manifest
+            return manifest
+        }
         let manifest = try response.decode(VersionManifest.self)
         if Self.shared == nil || Self.shared != manifest {
             log("刷新版本清单成功")
             Self.shared = manifest
             do {
                 try response.data.write(to: cacheURL)
+                if let etag = response.headers["etag"] {
+                    try etag.write(to: etagURL, atomically: true, encoding: .utf8)
+                }
             } catch {
                 err("保存版本列表缓存失败：\(error.localizedDescription)")
             }

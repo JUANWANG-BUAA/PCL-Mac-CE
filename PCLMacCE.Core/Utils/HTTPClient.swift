@@ -122,20 +122,63 @@ public class HTTPClient {
             }
         }
 
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch let error where error.isCancellationError {
-            throw CancellationError()
-        }
-        guard let response = response as? HTTPURLResponse else {
-            throw ResponseError(.invalidType, url: url, response: response)
-        }
-        if throwOnError && !(200..<300).contains(response.statusCode) {
-            throw ResponseError(.badStatus, url: url, response: response)
-        }
+        // GET 幂等：429/5xx 与瞬时网络错误统一退避重试，免去各调用方自行处理
+        let maxRetryCount: Int = 2
+        var retryCount: Int = 0
+        while true {
+            let (data, response): (Data, URLResponse)
+            do {
+                (data, response) = try await URLSession.shared.data(for: request)
+            } catch let error where error.isCancellationError {
+                throw CancellationError()
+            } catch let urlError as URLError where method == "GET" && retryCount < maxRetryCount && Self.isTransient(urlError) {
+                let delay: Double = Double(retryCount + 1)
+                warn("请求 \(url.host ?? "") 失败（\(urlError.localizedDescription)），\(delay)s 后重试 (\(retryCount + 1)/\(maxRetryCount))")
+                try await Task.sleep(seconds: delay)
+                retryCount += 1
+                continue
+            }
+            guard let response = response as? HTTPURLResponse else {
+                throw ResponseError(.invalidType, url: url, response: response)
+            }
+            if let delay = Self.retryDelay(for: response), method == "GET", retryCount < maxRetryCount {
+                warn("\(url.host ?? "") 返回 \(response.statusCode)，\(String(format: "%.1f", delay))s 后重试 (\(retryCount + 1)/\(maxRetryCount))")
+                try await Task.sleep(seconds: delay)
+                retryCount += 1
+                continue
+            }
+            if throwOnError && !(200..<300).contains(response.statusCode) {
+                throw ResponseError(.badStatus, url: url, response: response)
+            }
 
-        return Response(data: data, response: response)
+            return Response(data: data, response: response)
+        }
+    }
+
+    /// 状态码对应的退避秒数；不应重试的状态码返回 `nil`。
+    private static func retryDelay(for response: HTTPURLResponse) -> Double? {
+        switch response.statusCode {
+        case 429:
+            // 尊重 Retry-After（秒），超过 10s 时按上限等待
+            if let raw = response.value(forHTTPHeaderField: "Retry-After"), let seconds = Double(raw), seconds > 0 {
+                return min(seconds, 10)
+            }
+            return 2
+        case 500..<600:
+            return 1
+        default:
+            return nil
+        }
+    }
+
+    /// 该网络错误是否为瞬时错误（重试通常可以恢复）。
+    private static func isTransient(_ error: URLError) -> Bool {
+        switch error.code {
+        case .timedOut, .networkConnectionLost, .cannotConnectToHost, .dnsLookupFailed:
+            return true
+        default:
+            return false
+        }
     }
 
     /// 向目标 URL 发送 `GET` 请求。
