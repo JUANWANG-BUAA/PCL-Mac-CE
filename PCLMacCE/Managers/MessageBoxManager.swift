@@ -136,7 +136,11 @@ class MessageBoxManager: ObservableObject {
         level: MessageBoxModel.Level,
         buttons: [MessageBoxModel.Button]
     ) async -> MessageBoxResult {
-        await semaphore.wait()
+        do {
+            try await semaphore.wait()
+        } catch {
+            return .button(id: 0)
+        }
         clearWaitStateWorkItem?.cancel()
         if shouldWait {
             try? await Task.sleep(seconds: 0.5)
@@ -288,7 +292,11 @@ extension MessageBoxManager {
         callback: (@MainActor (MessageBoxResult) -> Void)?
     ) {
         Task {
-            await semaphore.wait()
+            do {
+                try await semaphore.wait()
+            } catch {
+                return
+            }
             clearWaitStateWorkItem?.cancel()
             if shouldWait {
                 try? await Task.sleep(seconds: 0.5)

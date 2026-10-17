@@ -19,7 +19,11 @@ class UpdateService {
             return
         }
         Task {
-            await semaphore.wait()
+            do {
+                try await semaphore.wait()
+            } catch {
+                return
+            }
             defer { Task { await semaphore.signal() } }
             if manually {
                 hint("正在检查更新……")

@@ -62,6 +62,8 @@ public class ConcurrentProgressHandler {
     public func cancelCalculate() {
         calculateTask?.cancel()
         calculateTask = nil
+        // 计算已停止，处理条目不再被读取；清空以免长任务反复注册造成内存增长
+        progressMap.removeAll()
     }
 
     private func calculateProgress() -> Double {

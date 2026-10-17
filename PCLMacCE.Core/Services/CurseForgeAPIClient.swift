@@ -49,7 +49,7 @@ public class CurseForgeAPIClient {
         pageIndex: Int = 0,
         pageSize: Int = 40
     ) async throws -> [CurseForgeMod] {
-        await semaphore.wait()
+        try await semaphore.wait()
         defer { Task { await semaphore.signal() } }
         var params: [String: String?] = [
             "gameId": "432",
@@ -92,7 +92,7 @@ public class CurseForgeAPIClient {
         headers: [String: String?] = [:],
         body: [String: Any]? = nil
     ) async throws -> HTTPClient.Response {
-        await semaphore.wait()
+        try await semaphore.wait()
         defer { Task { await semaphore.signal() } }
         var headers: [String: String?] = headers
         headers["x-api-key"] = apiKey
