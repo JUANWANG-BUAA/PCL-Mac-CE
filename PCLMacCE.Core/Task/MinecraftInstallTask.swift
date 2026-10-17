@@ -71,7 +71,10 @@ public enum MinecraftInstallTask {
         return [
             .init(0, "__pre", display: false) { _, model in
                 try FileManager.default.createDirectory(at: model.runningDirectory, withIntermediateDirectories: true)
-                FileManager.default.createFile(atPath: model.runningDirectory.appending(path: ".incomplete").path, contents: nil)
+                // 标记创建失败必须中止：否则中断的半成品实例会被当成完整实例加载
+                guard FileManager.default.createFile(atPath: model.runningDirectory.appending(path: ".incomplete").path, contents: nil) else {
+                    throw SimpleError("创建实例安装标记失败，无法继续安装。")
+                }
             },
             .init(0, "下载客户端 JSON 文件") { task, model in
                 guard let versionManifest = VersionManifest.shared else {

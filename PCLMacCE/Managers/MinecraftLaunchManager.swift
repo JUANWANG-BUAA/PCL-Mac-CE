@@ -49,6 +49,7 @@ class MinecraftLaunchManager: ObservableObject {
             self.gameProcess = process
             process.terminationHandler = { [weak self] process in
                 log("游戏进程已退出，退出代码：\(process.terminationStatus)")
+                // 0 = 正常退出；9/15 及 128+n 是被 SIGKILL/SIGTERM/SIGINT 信号终止，均视为用户主动操作
                 if ![0, 9, 15, 128 + 9, 128 + 15].contains(process.terminationStatus) {
                     log("游戏非正常退出")
                     let options = launcher.options
@@ -57,7 +58,11 @@ class MinecraftLaunchManager: ObservableObject {
                         self?.onGameCrash(instance: instance, options: options, logURL: logURL)
                     }
                 } else {
-                    try? FileManager.default.removeItem(at: launcher.logURL)
+                    do {
+                        try FileManager.default.removeItem(at: launcher.logURL)
+                    } catch {
+                        warn("清理游戏日志失败：\(error.localizedDescription)")
+                    }
                 }
                 Task { @MainActor in
                     self?.cancel()
@@ -102,7 +107,7 @@ class MinecraftLaunchManager: ObservableObject {
         ) { result in
             if result == 1 {
                 let dateFormatter: DateFormatter = .init()
-                dateFormatter.dateFormat = "yyyy_MM_dd_HH_mm_SS"
+                dateFormatter.dateFormat = "yyyy_MM_dd_HH_mm_ss"
                 let fileName: String = "崩溃报告-\(dateFormatter.string(from: .now)).zip"
                 let panel = NSSavePanel()
                 panel.title = "选择报告位置"
@@ -111,12 +116,17 @@ class MinecraftLaunchManager: ObservableObject {
                 panel.nameFieldStringValue = fileName
                 let handleSave: (NSApplication.ModalResponse) -> Void = { response in
                     guard response == .OK, let url: URL = panel.url else { return }
-                    do {
-                        try self.exportCrashReport(for: instance, to: url, with: fileName, options: options, logURL: logURL)
-                        log("导出崩溃报告成功")
-                    } catch {
-                        err("导出崩溃报告失败：\(error.localizedDescription)")
-                        hint("导出崩溃报告失败：\(error.localizedDescription)", type: .critical)
+                    hint("正在导出崩溃报告……")
+                    // 报告打包与压缩是磁盘 IO，放后台执行，避免大日志导出时冻结界面
+                    Task.detached(priority: .userInitiated) {
+                        do {
+                            try Self.exportCrashReport(for: instance, to: url, with: fileName, options: options, logURL: logURL)
+                            log("导出崩溃报告成功")
+                            await MainActor.run { hint("导出崩溃报告成功！", type: .finish) }
+                        } catch {
+                            err("导出崩溃报告失败：\(error.localizedDescription)")
+                            await MainActor.run { hint("导出崩溃报告失败：\(error.localizedDescription)", type: .critical) }
+                        }
                     }
                 }
                 if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
@@ -128,7 +138,7 @@ class MinecraftLaunchManager: ObservableObject {
         }
     }
 
-    private func exportCrashReport(for instance: MinecraftInstance, to destination: URL, with fileName: String, options: LaunchOptions, logURL: URL) throws {
+    private nonisolated static func exportCrashReport(for instance: MinecraftInstance, to destination: URL, with fileName: String, options: LaunchOptions, logURL: URL) throws {
         let reportURL: URL = URLConstants.tempURL.appending(path: fileName)
         try FileManager.default.createDirectory(at: reportURL, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: reportURL) }

@@ -14,12 +14,15 @@ struct JavaSettingsPage: View {
             MyCard(nil) {
                 HStack {
                     MyButton("刷新 Java 列表") {
-                        do {
-                            try JavaManager.shared.research()
-                            hint("刷新成功！", type: .finish)
-                        } catch {
-                            err("刷新 Java 列表失败：\(error.localizedDescription)")
-                            hint("刷新 Java 列表失败：\(error.localizedDescription)", type: .critical)
+                        hint("正在搜索 Java……")
+                        Task {
+                            do {
+                                try await JavaManager.shared.research()
+                                hint("刷新成功！", type: .finish)
+                            } catch {
+                                err("刷新 Java 列表失败：\(error.localizedDescription)")
+                                hint("刷新 Java 列表失败：\(error.localizedDescription)", type: .critical)
+                            }
                         }
                     }
                     .frame(width: 120)

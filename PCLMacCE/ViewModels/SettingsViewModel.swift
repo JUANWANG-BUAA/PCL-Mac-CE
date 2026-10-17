@@ -16,11 +16,14 @@ class SettingsViewModel: ObservableObject {
         return formatter
     }()
 
-    public func exportLogs() throws -> URL {
+    public func exportLogs() async throws -> URL {
         let zipName: String = "PCLMacCE-logs-\(dateFormatter.string(from: .now)).zip"
         let destination: URL = FileManager.default.homeDirectoryForCurrentUser
             .appending(path: "Desktop/\(zipName)")
-        try FileManager.default.zipItem(at: URLConstants.logsDirectoryURL, to: destination, shouldKeepParent: false)
+        // 日志目录可能较大，压缩放到后台线程执行
+        try await Task.detached(priority: .userInitiated) {
+            try FileManager.default.zipItem(at: URLConstants.logsDirectoryURL, to: destination, shouldKeepParent: false)
+        }.value
         return destination
     }
 }

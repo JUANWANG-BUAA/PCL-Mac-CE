@@ -70,7 +70,7 @@ public class ForgeInstallService {
         }
         let processors: [ForgeInstallProfile.Processor] = installProfile.processors.filter { $0.sides?.contains(.client) ?? true }
         var progress: Double = 0
-        let progressStep: Double = 1.0 / Double(processors.count)
+        let progressStep: Double = processors.isEmpty ? 0 : 1.0 / Double(processors.count)
         for processor in processors {
             if processor.args.contains("DOWNLOAD_MOJMAPS") {
                 guard let destination: URL = values["MOJMAPS"].map(URL.init(fileURLWithPath:)) else {
@@ -78,7 +78,7 @@ public class ForgeInstallService {
                 }
                 try await downloadMojmaps(to: destination)
             } else {
-                try executeProcessor(processor)
+                try await executeProcessor(processor)
             }
             progress += progressStep
             await progressHandler(progress)
@@ -209,25 +209,85 @@ public class ForgeInstallService {
         return librariesURL.appending(path: MavenCoordinateUtils.path(of: coord)).path
     }
 
-    private func executeProcessor(_ processor: ForgeInstallProfile.Processor) throws {
+    private func downloadMojmaps(to destination: URL) async throws {
+        guard let url: URL = manifest.downloads?.clientMappings?.url else {
+            throw SimpleError("下载混淆表失败：未找到混淆表下载项。")
+        }
+        try await FileDownloader.shared.download(url: url, destination: destination)
+    }
+
+    /// 为安装器处理器选择要使用的 Java：优先选择版本最高的已安装运行时。
+    /// 新版安装器的处理器需要较新的 Java，高版本字节码无法在旧 JVM 上运行，反之兼容。
+    private func installerJavaURL() async throws -> URL {
+        // 启动器启动时 Java 列表是后台搜索的，先等它完成再选择
+        await JavaManager.shared.waitForInitialSearch()
+        let candidates: [JavaRuntime] = JavaManager.shared.javaRuntimes.sorted { $0.majorVersion > $1.majorVersion }
+        guard let newest = candidates.first else {
+            throw SimpleError("电脑上没有可用的 Java，无法执行 Forge 安装器。请先在设置的 Java 页面安装 Java。")
+        }
+        log("Forge 安装器将使用 Java \(newest.majorVersion)：\(newest.executableURL.path)")
+        return newest.executableURL
+    }
+
+    private func executeProcessor(_ processor: ForgeInstallProfile.Processor) async throws {
         let classpath: String = (processor.classpath + [processor.jar]).map(parseMavenCoord(coord:)).joined(separator: ":")
         let mainClass: String = try JarUtils.mainClass(of: librariesURL.appending(path: MavenCoordinateUtils.path(of: processor.jar)))
         let arguments: [String] = ["-cp", classpath, mainClass]
             + processor.args.map { parseValue($0).replacingPlaceholders(with: values, dollarPrefix: false) }
         let process: Process = .init()
         process.arguments = arguments
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/java")
+        process.executableURL = try await installerJavaURL()
+
+        // 合并捕获 stdout/stderr：既避免缓冲区写满导致安装器卡死，也用于失败时展示原因
+        let outputPipe: Pipe = .init()
+        process.standardOutput = outputPipe
+        process.standardError = outputPipe
+        let outputCollector: ProcessOutputCollector = .init()
+        outputPipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk: Data = handle.availableData
+            if chunk.isEmpty {
+                handle.readabilityHandler = nil
+            } else {
+                outputCollector.append(chunk)
+            }
+        }
+        defer { outputPipe.fileHandleForReading.readabilityHandler = nil }
+
         try process.run()
-        process.waitUntilExit()
-        if process.terminationStatus != 0 {
-            throw SimpleError("Forge 安装器 \(processor.jar) 执行失败。")
+        // 异步等待退出：不阻塞协作线程池，任务取消时终止安装器进程
+        let terminationStatus: Int32 = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                process.terminationHandler = { process in
+                    continuation.resume(returning: process.terminationStatus)
+                }
+            }
+        } onCancel: {
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+        try Task.checkCancellation()
+        guard terminationStatus == 0 else {
+            let details: String = outputCollector.text.split(separator: "\n", omittingEmptySubsequences: true).suffix(6).joined(separator: "\n")
+            throw SimpleError("Forge 安装器 \(processor.jar) 执行失败（退出代码 \(terminationStatus)）。\n\(details)")
         }
     }
+}
 
-    private func downloadMojmaps(to destination: URL) async throws {
-        guard let url: URL = manifest.downloads?.clientMappings?.url else {
-            throw SimpleError("下载混淆表失败：未找到混淆表下载项。")
-        }
-        try await FileDownloader.shared.download(url: url, destination: destination)
+/// 线程安全地收集子进程输出。
+final class ProcessOutputCollector: @unchecked Sendable {
+    private let lock: NSLock = .init()
+    private var data: Data = .init()
+
+    func append(_ chunk: Data) {
+        lock.lock()
+        data.append(chunk)
+        lock.unlock()
+    }
+
+    var text: String {
+        lock.lock()
+        defer { lock.unlock() }
+        return String(data: data, encoding: .utf8) ?? ""
     }
 }

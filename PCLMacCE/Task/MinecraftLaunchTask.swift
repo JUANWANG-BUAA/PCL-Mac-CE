@@ -57,7 +57,16 @@ public enum MinecraftLaunchTask {
     }
 
     private static func checkJava(task: SubTask, model: Model) async throws {
-        var javaRuntime: JavaRuntime? = model.instance.config.javaURL.flatMap { try? JavaSearcher.load(from: $0) }
+        // Java 列表在启动器启动时后台搜索；等待其完成，避免刚启动就点“启动”时误报没有 Java
+        await JavaManager.shared.waitForInitialSearch()
+        var javaRuntime: JavaRuntime? = model.instance.config.javaURL.flatMap { url in
+            do {
+                return try JavaSearcher.load(from: url)
+            } catch {
+                err("加载实例配置的 Java 失败：\(error.localizedDescription)（\(url.path)）")
+                return nil
+            }
+        }
         let minMajorVersion = model.instance.manifest.javaVersion.majorVersion
 
         let systemArch = Architecture.systemArchitecture()
@@ -432,6 +441,8 @@ extension MinecraftLaunchTask {
                 content: "启动游戏时发生错误：\(error.localizedDescription)",
                 level: .error
             )
+            // 启动失败必须中止任务，否则任务会被误标记为成功完成
+            try task.cancel()
         }
     }
 
@@ -440,6 +451,8 @@ extension MinecraftLaunchTask {
             err("model.process 为 nil")
             return
         }
+        // 大型整合包首次加载可能很久才出窗口，但任务不能无限挂起：超时后结束等待，游戏进程保持运行
+        let deadline: Date = .now.addingTimeInterval(600)
         try await withTaskCancellationHandler {
             while true {
                 try Task.checkCancellation()
@@ -448,6 +461,10 @@ extension MinecraftLaunchTask {
                     break
                 }
                 if checkWindows(for: process) {
+                    break
+                }
+                if Date() > deadline {
+                    warn("等待游戏窗口超过 10 分钟，不再继续检测（游戏仍在运行）")
                     break
                 }
                 try await Task.sleep(seconds: 1)

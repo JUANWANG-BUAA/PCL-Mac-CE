@@ -190,12 +190,15 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
             let instance = try await MinecraftInstanceLoader.load(from: url)
             return .success(instance)
         } catch .incomplete {
-            log("实例未完成安装，正在尝试自动删除")
+            // 半成品实例移入废纸篓而不是直接删除：目录里可能有已下载的大量文件，
+            // 直接删除会让用户的网络流量白白浪费，且误判时无法恢复
+            log("实例未完成安装，正在将其移入废纸篓")
             do {
-                try FileManager.default.removeItem(at: url)
+                var resultingItemURL: NSURL?
+                try FileManager.default.trashItem(at: url, resultingItemURL: &resultingItemURL)
             } catch {
-                err("删除失败：\(error.localizedDescription)")
-                return .failure(name, message: "该实例未完成安装，且自动删除失败。")
+                err("移入废纸篓失败：\(error.localizedDescription)")
+                return .failure(name, message: "该实例未完成安装，且移动到废纸篓失败。")
             }
             return .incomplete
         } catch {

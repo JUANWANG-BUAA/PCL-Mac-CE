@@ -18,6 +18,8 @@ class InstalledResourcesViewModel: ObservableObject {
 
     public let type: ResourceType
     public var hasSearchKeyword: Bool { !searchKeyword.isEmpty }
+    /// 当前搜索关键字，用于空态文案展示。
+    public var currentSearchKeyword: String { searchKeyword }
     private var cancellables: Set<AnyCancellable> = []
     private var loadResult: [(URL, Resource)]?
     private var convertTask: Task<Void, Never>?
@@ -114,7 +116,7 @@ class InstalledResourcesViewModel: ObservableObject {
         updateResources()
     }
 
-    func toggleDisabled(_ resource: ResourceDisplayModel) throws {
+    func toggleDisabled(_ resource: ResourceDisplayModel) async throws {
         let oldURL: URL = resource.url
         let newURL: URL
         if resource.disabled {
@@ -124,7 +126,10 @@ class InstalledResourcesViewModel: ObservableObject {
             newURL = resource.url.appendingPathExtension("disabled")
             log("正在禁用资源 \(resource.fileName)")
         }
-        try FileManager.default.moveItem(at: resource.url, to: newURL)
+        // 文件移动放在后台线程，避免大文件时卡住界面
+        try await Task.detached(priority: .userInitiated) {
+            try FileManager.default.moveItem(at: resource.url, to: newURL)
+        }.value
         resource.disabled.toggle()
         resource.url = newURL
         // 同步缓存中的 URL，否则删除/搜索会引用旧路径

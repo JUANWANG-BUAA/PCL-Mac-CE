@@ -54,12 +54,14 @@ class JavaSettingsViewModel: ObservableObject {
         }
 
         LauncherConfig.shared.customJavaRuntimes.append(runtime.executableURL)
+        AppDelegate.saveConfigQuietly()
         return runtime
     }
 
     public func removeCustomRuntime(at url: URL) {
         JavaManager.shared.removeCustomRuntime(url)
         LauncherConfig.shared.customJavaRuntimes.removeAll(where: { $0 == url })
+        AppDelegate.saveConfigQuietly()
     }
 
     struct JavaListItem {

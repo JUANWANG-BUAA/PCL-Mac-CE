@@ -12,12 +12,15 @@ struct OtherSettingsPage: View {
             MyCard("调试", foldable: false) {
                 HStack {
                     MyButton("导出日志") {
-                        do {
-                            let url: URL = try SettingsViewModel.shared.exportLogs()
-                            NSWorkspace.shared.activateFileViewerSelecting([url])
-                        } catch {
-                            err("导出日志失败：\(error.localizedDescription)")
-                            hint("导出日志失败：\(error.localizedDescription)", type: .critical)
+                        hint("正在导出日志……")
+                        Task {
+                            do {
+                                let url: URL = try await SettingsViewModel.shared.exportLogs()
+                                NSWorkspace.shared.activateFileViewerSelecting([url])
+                            } catch {
+                                err("导出日志失败：\(error.localizedDescription)")
+                                hint("导出日志失败：\(error.localizedDescription)", type: .critical)
+                            }
                         }
                     }
                     .frame(width: 150)

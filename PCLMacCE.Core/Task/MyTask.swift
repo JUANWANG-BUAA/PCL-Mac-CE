@@ -72,7 +72,8 @@ public class MyTask<Model: TaskModel>: ObservableObject, Identifiable {
             let subTasks: [SubTask] = subTasks.filter(\.display)
             while !Task.isCancelled {
                 try await Task.sleep(seconds: 0.1)
-                let progress: Double = subTasks.reduce(0) { $0 + $1.progress } / Double(subTasks.count)
+                // 没有可显示的子任务时保持 0，避免除零产生 NaN 污染进度显示
+                let progress: Double = subTasks.isEmpty ? 0 : subTasks.reduce(0) { $0 + $1.progress } / Double(subTasks.count)
                 await MainActor.run {
                     self.progress = progress
                 }

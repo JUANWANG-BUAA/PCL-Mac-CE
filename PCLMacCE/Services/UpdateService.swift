@@ -51,6 +51,7 @@ class UpdateService {
 
             if result == 2 {
                 LauncherConfig.shared.ignoreLauncherUpdates = true
+                AppDelegate.saveConfigQuietly()
                 return
             }
 

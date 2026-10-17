@@ -37,7 +37,7 @@ class MessageBoxManager: ObservableObject {
         let result: MessageBoxResult = await showAsync(title: title, content: .text(text: content), level: level, buttons: buttons)
         guard case .button(let id) = result else {
             warn("期望 result 类型（button）与实际类型（\(result)）不匹配")
-            return buttons[0].id
+            return buttons.first?.id ?? 0
         }
         return id
     }
@@ -215,7 +215,7 @@ extension MessageBoxManager {
         show(title: title, content: .text(text: content), level: level, buttons: buttons) { result in
             guard case .button(let id) = result else {
                 warn("期望 result 类型（button）与实际类型（\(result)）不匹配")
-                callback?(buttons[0].id)
+                callback?(buttons.first?.id ?? 0)
                 return
             }
             callback?(id)

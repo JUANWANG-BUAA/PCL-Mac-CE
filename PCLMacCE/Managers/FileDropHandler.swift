@@ -41,8 +41,11 @@ enum FileDropHandler {
             }
 
             let destinationDirectory = instance.url.appending(path: directoryName)
-            try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: url, to: destinationDirectory.appending(path: url.lastPathComponent))
+            // 大文件复制放在后台线程，避免拖入整合包/资源包时卡住主线程
+            try await Task.detached(priority: .userInitiated) {
+                try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+                try FileManager.default.copyItem(at: url, to: destinationDirectory.appending(path: url.lastPathComponent))
+            }.value
             hint("添加\(resource.type.localizedName) \(resource.name) 成功！", type: .finish)
         } catch {
             err("导入 \(url.lastPathComponent) 失败：\(error.localizedDescription)")

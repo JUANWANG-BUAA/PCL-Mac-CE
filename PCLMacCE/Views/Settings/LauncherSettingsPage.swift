@@ -24,6 +24,7 @@ struct LauncherSettingsPage: View {
                 .onChange(of: downloadSourcePolicy) { newValue in
                     DownloadSourceManager.shared.policy = newValue
                     LauncherConfig.shared.downloadSourcePolicy = newValue
+                    AppDelegate.saveConfigQuietly()
                 }
             }
 
@@ -51,6 +52,7 @@ struct LauncherSettingsPage: View {
                 }
                 .onChange(of: homepageType) { newValue in
                     LauncherConfig.shared.homepageType = newValue
+                    AppDelegate.saveConfigQuietly()
                 }
             }
             .cardIndex(2)

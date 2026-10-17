@@ -42,10 +42,19 @@ public enum JavaInstallTask {
                 try await FileDownloader.shared.download(files: downloadItems, progressHandler: task.setProgress(_:))
             },
             .init(2, "__completion", display: false) { _, _ in
-                let bundleRoot: URL = try FileManager.default.contentsOfDirectory(at: tempDirectory, includingPropertiesForKeys: nil)[0]
+                let contents: [URL] = try FileManager.default.contentsOfDirectory(at: tempDirectory, includingPropertiesForKeys: nil)
+                guard let bundleRoot: URL = contents.first else {
+                    throw SimpleError("下载的 Java 文件为空，无法完成安装。")
+                }
                 try FileManager.default.createDirectory(at: bundleDestination.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try FileManager.default.moveItem(at: bundleRoot, to: bundleDestination)
                 try await JavaManager.shared.research()
+                // 成功路径同样要清理临时目录，避免残留空目录
+                do {
+                    try FileManager.default.removeItem(at: tempDirectory)
+                } catch {
+                    warn("清理 Java 安装临时目录失败：\(error.localizedDescription)")
+                }
             }
         ) { _ in
             try? FileManager.default.removeItem(at: tempDirectory)

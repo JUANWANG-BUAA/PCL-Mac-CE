@@ -51,8 +51,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// 在后台线程执行文件操作，避免启动路径上的主线程 IO 卡顿。
+    private func executeDetachedTask(_ name: String, silent: Bool = false, _ start: @escaping () throws -> Void) {
+        Task.detached(priority: .utility) {
+            do {
+                try start()
+                if !silent {
+                    log("\(name)成功")
+                }
+            } catch {
+                err("\(name)失败：\(error.localizedDescription)")
+            }
+        }
+    }
+
     func applicationWillFinishLaunching(_ notification: Notification) {
-        // 原上游版本（PCL.Mac.Refactor）的数据目录一次性迁移，必须在建目录与加载配置前执行
+        // 兼容旧版本数据目录的一次性迁移，必须在建目录与加载配置前执行
         URLConstants.migrateLegacyApplicationSupport()
         do {
             try URLConstants.createDirectories()
@@ -80,22 +94,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         FlagsManager.shared = .init(enabledFlags: LauncherConfig.shared.enabledFlags)
 
         JavaManager.shared = .init(customJavaRuntimes: LauncherConfig.shared.customJavaRuntimes)
+        JavaManager.shared.startInitialSearch()
 
         executeAsyncTask("刷新地区信息", silent: true) {
             await DownloadSourceManager.shared.refreshRegion()
         }
-        executeTask("清理临时文件") {
+        // 临时目录清理与版本列表缓存解码都是磁盘 IO，移出主线程以加快冷启动
+        executeDetachedTask("清理临时文件") {
             for url in try FileManager.default.contentsOfDirectory(at: URLConstants.tempURL, includingPropertiesForKeys: nil) {
                 try FileManager.default.removeItem(at: url)
             }
         }
 
-        do {
-            let cacheURL = URLConstants.cacheURL.appending(path: "version_manifest.json")
-            if FileManager.default.fileExists(atPath: cacheURL.path) {
-                executeTask("从缓存中加载版本列表") {
-                    let cachedData = try Data(contentsOf: URLConstants.cacheURL.appending(path: "version_manifest.json"))
-                    let manifest = try JSONDecoder.shared.decode(VersionManifest.self, from: cachedData)
+        let cacheURL: URL = URLConstants.cacheURL.appending(path: "version_manifest.json")
+        if FileManager.default.fileExists(atPath: cacheURL.path) {
+            executeDetachedTask("从缓存中加载版本列表") {
+                let cachedData = try Data(contentsOf: cacheURL)
+                let manifest = try JSONDecoder.shared.decode(VersionManifest.self, from: cachedData)
+                // 先落缓存再拉取网络，保证网络结果不会被旧缓存覆盖
+                if VersionManifest.shared == nil {
                     VersionManifest.shared = manifest
                 }
             }
@@ -162,9 +179,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !LauncherConfig.shared.hasEnteredLauncher {
             MessageBoxManager.shared.showText(
                 title: "欢迎使用 PCL Mac CE！",
-                content: "PCL Mac CE 是 Plain Craft Launcher 的非官方社区衍生版，使用 SwiftUI 框架完全重构了 PCL 以支持 macOS。\n"
-                    + "本启动器还处于开发阶段，有许多功能尚未完成，Bug 可能也比较多……\n\n"
-                    + "本版本现由 JUANWANG（github.com/JUANWANG-BUAA）独立维护并持续开发；原 PCLMacCE 项目已停止公开开发。",
+                content: "PCL Mac CE 是基于 Plain Craft Launcher 的第三方 macOS 启动器，由 JUANWANG-BUAA 独立维护。\n"
+                    + "本启动器仍在开发中，部分功能尚未完成，使用时可能遇到问题。\n\n"
+                    + "本项目与此前的 PCL.Mac 项目及其维护团队没有隶属或继承关系；历史代码来源与许可信息可在关于页面查看。",
                 level: .info,
                 .init(id: 2, label: "开始使用", type: .highlight)
             ) { _ in

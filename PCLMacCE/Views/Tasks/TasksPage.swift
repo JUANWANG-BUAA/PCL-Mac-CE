@@ -8,7 +8,6 @@ import Core
 
 struct TasksPage: View {
     @ObservedObject private var taskManager: TaskManager = .shared
-    @StateObject private var loadingVM: MyLoadingViewModel = .init(text: "没有正在执行的任务")
 
     var body: some View {
         CardContainer {
@@ -35,7 +34,13 @@ struct TasksPage: View {
                 }
             }
             if taskManager.tasks.isEmpty {
-                MyLoading(viewModel: loadingVM)
+                // 空态不使用加载动画，避免镐子动画空转消耗 CPU
+                MyCard(nil, foldable: false) {
+                    MyText("没有正在执行的任务。\n下载游戏或安装资源时，任务会出现在这里。", size: 15, color: .color3)
+                        .multilineTextAlignment(.center)
+                        .padding(.vertical, 36)
+                        .frame(maxWidth: .infinity)
+                }
             } else {
                 ForEach(taskManager.tasks.filter(\.display)) { task in
                     TaskCard(task)

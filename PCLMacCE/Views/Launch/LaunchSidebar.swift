@@ -11,9 +11,26 @@ struct LaunchSidebar: Sidebar {
     @StateObject private var accountVM: AccountViewModel = .init()
     @ObservedObject private var launchVM: MinecraftLaunchManager = .shared
     @State private var addingYggdrasilAccount: Bool = false
+    @State private var tip: String = LaunchSidebar.tips.randomElement() ?? ""
 
     @State private var showToolbar: Bool = false
     @State private var toolbarHovered: Bool = false
+
+    /// 启动等待页“你知道吗”的提示池。
+    private static let tips: [String] = [
+        "在设置中可以把下载源切换为镜像优先，在国内下载会更快。",
+        "启动大型整合包前，记得在实例设置中调整内存分配，内存不足是崩溃的常见原因。",
+        "模组、资源包和光影包可以直接拖进启动器窗口导入。",
+        "可以在实例设置里为每个实例指定不同的 Java 版本。",
+        "遇到问题时，导出日志并发给他人，比截图更有帮助。",
+        "删除的实例会进入废纸篓，误删后可以从废纸篓找回。",
+        "Fabric 通常对新版本跟进更快，适合追新；Forge 的模组生态更庞大。",
+        "任务页面可以查看并取消正在进行的下载与安装。",
+        "游戏崩溃后可以在崩溃报告中找到详细原因，别只看弹窗里的文字。",
+        "实例目录是独立的，把存档放进实例的 saves 文件夹即可。",
+        "老版本 Minecraft（1.16 及更早）需要 Java 8~17，配错版本会直接崩溃。",
+        "光影包需要先安装 Iris 或 OptiFine 等光影加载器才能生效。"
+    ]
 
     init(instanceManager: InstanceManager) {
         self._instanceVM = StateObject(wrappedValue: InstanceViewModel(instanceManager: instanceManager))
@@ -347,7 +364,7 @@ struct LaunchSidebar: Sidebar {
                         .background(ThemeManager.shared.theme.isNativeStyle ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.white))
                         .offset(y: -8)
                 }
-                MyText("这是一段测试用的小提示文本，它应该足够长以让它有两行。", size: 12.5)
+                MyText(tip, size: 12.5)
                     .padding(11)
             }
             .frame(width: 260, height: launchVM.isRunning ? nil : 0)

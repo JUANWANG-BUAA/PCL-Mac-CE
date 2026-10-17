@@ -34,7 +34,9 @@ struct MinecraftDownloadPage: View {
         }
         .onChange(of: viewModel.errorMessage) { errorMessage in
             if let errorMessage {
-                loadingModel.fail(with: "加载失败：\(errorMessage)")
+                loadingModel.fail(with: "加载失败：\(errorMessage)") {
+                    viewModel.reload()
+                }
             } else {
                 loadingModel.reset()
             }

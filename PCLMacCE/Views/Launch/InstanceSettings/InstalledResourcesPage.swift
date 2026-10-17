@@ -74,17 +74,22 @@ struct InstalledResourcesPage: View {
                     }
                     .cardIndex(1)
 
-                    if let resources = viewModel.resources, !resources.isEmpty {
-                        PaginatedContainer(currentPage: $viewModel.currentPage, pageCount: viewModel.pageCount) { currentPage in
-                            MyCard(nil) {
-                                VStack(spacing: 0) {
-                                    ForEach(resources, id: \.id) { resource in
-                                        ResourceListItem(viewModel: viewModel, resource: resource)
+                    if let resources = viewModel.resources {
+                        if resources.isEmpty {
+                            // 空态与错误态分离：没有资源不是错误，不显示红叉
+                            emptyResourcesCard
+                        } else {
+                            PaginatedContainer(currentPage: $viewModel.currentPage, pageCount: viewModel.pageCount) { currentPage in
+                                MyCard(nil) {
+                                    VStack(spacing: 0) {
+                                        ForEach(resources, id: \.id) { resource in
+                                            ResourceListItem(viewModel: viewModel, resource: resource)
+                                        }
                                     }
                                 }
-                            }
-                            .onChange(of: currentPage) { _ in
-                                viewModel.updateResources()
+                                .onChange(of: currentPage) { _ in
+                                    viewModel.updateResources()
+                                }
                             }
                         }
                     } else {
@@ -96,17 +101,29 @@ struct InstalledResourcesPage: View {
         .task {
             await loadResources()
         }
-        .onChange(of: viewModel.resources) { newValue in
-            if let newValue, newValue.isEmpty {
-                if viewModel.hasSearchKeyword {
-                    loadingVM.fail(with: "没有匹配的结果")
-                } else {
-                    loadingVM.fail(with: "这个实例没有安装任何\(viewModel.type.localizedName)！")
-                }
-            }
-        }
         .onDisappear {
             viewModel.resources = nil
+        }
+    }
+
+    /// 没有任何已安装资源（或搜索无结果）时的占位卡片。
+    private var emptyResourcesCard: some View {
+        MyCard(nil, foldable: false) {
+            VStack(spacing: 10) {
+                MyText(
+                    viewModel.hasSearchKeyword
+                        ? "没有匹配“\(viewModel.currentSearchKeyword)”的结果"
+                        : "这个实例还没有安装任何\(viewModel.type.localizedName)",
+                    size: 16,
+                    color: .color3
+                )
+                if !viewModel.hasSearchKeyword {
+                    MyText("从下载页面获取\(viewModel.type.localizedName)后，它们会出现在这里。也可以直接把文件拖进启动器窗口。", size: 13, color: .color3)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(.vertical, 36)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -214,12 +231,14 @@ private struct ResourceListItem: View {
     }
 
     private func toggleDisabled() {
-        do {
-            try viewModel.toggleDisabled(resource)
-        } catch {
-            let type = resource.disabled ? "启用" : "禁用"
-            err("\(type)资源失败：\(error.localizedDescription)")
-            hint("\(type)资源失败：\(error.localizedDescription)", type: .critical)
+        Task {
+            do {
+                try await viewModel.toggleDisabled(resource)
+            } catch {
+                let type = resource.disabled ? "启用" : "禁用"
+                err("\(type)资源失败：\(error.localizedDescription)")
+                hint("\(type)资源失败：\(error.localizedDescription)", type: .critical)
+            }
         }
     }
 
