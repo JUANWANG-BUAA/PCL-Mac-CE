@@ -19,15 +19,23 @@ struct LauncherConfigPersistenceTests {
         let config = LauncherConfig()
         config.launchCount = 42
         config.theme = .liquidGlass
+        config.autoInstallLauncherUpdates = false
         try LauncherConfig.save(config, to: url)
         let reloaded = try JSONDecoder.shared.decode(LauncherConfig.self, from: Data(contentsOf: url))
         #expect(reloaded.launchCount == 42)
         #expect(reloaded.theme == .liquidGlass)
+        #expect(reloaded.autoInstallLauncherUpdates == false)
 
         config.launchCount = 43
         try LauncherConfig.save(config, to: url)
         let updated = try JSONDecoder.shared.decode(LauncherConfig.self, from: Data(contentsOf: url))
         #expect(updated.launchCount == 43)
+        // 新字段的默认值：旧配置文件中没有该键时应回落为开启自动更新
+        let emptyConfig = try JSONDecoder.shared.decode(
+            LauncherConfig.self,
+            from: Data(#"{"launchCount": 1}"#.utf8)
+        )
+        #expect(emptyConfig.autoInstallLauncherUpdates == true)
     }
 
 }

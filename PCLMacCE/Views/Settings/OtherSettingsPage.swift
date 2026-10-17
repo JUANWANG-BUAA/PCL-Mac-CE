@@ -51,6 +51,19 @@ struct OtherSettingsPage: View {
                     Spacer()
                 }
                 .frame(height: 40)
+
+                VStack(alignment: .leading) {
+                    MyComboBox(checked: Binding(
+                        get: {
+                            LauncherConfig.shared.autoInstallLauncherUpdates
+                        },
+                        set: { newValue in
+                            LauncherConfig.shared.autoInstallLauncherUpdates = newValue
+                            AppDelegate.saveConfigQuietly()
+                        }
+                    ), text: "自动下载并安装更新（下载完成后询问重启时机）")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

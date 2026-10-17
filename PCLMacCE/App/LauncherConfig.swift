@@ -76,6 +76,7 @@ class LauncherConfig: Codable {
     public var launchCount: Int = 0
     public var hasEnteredLauncher: Bool = false
     public var ignoreLauncherUpdates: Bool = false
+    public var autoInstallLauncherUpdates: Bool = true
     public var downloadSourcePolicy: DownloadSourcePolicy = .officialFirst
     public var homepageType: HomepageType = .empty
     public var enabledFlags: Set<FeatureFlag>?
@@ -103,6 +104,7 @@ class LauncherConfig: Codable {
         self.launchCount = try container.decodeIfPresent(Int.self, forKey: .launchCount) ?? 0
         self.hasEnteredLauncher = try container.decodeIfPresent(Bool.self, forKey: .hasEnteredLauncher) ?? false
         self.ignoreLauncherUpdates = try container.decodeIfPresent(Bool.self, forKey: .ignoreLauncherUpdates) ?? false
+        self.autoInstallLauncherUpdates = try container.decodeIfPresent(Bool.self, forKey: .autoInstallLauncherUpdates) ?? true
         self.downloadSourcePolicy = try container.decodeIfPresent(DownloadSourcePolicy.self, forKey: .downloadSourcePolicy) ?? .officialFirst
         self.homepageType = try container.decodeIfPresent(HomepageType.self, forKey: .homepageType) ?? .empty
         self.enabledFlags = try container.decodeIfPresent(Set<FeatureFlag>.self, forKey: .enabledFlags)
@@ -130,6 +132,7 @@ class LauncherConfig: Codable {
         try container.encode(launchCount, forKey: .launchCount)
         try container.encode(hasEnteredLauncher, forKey: .hasEnteredLauncher)
         try container.encode(ignoreLauncherUpdates, forKey: .ignoreLauncherUpdates)
+        try container.encode(autoInstallLauncherUpdates, forKey: .autoInstallLauncherUpdates)
         try container.encode(downloadSourcePolicy, forKey: .downloadSourcePolicy)
         try container.encode(homepageType, forKey: .homepageType)
         try container.encodeIfPresent(enabledFlags, forKey: .enabledFlags)
@@ -160,6 +163,7 @@ class LauncherConfig: Codable {
         case launchCount
         case hasEnteredLauncher
         case ignoreLauncherUpdates
+        case autoInstallLauncherUpdates
         case downloadSourcePolicy
         case homepageType
         case enabledFlags

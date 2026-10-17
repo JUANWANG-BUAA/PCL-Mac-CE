@@ -8,6 +8,32 @@ class UpdateManager {
     static let releaseURL = URL(string: "https://github.com/JUANWANG-BUAA/PCL-Mac-CE/releases")!
     private static let latestURL = URL(string: "https://api.github.com/repos/JUANWANG-BUAA/PCL-Mac-CE/releases/latest")!
 
+    /// 已下载并通过校验的更新包；应用（替换并重启）与准备（下载校验）分离，
+    /// 以便自动更新在用户确认重启时机后再执行替换。
+    struct PreparedUpdate {
+        let version: UpdateModel.Version
+        let newBundleURL: URL
+        let extractionDirectory: URL
+
+        /// 用新版本替换当前应用并重启启动器。
+        func apply() async throws {
+            defer { discard() }
+            _ = try FileManager.default.replaceItemAt(Bundle.main.bundleURL, withItemAt: newBundleURL,
+                                                       backupItemName: "PCLMacCE.app.backup",
+                                                       options: [.usingNewMetadataOnly])
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            process.arguments = ["-n", Bundle.main.bundleURL.path]
+            try process.run()
+            await NSApplication.shared.terminate(nil)
+        }
+
+        /// 放弃本次已准备的更新（用户选择稍后重启时清理临时文件）。
+        func discard() {
+            try? FileManager.default.removeItem(at: extractionDirectory)
+        }
+    }
+
     func checkUpdates() async throws -> UpdateModel.Version? {
         if Metadata.debugMode || Metadata.bundleVersion == 0 { return nil }
         let response = try await HTTPClient.shared.get(Self.latestURL,
@@ -20,34 +46,36 @@ class UpdateManager {
         return try response.decode(UpdateModel.self).installableVersion(currentVersion: Metadata.appVersion)
     }
 
-    func installUpdate(_ version: UpdateModel.Version) async throws {
+    /// 下载更新包并完成全部校验（sha256、Bundle 身份、签名团队），不替换应用。
+    func prepareUpdate(_ version: UpdateModel.Version, progressHandler: (@MainActor (Double) -> Void)? = nil) async throws -> PreparedUpdate {
         let destination = URLConstants.tempURL.appending(path: "launcher-update-\(UUID().uuidString).zip")
         let extraction = URLConstants.tempURL.appending(path: "launcher-update-\(UUID().uuidString)")
-        defer {
+        do {
+            let download = DownloadItem(url: version.downloadURL, destination: destination,
+                                        checksums: ["sha256": version.sha256])
+            try await FileDownloader.shared.download(download, preferMirror: false, progressHandler: progressHandler)
+            try FileManager.default.createDirectory(at: extraction, withIntermediateDirectories: true)
+            try FileManager.default.unzipItem(at: destination, to: extraction)
+            let newBundle = extraction.appending(path: "PCLMacCE.app")
+            guard FileManager.default.fileExists(atPath: newBundle.path),
+                  Bundle(url: newBundle)?.bundleIdentifier == Bundle.main.bundleIdentifier,
+                  Bundle(url: newBundle)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+                      == String(version.tagName.dropFirst()) else {
+                throw SimpleError("更新包应用身份不匹配，请从项目 Release 页面手动安装。")
+            }
+            try verifySignature(of: newBundle)
+            return .init(version: version, newBundleURL: newBundle, extractionDirectory: extraction)
+        } catch {
             try? FileManager.default.removeItem(at: destination)
             try? FileManager.default.removeItem(at: extraction)
+            throw error
         }
-        let download = DownloadItem(url: version.downloadURL, destination: destination,
-                                    checksums: ["sha256": version.sha256])
-        try await FileDownloader.shared.download(download, preferMirror: false)
-        try FileManager.default.createDirectory(at: extraction, withIntermediateDirectories: true)
-        try FileManager.default.unzipItem(at: destination, to: extraction)
-        let newBundle = extraction.appending(path: "PCLMacCE.app")
-        guard FileManager.default.fileExists(atPath: newBundle.path),
-              Bundle(url: newBundle)?.bundleIdentifier == Bundle.main.bundleIdentifier,
-              Bundle(url: newBundle)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-                  == String(version.tagName.dropFirst()) else {
-            throw SimpleError("更新包应用身份不匹配，请从项目 Release 页面手动安装。")
-        }
-        try verifySignature(of: newBundle)
-        _ = try FileManager.default.replaceItemAt(Bundle.main.bundleURL, withItemAt: newBundle,
-                                                   backupItemName: "PCLMacCE.app.backup",
-                                                   options: [.usingNewMetadataOnly])
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        process.arguments = ["-n", Bundle.main.bundleURL.path]
-        try process.run()
-        await NSApplication.shared.terminate(nil)
+    }
+
+    /// 一步完成下载、校验、替换并重启（交互式手动更新使用）。
+    func installUpdate(_ version: UpdateModel.Version) async throws {
+        let prepared: PreparedUpdate = try await prepareUpdate(version)
+        try await prepared.apply()
     }
 
     private func verifySignature(of bundle: URL) throws {
