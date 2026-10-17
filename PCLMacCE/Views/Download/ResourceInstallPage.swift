@@ -49,11 +49,17 @@ struct ResourceInstallPage: View {
                 .frame(height: 35)
             }
             if viewModel.loaded, let versionList = viewModel.versionList {
-                if currentPage == 0, let selectedVersionGroup = viewModel.selectedVersionGroup {
-                    versionCard(versionGroup: selectedVersionGroup, isSelected: true, folded: false)
-                }
-                PaginatedContainer(versionList, id: \.0, currentPage: $currentPage, viewsPerPage: 10) { versionGroup in
-                    versionCard(versionGroup: versionGroup, folded: versionList.count == 1 ? false : true)
+                if versionList.isEmpty, viewModel.selectedVersionGroup == nil {
+                    noVersionsState
+                } else {
+                    if currentPage == 0, let selectedVersionGroup = viewModel.selectedVersionGroup {
+                        versionCard(versionGroup: selectedVersionGroup, isSelected: true, folded: false)
+                    }
+                    if !versionList.isEmpty {
+                        PaginatedContainer(versionList, id: \.0, currentPage: $currentPage, viewsPerPage: 10) { versionGroup in
+                            versionCard(versionGroup: versionGroup, folded: versionList.count == 1 ? false : true)
+                        }
+                    }
                 }
             } else {
                 MyLoading(viewModel: viewModel.loadingVM)
@@ -62,6 +68,24 @@ struct ResourceInstallPage: View {
         }
         .task(id: viewModel.project) {
             await loadVersions()
+        }
+    }
+
+    @ViewBuilder
+    private var noVersionsState: some View {
+        MyCard(nil, foldable: false) {
+            VStack(spacing: 10) {
+                MyText(targetInstance == nil ? "暂无可用版本" : "该实例没有兼容版本", size: 16, color: .color3)
+                if targetInstance != nil {
+                    MyText("可以退出实例筛选后查看该项目的其他版本。", size: 13, color: .color3)
+                    MyButton("退出实例模式", type: .highlight) {
+                        exitInstanceMode()
+                    }
+                    .frame(width: 130)
+                }
+            }
+            .padding(.vertical, 28)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -179,9 +203,12 @@ struct ResourceInstallPage: View {
             }
         }
 
+        let dependencyNote: String = version.requiredCurseForgeDependencyIds.isEmpty
+            ? ""
+            : "\n\n此 CurseForge 文件声明了必需前置；安装时会一并解析并下载与该实例兼容的前置文件。"
         if await MessageBoxManager.shared.showTextAsync(
             title: "确认",
-            content: "确定要安装 \(viewModel.project.title) \(version.version) 到「\(instance.name)」吗？",
+            content: "确定要安装 \(viewModel.project.title) \(version.version) 到「\(instance.name)」吗？\(dependencyNote)",
             level: .info,
             .no(),
             .yes(type: .highlight)
@@ -292,40 +319,59 @@ struct ResourceInstallPage: View {
     @ViewBuilder
     private func versionCard(versionGroup: ResourceInstallViewModel.VersionGroup, isSelected: Bool = false, folded: Bool = true) -> some View {
         MyCard((isSelected ? "最佳版本：" : "") + versionGroup.0.description, folded: folded) {
-            let dependencies: [ProjectVersionModel.Dependency] = versionGroup.1[0].requiredDependencies
-            if !dependencies.isEmpty {
-                VStack(alignment: .leading) {
-                    MyText("前置资源")
-                    VStack(spacing: 0) {
-                        ForEach(dependencies) { dependency in
-                            ProjectListItemView(project: dependency.project)
-                                .onTapGesture {
-                                    AppRouter.shared.append(.projectInstall(project: dependency.project, context: context))
-                                }
-                        }
-                    }
-                    MyText("版本列表")
-                }
-            }
             VStack(spacing: 0) {
                 ForEach(versionGroup.1) { version in
-                    VersionListItemView(version: version)
-                        .onTapGesture {
-                            log("\(version.name) \(version.version) 被点击")
-                            Task {
-                                do {
-                                    if viewModel.project.type == .modpack {
-                                        try await onModpackTap(version)
-                                    } else {
-                                        try await onVersionTap(version)
-                                    }
-                                } catch {
-                                    err("执行点击回调意外失败：\(error.localizedDescription)")
-                                    hint("执行点击回调意外失败：\(error.localizedDescription)", type: .critical)
+                    VStack(alignment: .leading, spacing: 2) {
+                        VersionListItemView(version: version)
+                            .contentShape(Rectangle())
+                            .onTapGesture { handleVersionTap(version) }
+
+                        if !version.requiredDependencies.isEmpty {
+                            VStack(alignment: .leading, spacing: 2) {
+                                MyText(dependencyHeading, size: 12, color: .textSecondary)
+                                    .padding(.leading, 12)
+                                ForEach(version.requiredDependencies) { dependency in
+                                    ProjectListItemView(project: dependency.project)
+                                        .padding(.leading, 12)
+                                        .onTapGesture {
+                                            AppRouter.shared.append(.projectInstall(project: dependency.project, context: context))
+                                        }
                                 }
                             }
                         }
+                        if !version.unresolvedCurseForgeDependencyIds.isEmpty {
+                            MyText(
+                                "部分前置详情暂不可用（ID：\(version.unresolvedCurseForgeDependencyIds.map { String($0) }.joined(separator: ", "))）；安装时仍会校验。",
+                                size: 12,
+                                color: .orange
+                            )
+                            .padding(.leading, 12)
+                        }
+                    }
                 }
+            }
+        }
+    }
+
+    private var dependencyHeading: String {
+        if viewModel.project.type == .mod, case .curseforge = viewModel.project.source {
+            return "必需前置（安装时自动处理）"
+        }
+        return "必需前置"
+    }
+
+    private func handleVersionTap(_ version: ProjectVersionModel) {
+        log("\(version.name) \(version.version) 被点击")
+        Task {
+            do {
+                if viewModel.project.type == .modpack {
+                    try await onModpackTap(version)
+                } else {
+                    try await onVersionTap(version)
+                }
+            } catch {
+                err("执行点击回调意外失败：\(error.localizedDescription)")
+                hint("执行点击回调意外失败：\(error.localizedDescription)", type: .critical)
             }
         }
     }

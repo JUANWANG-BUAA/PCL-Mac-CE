@@ -42,24 +42,51 @@ public class CurseForgeAPIClient {
         return try response.decode(Response<CurseForgeMod>.self).data
     }
 
+    /// 批量获取工程元数据，避免版本页逐个请求依赖工程。
+    public func mods(ids: [Int32]) async throws -> [CurseForgeMod] {
+        try requireAPIKey()
+        let uniqueIDs: [Int32] = Array(Set(ids)).sorted()
+        guard !uniqueIDs.isEmpty else { return [] }
+
+        var result: [CurseForgeMod] = []
+        for start in stride(from: 0, to: uniqueIDs.count, by: 50) {
+            let end = min(start + 50, uniqueIDs.count)
+            let batch = uniqueIDs[start..<end].map { Int($0) }
+            let response = try await request("/v1/mods", method: "POST", body: ["modIds": batch])
+            guard (200..<300).contains(response.statusCode) else {
+                throw SimpleError("获取 CurseForge 前置资源信息失败（HTTP \(response.statusCode)）。")
+            }
+            result += try response.decode(Response<[CurseForgeMod]>.self).data
+        }
+        return result
+    }
+
     public func modFile(modId: Int, fileId: Int) async throws -> CurseForgeModFile? {
         let response = try await request("/v1/mods/\(modId)/files/\(fileId)")
         if response.statusCode == 404 { return nil }
         return try response.decode(Response<CurseForgeModFile>.self).data
     }
 
-    /// 获取指定项目的全部文件。CurseForge 单页上限 50，这里翻完所有页并按 ID 去重。
+    /// 获取指定项目的文件。CurseForge 单页上限 50，这里翻页至总数或 API 上限并按 ID 去重。
+    /// 可选的游戏版本过滤用于快速解析实例所需的依赖文件。
     /// - Returns: 全部文件（未保证顺序）。
-    public func files(modId: Int) async throws -> [CurseForgeModFile] {
+    public func files(modId: Int, gameVersion: String? = nil, loader: ModLoader? = nil) async throws -> [CurseForgeModFile] {
         var all: [CurseForgeModFile] = []
         var seen: Set<Int32> = []
         let pageSize: Int = 50
         var index: Int = 0
-        // 上限保护：避免异常数据导致无限翻页
-        for _ in 0..<40 {
+        // CurseForge 对 index + pageSize 的上限为 10,000。
+        while index < 10_000 {
+            var params: [String: String?] = ["index": String(index), "pageSize": String(pageSize)]
+            if let gameVersion {
+                params["gameVersion"] = gameVersion
+                if let loader {
+                    params["modLoaderType"] = String(Self.modLoaderType(of: loader))
+                }
+            }
             let response = try await request(
                 "/v1/mods/\(modId)/files",
-                params: ["index": String(index), "pageSize": String(pageSize)]
+                params: params
             )
             guard (200..<300).contains(response.statusCode) else {
                 throw SimpleError("获取 CurseForge 文件列表失败（HTTP \(response.statusCode)）。")
@@ -68,9 +95,9 @@ public class CurseForgeAPIClient {
             for file in decoded.data where seen.insert(file.id).inserted {
                 all.append(file)
             }
-            let total: Int = decoded.pagination?.totalCount ?? 0
             index += decoded.data.count
-            guard decoded.data.count == pageSize, all.count < total || total == 0, !decoded.data.isEmpty else { break }
+            guard !decoded.data.isEmpty, decoded.data.count == pageSize else { break }
+            if let total = decoded.pagination?.totalCount, index >= total { break }
         }
         // 按发布时间倒序；缺失时间时按文件 ID 倒序（ID 随上传递增）
         return all.sorted { lhs, rhs in

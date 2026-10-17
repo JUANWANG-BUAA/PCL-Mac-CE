@@ -15,7 +15,7 @@ public struct CurseForgeMod: Codable {
     public let id: Int32
     public let name: String
     public let summary: String
-    public let logo: CurseForgeModAsset
+    public let logo: CurseForgeModAsset?
     public let classId: Int?
     public let slug: String?
     public let downloadCount: Int?
@@ -31,7 +31,7 @@ public struct CurseForgeMod: Codable {
         self.id = try container.decode(Int32.self, forKey: .id)
         self.name = try container.decode(String.self, forKey: .name)
         self.summary = (try? container.decode(String.self, forKey: .summary)) ?? ""
-        self.logo = try container.decode(CurseForgeModAsset.self, forKey: .logo)
+        self.logo = try? container.decode(CurseForgeModAsset.self, forKey: .logo)
         self.classId = try? container.decode(Int.self, forKey: .classId)
         self.slug = try? container.decode(String.self, forKey: .slug)
         self.downloadCount = try? container.decode(Int.self, forKey: .downloadCount)
@@ -133,6 +133,15 @@ public struct CurseForgeModFile: Codable {
     /// 必需依赖的工程 ID（relationType == 3）。
     public var requiredDependencyModIds: [Int32] {
         return dependencies.filter { $0.relationType == 3 }.map(\.modId)
+    }
+
+    /// 是否能安装到指定游戏版本与加载器实例。没有加载器标签的文件视为通用文件。
+    public func isCompatible(withGameVersion gameVersion: String, loader: ModLoader?) -> Bool {
+        guard available, minecraftVersions.contains(gameVersion) else { return false }
+        if let loader {
+            return loaders.isEmpty || loaders.contains(loader)
+        }
+        return loaders.isEmpty
     }
 
     /// 从 gameVersions 中解析出的 Mod 加载器。

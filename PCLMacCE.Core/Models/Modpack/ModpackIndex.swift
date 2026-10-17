@@ -108,6 +108,9 @@ public extension ModpackIndex {
             if infoFetched { return }
             infoFetched = true
 
+            guard !client.apiKeyIsEmpty else {
+                throw SimpleError("未配置 CurseForge API Key，无法解析整合包文件信息。请在「设置 → 下载」中配置。")
+            }
             guard let mod = try await client.mod(id: projectId) else {
                 throw SimpleError("资源 \(projectId) 不存在")
             }

@@ -83,7 +83,7 @@ public class ResourceRemoteLookupService {
                 version: "not implemented",
                 description: curseforgeMod.summary,
                 tags: [],
-                icon: curseforgeMod.logo.thumbnailURL,
+                icon: curseforgeMod.logo?.thumbnailURL,
                 source: .curseforge(id: curseforgeMod.id)
             )
         }

@@ -37,6 +37,9 @@ class ResourcesSearchViewModel: ObservableObject {
     @Published public var filters: Filters = .default
     @Published public private(set) var totalPages: Int = 0
     @Published public private(set) var resultCount: Int = 0
+    @Published public private(set) var availableGameVersions: [String] = []
+    @Published public private(set) var isLoadingGameVersions: Bool = false
+    @Published public private(set) var gameVersionLoadFailed: Bool = false
     public let type: ResourceType
     public let loadingVM: MyLoadingViewModel = .init(text: "加载中")
     private var requestID = UUID()
@@ -47,14 +50,38 @@ class ResourcesSearchViewModel: ObservableObject {
         type == .mod || type == .modpack
     }
 
-    /// 可选的游戏版本（正式版，新版本在前）；依赖版本清单。
-    public var availableGameVersions: [String] {
-        guard let manifest = VersionManifest.shared else { return [] }
-        return manifest.versions.filter { $0.type == .release }.map(\.id)
-    }
-
     public init(type: ResourceType) {
         self.type = type
+    }
+
+    /// 加载游戏版本清单；页面搜索不依赖清单成功，可在清单失败时照常浏览资源。
+    public func loadGameVersions() async {
+        if let manifest = VersionManifest.shared {
+            updateGameVersions(from: manifest)
+            gameVersionLoadFailed = false
+            return
+        }
+        guard !isLoadingGameVersions else { return }
+        isLoadingGameVersions = true
+        gameVersionLoadFailed = false
+        defer { isLoadingGameVersions = false }
+        do {
+            updateGameVersions(from: try await VersionManifest.load(revalidate: true))
+        } catch {
+            if let manifest = VersionManifest.shared {
+                updateGameVersions(from: manifest)
+                gameVersionLoadFailed = false
+            } else {
+                gameVersionLoadFailed = true
+                warn("加载资源筛选用游戏版本清单失败：\(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func updateGameVersions(from manifest: VersionManifest) {
+        availableGameVersions = manifest.versions
+            .filter { $0.type == .release || $0.type == .snapshot || $0.type == .aprilFool }
+            .map(\.id)
     }
 
     /// 执行搜索。`filters` 为**实际生效**的筛选条件（实例定向模式下可能由调用方

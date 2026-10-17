@@ -82,6 +82,7 @@ struct ResourcesSearchPage: View {
             }
         }
         .task {
+            Task { await viewModel.loadGameVersions() }
             await search("")
         }
     }
@@ -105,6 +106,15 @@ struct ResourcesSearchPage: View {
                 MyText("游戏版本", size: 13)
                 MySelect(gameVersionBinding, entries: gameVersionOptions)
                     .frame(width: 130)
+                if viewModel.isLoadingGameVersions {
+                    MyText("读取版本清单…", size: 11, color: .textSecondary)
+                } else if viewModel.gameVersionLoadFailed {
+                    MyText("版本清单暂不可用", size: 11, color: .orange)
+                    MyButton("重试") {
+                        Task { await viewModel.loadGameVersions() }
+                    }
+                    .frame(width: 48)
+                }
                 if viewModel.supportsLoaderFilter {
                     MyText("加载器", size: 13)
                     MySelect(loaderBinding, entries: loaderOptions)
@@ -132,7 +142,11 @@ struct ResourcesSearchPage: View {
 
     /// 版本选项：第一项为“全部版本”。
     private var gameVersionOptions: [String] {
-        return ["全部版本"] + viewModel.availableGameVersions
+        var versions = viewModel.availableGameVersions
+        if let selectedVersion = activeFilters.gameVersion, !versions.contains(selectedVersion) {
+            versions.insert(selectedVersion, at: 0)
+        }
+        return ["全部版本"] + versions
     }
 
     private var gameVersionBinding: Binding<String> {

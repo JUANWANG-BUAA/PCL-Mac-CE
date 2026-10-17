@@ -33,6 +33,10 @@ struct ProjectVersionModel: Identifiable {
     public let downloads: String
     public let datePublished: String
     public let requiredDependencies: [Dependency]
+    /// CurseForge 文件级别的必需依赖 ID，供安装时解析兼容文件。
+    public let requiredCurseForgeDependencyIds: [Int32]
+    /// 元数据批量查询未返回的依赖 ID；安装时仍会尝试解析。
+    public let unresolvedCurseForgeDependencyIds: [Int32]
     public let type: ModrinthVersion.VersionType
     public let primaryFile: File?
     public let gameVersion: String

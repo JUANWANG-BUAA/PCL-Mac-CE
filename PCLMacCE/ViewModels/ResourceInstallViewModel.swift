@@ -18,21 +18,28 @@ class ResourceInstallViewModel: ObservableObject {
 
     public let project: ProjectListItemModel
     public let loadingVM: MyLoadingViewModel = .init(text: "加载中")
-    private let curseforgeClient: CurseForgeAPIClient = .init(apiKey: Secrets.shared.curseforgeApiKey ?? "")
+    private let curseforgeClient: CurseForgeAPIClient = .init()
 
     public init(project: ProjectListItemModel) {
         self.project = project
     }
 
     /// 将一个版本映射为所有（加载器 × 游戏版本）键。
-    private func versionKeys(gameVersions: [String], loaders: [ModLoader], selectedVersionType: MinecraftVersion.VersionType?) -> [VersionMapKey] {
+    private func versionKeys(
+        gameVersions: [String],
+        loaders: [ModLoader],
+        selectedVersionType: MinecraftVersion.VersionType?,
+        selectedVersionID: String? = nil
+    ) -> [VersionMapKey] {
         var keys: [VersionMapKey] = []
         for gameVersion in gameVersions {
-            if let type = VersionManifest.shared?.version(for: gameVersion)?.type,
-               !(type == .release || project.onlySupportsSnapshot || selectedVersionType.map { $0 != .release } ?? false) {
-                continue
+            if let type = VersionManifest.shared?.version(for: gameVersion)?.type, type != .release {
+                let allowed = project.onlySupportsSnapshot
+                    || selectedVersionType.map { $0 != .release } == true
+                    || selectedVersionID == gameVersion
+                if !allowed { continue }
             }
-            if loaders.isEmpty && project.type != .mod {
+            if loaders.isEmpty {
                 keys.append(.init(loader: nil, version: .init(gameVersion)))
                 continue
             }
@@ -56,13 +63,18 @@ class ResourceInstallViewModel: ObservableObject {
             selectedVersionGroup?.0 = .init(loader: nil, version: selected.0.version)
         }
 
-        let versions: [ProjectVersionModel] = try await fetchVersions(selectedVersionType: selectedVersionType)
+        let versions: [ProjectVersionModel] = try await fetchVersions(
+            selectedVersionType: selectedVersionType,
+            selectedVersionID: selectedInstance?.version.id
+        )
 
         var versionMap: [VersionMapKey: [ProjectVersionModel]] = [:]
         for value in versions {
             let key: VersionMapKey = .init(loader: value.loader, version: .init(value.gameVersion))
-            if let selectedInstanceKey, selectedInstanceKey.compatible(with: key) {
-                selectedVersionGroup?.1.append(value)
+            if let selectedInstanceKey {
+                if selectedInstanceKey.compatible(with: key) {
+                    selectedVersionGroup?.1.append(value)
+                }
             } else {
                 versionMap[key, default: []].append(value)
             }
@@ -78,7 +90,10 @@ class ResourceInstallViewModel: ObservableObject {
     }
 
     /// 按项目来源拉取版本列表，并展开为（加载器 × 游戏版本）粒度的版本模型。
-    private func fetchVersions(selectedVersionType: MinecraftVersion.VersionType?) async throws -> [ProjectVersionModel] {
+    private func fetchVersions(
+        selectedVersionType: MinecraftVersion.VersionType?,
+        selectedVersionID: String?
+    ) async throws -> [ProjectVersionModel] {
         switch project.source {
         case .modrinth(let projectId):
             let versions: [ModrinthVersion] = try await ModrinthAPIClient.shared.versions(ofProject: projectId, revalidate: true)
@@ -94,10 +109,19 @@ class ResourceInstallViewModel: ObservableObject {
                 }
             }
             return versions.flatMap { version in
-                modrinthVersionModels(version, dependencyProjects: dependencyProjects, selectedVersionType: selectedVersionType)
+                modrinthVersionModels(
+                    version,
+                    dependencyProjects: dependencyProjects,
+                    selectedVersionType: selectedVersionType,
+                    selectedVersionID: selectedVersionID
+                )
             }
         case .curseforge(let modId):
-            return try await curseforgeVersionModels(modId: modId, selectedVersionType: selectedVersionType)
+            return try await curseforgeVersionModels(
+                modId: modId,
+                selectedVersionType: selectedVersionType,
+                selectedVersionID: selectedVersionID
+            )
         }
     }
 
@@ -105,7 +129,8 @@ class ResourceInstallViewModel: ObservableObject {
     private func modrinthVersionModels(
         _ version: ModrinthVersion,
         dependencyProjects: [String: ModrinthProject],
-        selectedVersionType: MinecraftVersion.VersionType?
+        selectedVersionType: MinecraftVersion.VersionType?,
+        selectedVersionID: String?
     ) -> [ProjectVersionModel] {
         let dependencies: [ProjectVersionModel.Dependency] = version.dependencies.compactMap { dependency in
             guard dependency.isRequired, let depProjectId = dependency.projectId,
@@ -117,7 +142,10 @@ class ResourceInstallViewModel: ObservableObject {
         let primaryFile = (version.files.filter(\.primary).first ?? version.files.first)
             .map { ProjectVersionModel.File(name: $0.name, url: $0.url, sha1: $0.sha1) }
         return versionKeys(
-            gameVersions: version.gameVersions, loaders: version.loaders, selectedVersionType: selectedVersionType
+            gameVersions: version.gameVersions,
+            loaders: version.loaders,
+            selectedVersionType: selectedVersionType,
+            selectedVersionID: selectedVersionID
         ).map { key in
             .init(
                 id: version.id,
@@ -126,6 +154,8 @@ class ResourceInstallViewModel: ObservableObject {
                 downloads: ProjectListItemModel.formatDownloads(version.downloads),
                 datePublished: ProjectListItemModel.formatLastUpdate(version.datePublished),
                 requiredDependencies: dependencies,
+                requiredCurseForgeDependencyIds: [],
+                unresolvedCurseForgeDependencyIds: [],
                 type: version.type,
                 primaryFile: primaryFile,
                 gameVersion: key.version.id,
@@ -137,24 +167,44 @@ class ResourceInstallViewModel: ObservableObject {
     /// 拉取 CurseForge 文件列表并展开为版本模型。
     private func curseforgeVersionModels(
         modId: Int32,
-        selectedVersionType: MinecraftVersion.VersionType?
+        selectedVersionType: MinecraftVersion.VersionType?,
+        selectedVersionID: String?
     ) async throws -> [ProjectVersionModel] {
         guard !curseforgeClient.apiKeyIsEmpty else {
             throw SimpleError("未配置 CurseForge API Key，无法获取文件列表。")
         }
         let files: [CurseForgeModFile] = try await curseforgeClient.files(modId: Int(modId))
+        let dependencyIDs: [Int32] = Array(Set(files.flatMap(\.requiredDependencyModIds))).sorted()
+        var dependencyMods: [Int32: CurseForgeMod] = [:]
+        if !dependencyIDs.isEmpty {
+            do {
+                let mods = try await curseforgeClient.mods(ids: dependencyIDs)
+                dependencyMods = mods.reduce(into: [:]) {
+                    $0[$1.id] = $1
+                }
+            } catch {
+                // 元数据失败不应让版本列表不可用；依赖 ID 仍保留，安装时会严格解析。
+                warn("获取 CurseForge 前置资源信息失败：\(error.localizedDescription)")
+            }
+        }
         var results: [ProjectVersionModel] = []
         for file in files where file.available {
             for key in versionKeys(
-                gameVersions: file.minecraftVersions, loaders: file.loaders, selectedVersionType: selectedVersionType
+                gameVersions: file.minecraftVersions,
+                loaders: file.loaders,
+                selectedVersionType: selectedVersionType,
+                selectedVersionID: selectedVersionID
             ) {
+                let (requiredDependencies, unresolvedDependencyIDs) = curseforgeDependencies(for: file, mods: dependencyMods)
                 results.append(.init(
                     id: String(file.id),
                     name: file.fileName,
                     version: file.fileName,
                     downloads: "",
                     datePublished: file.fileDate.map(ProjectListItemModel.formatLastUpdate(_:)) ?? "未知",
-                    requiredDependencies: [], // CurseForge 的依赖在文件维度，v1 暂不解析
+                    requiredDependencies: requiredDependencies,
+                    requiredCurseForgeDependencyIds: file.requiredDependencyModIds,
+                    unresolvedCurseForgeDependencyIds: unresolvedDependencyIDs,
                     type: file.releaseType == 2 ? .beta : (file.releaseType == 3 ? .alpha : .release),
                     primaryFile: .init(name: file.fileName, url: file.downloadURL, sha1: file.checksums["sha1"]),
                     gameVersion: key.version.id,
@@ -163,6 +213,35 @@ class ResourceInstallViewModel: ObservableObject {
             }
         }
         return results
+    }
+
+    private func curseforgeDependencies(
+        for file: CurseForgeModFile,
+        mods: [Int32: CurseForgeMod]
+    ) -> (resolved: [ProjectVersionModel.Dependency], unresolvedIDs: [Int32]) {
+        let resolved: [ProjectVersionModel.Dependency] = file.requiredDependencyModIds.map { dependencyID in
+            let dependencyProject: ProjectListItemModel
+            if let mod = mods[dependencyID] {
+                dependencyProject = .init(mod, fallbackType: .mod)
+            } else {
+                dependencyProject = .init(
+                    id: String(dependencyID),
+                    title: "CurseForge Mod \(dependencyID)",
+                    description: "",
+                    type: .mod,
+                    iconURL: nil,
+                    tags: [],
+                    supportDescription: "",
+                    onlySupportsSnapshot: false,
+                    downloads: "",
+                    lastUpdate: "未知",
+                    source: .curseforge(id: dependencyID)
+                )
+            }
+            return .init(versionId: nil, projectId: String(dependencyID), project: dependencyProject)
+        }
+        let unresolvedIDs = file.requiredDependencyModIds.filter { mods[$0] == nil }
+        return (resolved, unresolvedIDs)
     }
 
     /// 检查实例是否可以安装某个版本。
@@ -191,18 +270,87 @@ class ResourceInstallViewModel: ObservableObject {
 
         let saveDirectoryName = project.type.saveDirectory ?? ""
         let saveDirectoryURL = instance.url.appending(path: saveDirectoryName)
+        var downloads: [(name: String, file: ProjectVersionModel.File)] = []
 
-        return .init(
-            name: "资源下载 - \(project.title) \(version.version)",
-            .init(0, "下载文件") { task, _ in
+        if project.type == .mod, case .curseforge(let modId) = project.source {
+            let dependencies = try await resolveCurseForgeDependencies(
+                rootModId: modId,
+                dependencyIDs: version.requiredCurseForgeDependencyIds,
+                in: instance
+            )
+            downloads += dependencies.map {
+                ($0.mod.name, .init(name: $0.file.fileName, url: $0.file.downloadURL, sha1: $0.file.checksums["sha1"]))
+            }
+        }
+        downloads.append((project.title, primaryFile))
+
+        var destinations: [String: String] = [:]
+        var subTasks: [MyTask<EmptyModel>.SubTask] = []
+        for download in downloads {
+            let fileName = try validatedFileName(download.file.name)
+            let destination = saveDirectoryURL.appending(path: fileName).standardizedFileURL
+            let destinationPath = destination.path
+            if let existingHash = destinations[destinationPath] {
+                guard let currentHash = download.file.sha1, !existingHash.isEmpty, currentHash == existingHash else {
+                    throw SimpleError("多个资源使用了相同文件名「\(fileName)」，无法安全安装。")
+                }
+                continue
+            }
+            destinations[destinationPath] = download.file.sha1 ?? ""
+            subTasks.append(.init(0, "下载 \(download.name)") { task, _ in
                 try await FileDownloader.shared.download(
-                    url: primaryFile.url,
-                    destination: saveDirectoryURL.appending(path: primaryFile.name),
-                    sha1: primaryFile.sha1,
+                    url: download.file.url,
+                    destination: destination,
+                    sha1: download.file.sha1,
                     progressHandler: task.setProgress(_:)
                 )
+            })
+        }
+
+        let dependencyCount = max(0, subTasks.count - 1)
+        let taskName = "资源下载 - \(project.title) \(version.version)"
+            + (dependencyCount > 0 ? "（含 \(dependencyCount) 个必需前置）" : "")
+        return .init(name: taskName, model: EmptyModel(), subTasks)
+    }
+
+    /// 按目标实例解析 CurseForge 文件的必需依赖，去重并限制依赖图规模。
+    private func resolveCurseForgeDependencies(
+        rootModId: Int32,
+        dependencyIDs: [Int32],
+        in instance: MinecraftInstance
+    ) async throws -> [(mod: CurseForgeMod, file: CurseForgeModFile)] {
+        var pending: [(id: Int32, depth: Int)] = dependencyIDs.map { ($0, 1) }
+        var visited: Set<Int32> = [rootModId]
+        var resolved: [(mod: CurseForgeMod, file: CurseForgeModFile)] = []
+        let maxDepth = 8
+        let maxDependencies = 64
+
+        while !pending.isEmpty {
+            let entry = pending.removeFirst()
+            guard visited.insert(entry.id).inserted else { continue }
+            guard entry.depth <= maxDepth, resolved.count < maxDependencies else {
+                throw SimpleError("CurseForge 必需前置依赖层级过深或数量过多，已取消安装。")
             }
-        )
+            guard let mod = try await curseforgeClient.mod(id: Int(entry.id)) else {
+                throw SimpleError("找不到 CurseForge 必需前置（工程 ID：\(entry.id)）。")
+            }
+            guard (mod.projectType ?? .mod) == .mod else {
+                throw SimpleError("CurseForge 必需前置「\(mod.name)」不是 Mod，无法安装到 Mods 目录。")
+            }
+            let files = try await curseforgeClient.files(
+                modId: Int(entry.id),
+                gameVersion: instance.version.id
+            )
+            guard let file = files.first(where: { file in
+                file.isCompatible(withGameVersion: instance.version.id, loader: instance.modLoader)
+            }) else {
+                let loader = instance.modLoader.map { " / \($0)" } ?? ""
+                throw SimpleError("必需前置「\(mod.name)」没有适配 Minecraft \(instance.version.id)\(loader) 的可用文件。")
+            }
+            resolved.append((mod, file))
+            pending += file.requiredDependencyModIds.map { ($0, entry.depth + 1) }
+        }
+        return resolved
     }
 
     /// 创建普通下载任务：把资源下载到下载缓存目录（不绑定任何实例）。
@@ -210,10 +358,11 @@ class ResourceInstallViewModel: ObservableObject {
         guard let primaryFile = version.primaryFile else {
             throw SimpleError("这个版本中没有主要文件！")
         }
+        let fileName = try validatedFileName(primaryFile.name)
 
         let destination: URL = URLConstants.downloadCacheURL
             .appending(path: project.type.saveDirectory ?? "")
-            .appending(path: primaryFile.name)
+            .appending(path: fileName)
         let task: MyTask<EmptyModel> = .init(
             name: "下载 - \(project.title) \(version.version)",
             .init(0, "下载文件") { task, _ in
@@ -226,6 +375,14 @@ class ResourceInstallViewModel: ObservableObject {
             }
         )
         return (task, destination)
+    }
+
+    private func validatedFileName(_ fileName: String) throws -> String {
+        guard !fileName.isEmpty, fileName != ".", fileName != "..",
+              !fileName.contains("/"), !fileName.contains("\\") else {
+            throw SimpleError("资源文件名无效，已取消安装：\(fileName)")
+        }
+        return fileName
     }
 
     public struct VersionMapKey: Hashable, Equatable, Comparable, Identifiable, CustomStringConvertible {

@@ -52,6 +52,10 @@ struct ResourceSearchTests {
         let file = try JSONDecoder.shared.decode(CurseForgeModFile.self, from: Data(json.utf8))
         #expect(file.minecraftVersions == ["1.20.1", "1.20"])
         #expect(file.loaders == [.fabric, .forge])
+        #expect(file.isCompatible(withGameVersion: "1.20.1", loader: .fabric))
+        #expect(file.isCompatible(withGameVersion: "1.20.1", loader: .forge))
+        #expect(!file.isCompatible(withGameVersion: "1.20.1", loader: .neoforge))
+        #expect(!file.isCompatible(withGameVersion: "1.20.1", loader: nil))
     }
 
     @Test func curseForgeRequiredDependenciesAreExtracted() throws {

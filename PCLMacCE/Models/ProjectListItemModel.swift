@@ -74,7 +74,7 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
             title: mod.name,
             description: mod.summary,
             type: mod.projectType ?? fallbackType,
-            iconURL: mod.logo.thumbnailURL ?? mod.logo.url,
+            iconURL: mod.logo?.thumbnailURL ?? mod.logo?.url,
             tags: [],
             supportDescription: supportDescription,
             onlySupportsSnapshot: onlySupportsSnapshot,
