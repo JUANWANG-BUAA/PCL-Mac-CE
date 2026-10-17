@@ -105,6 +105,36 @@ public class MinecraftRepository: ObservableObject, Codable, Identifiable, Hasha
         try self.removeInstance(named: instance.name)
     }
 
+    /// 重命名实例。实例名即目录名：会移动实例目录并同步重命名版本清单文件。
+    /// - Parameters:
+    ///   - instance: 目标实例。
+    ///   - newName: 新名称（会按 `checkInstanceName` 校验）。
+    /// - Returns: 重载后的实例（UUID 保持不变）。
+    @MainActor
+    public func renameInstance(_ instance: MinecraftInstance, to newName: String) async throws -> MinecraftInstance {
+        let trimmed: String = try checkInstanceName(newName)
+        guard trimmed != instance.name else { return instance }
+        let oldURL: URL = versionsDirectory.appending(path: instance.name)
+        let newURL: URL = versionsDirectory.appending(path: trimmed)
+        guard !FileManager.default.fileExists(atPath: newURL.path) else {
+            throw NameCheckError.alreadyExists
+        }
+        try FileManager.default.moveItem(at: oldURL, to: newURL)
+        // 版本清单文件名与实例目录同名，需一并改名，否则重载会报 missingManifest
+        let oldManifest: URL = newURL.appending(path: "\(instance.name).json")
+        let newManifest: URL = newURL.appending(path: "\(trimmed).json")
+        if FileManager.default.fileExists(atPath: oldManifest.path) {
+            try FileManager.default.moveItem(at: oldManifest, to: newManifest)
+        }
+        let reloaded: MinecraftInstance = try await MinecraftInstanceLoader.load(from: newURL)
+        instances?[instance.id] = reloaded
+        if currentInstanceId == instance.id {
+            currentInstanceId = reloaded.id
+        }
+        log("实例 \(instance.name) 已重命名为 \(trimmed)")
+        return reloaded
+    }
+
     @MainActor
     public func saveAllInstances() throws {
         guard let instances else { return }

@@ -106,6 +106,12 @@ class AppRouter: ObservableObject {
         }
     }
 
+    /// 替换当前页面（用于页面标识变化但导航层级不变，如实例重命名）。
+    func replaceLast(with route: AppRoute) {
+        guard path.count > 1 else { return }
+        path[path.count - 1] = route
+    }
+
     private init() {}
 }
 
