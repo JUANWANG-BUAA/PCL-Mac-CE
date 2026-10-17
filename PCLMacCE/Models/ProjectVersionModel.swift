@@ -14,6 +14,19 @@ struct ProjectVersionModel: Identifiable {
         public let project: ProjectListItemModel
     }
 
+    /// 中性的主要文件描述：Modrinth 与 CurseForge 的安装流程共用。
+    struct File {
+        public let name: String
+        public let url: URL
+        public let sha1: String?
+
+        public init(name: String, url: URL, sha1: String?) {
+            self.name = name
+            self.url = url
+            self.sha1 = sha1
+        }
+    }
+
     public let id: String
     public let name: String
     public let version: String
@@ -21,7 +34,7 @@ struct ProjectVersionModel: Identifiable {
     public let datePublished: String
     public let requiredDependencies: [Dependency]
     public let type: ModrinthVersion.VersionType
-    public let primaryFile: ModrinthVersion.File?
+    public let primaryFile: File?
     public let gameVersion: String
     public let loader: ModLoader?
 }

@@ -30,6 +30,17 @@ struct ResourcesSearchPage: View {
                 // 原站教程链接随上游关闭失效，先只保留提示本身
                 MyTip(text: "光影包需要搭配光影加载器使用。", theme: .blue)
             }
+            HStack {
+                MyText("来源", size: 13)
+                MySelect($viewModel.source, entries: ResourcesSearchViewModel.SearchSource.allCases)
+                    .frame(width: 160)
+                Spacer(minLength: 0)
+            }
+            .frame(height: 26)
+            .onChange(of: viewModel.source) { _ in
+                currentPage = 0
+                Task { await search(viewModel.query) }
+            }
             MySearchBox(placeholder: "搜索\(viewModel.type.localizedName)") { query in
                 currentPage = 0
                 Task { await search(query) }

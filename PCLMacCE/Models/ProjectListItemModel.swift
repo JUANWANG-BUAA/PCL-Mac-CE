@@ -17,8 +17,10 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
     public let onlySupportsSnapshot: Bool
     public let downloads: String
     public let lastUpdate: String
+    /// 项目来源与远端标识：安装流程据此选择 API。
+    public let source: Resource.Source
 
-    public init(id: String, title: String, description: String, type: ResourceType, iconURL: URL?, tags: [String], supportDescription: String, onlySupportsSnapshot: Bool, downloads: String, lastUpdate: String) {
+    public init(id: String, title: String, description: String, type: ResourceType, iconURL: URL?, tags: [String], supportDescription: String, onlySupportsSnapshot: Bool, downloads: String, lastUpdate: String, source: Resource.Source) {
         self.id = id
         self.title = title
         self.description = description
@@ -29,10 +31,14 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
         self.onlySupportsSnapshot = onlySupportsSnapshot
         self.downloads = downloads
         self.lastUpdate = lastUpdate
+        self.source = source
     }
 
     public init(_ project: ModrinthProject) {
-        let (supportDescription, onlySupportsSnapshot) = Self.generateSupportDescription(for: project)
+        let (supportDescription, onlySupportsSnapshot) = Self.generateSupportDescription(
+            loaders: project.categories.compactMap(ModLoader.init(rawValue:)),
+            gameVersions: project.gameVersions
+        )
 
         self.init(
             id: project.id,
@@ -44,7 +50,37 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
             supportDescription: supportDescription,
             onlySupportsSnapshot: onlySupportsSnapshot,
             downloads: Self.formatDownloads(project.downloads),
-            lastUpdate: Self.formatLastUpdate(project.lastUpdate)
+            lastUpdate: Self.formatLastUpdate(project.lastUpdate),
+            source: .modrinth(projectId: project.id)
+        )
+    }
+
+    public init(_ mod: CurseForgeMod, fallbackType: ResourceType) {
+        let indexes: [CurseForgeMod.LatestFilesIndex] = mod.latestFilesIndexes ?? []
+        var loaders: [ModLoader] = []
+        for index in indexes {
+            switch index.modLoader {
+            case 1: if !loaders.contains(.forge) { loaders.append(.forge) }
+            case 4: if !loaders.contains(.fabric) { loaders.append(.fabric) }
+            case 6: if !loaders.contains(.neoforge) { loaders.append(.neoforge) }
+            default: break
+            }
+        }
+        let gameVersions: [String]? = indexes.isEmpty ? nil : Array(Set(indexes.map(\.gameVersion)))
+        let (supportDescription, onlySupportsSnapshot) = Self.generateSupportDescription(loaders: loaders, gameVersions: gameVersions)
+
+        self.init(
+            id: String(mod.id),
+            title: mod.name,
+            description: mod.summary,
+            type: mod.projectType ?? fallbackType,
+            iconURL: mod.logo.thumbnailURL ?? mod.logo.url,
+            tags: [],
+            supportDescription: supportDescription,
+            onlySupportsSnapshot: onlySupportsSnapshot,
+            downloads: Self.formatDownloads(mod.downloadCount ?? 0),
+            lastUpdate: mod.dateModified.map(Self.formatLastUpdate(_:)) ?? "未知",
+            source: .curseforge(id: mod.id)
         )
     }
 
@@ -71,25 +107,24 @@ struct ProjectListItemModel: Identifiable, Equatable, Hashable {
         return localized == key ? nil : localized
     }
 
-    private static func generateSupportDescription(for project: ModrinthProject) -> (String, Bool) {
+    private static func generateSupportDescription(loaders: [ModLoader], gameVersions: [String]?) -> (String, Bool) {
         guard let versionManifest = VersionManifest.shared else { return ("", false) }
 
         var description: String = ""
 
-        let modLoaders: [ModLoader] = project.categories.compactMap(ModLoader.init(rawValue:))
-        if modLoaders.count == 1 {
-            description += "仅 \(modLoaders.first!.description)"
-        } else if modLoaders.count < 3 {
-            description += modLoaders.map(\.description).joined(separator: " / ")
+        if loaders.count == 1 {
+            description += "仅 \(loaders.first!.description)"
+        } else if loaders.count < 3 {
+            description += loaders.map(\.description).joined(separator: " / ")
         }
         if !description.isEmpty { description += " " }
 
-        guard let gameVersions = project.gameVersions else {
+        guard let gameVersions else {
             return (description + "未知", false)
         }
         let releaseVersions: [String] = gameVersions.filter { versionManifest.version(for: $0)?.type == .release }
         guard !releaseVersions.isEmpty else {
-            return (description + (modLoaders.count == 1 ? "" : "仅") + "快照版本", true)
+            return (description + (loaders.count == 1 ? "" : "仅") + "快照版本", true)
         }
         description += generateGameVersionDescription(releaseVersions, latestVersion: versionManifest.latestRelease)
 

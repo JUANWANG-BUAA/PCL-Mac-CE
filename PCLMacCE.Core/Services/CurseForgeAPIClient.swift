@@ -16,6 +16,9 @@ public class CurseForgeAPIClient {
         self.apiKey = apiKey
     }
 
+    /// API Key 是否为空（为空时 CurseForge 相关功能不可用）。
+    public var apiKeyIsEmpty: Bool { apiKey.isEmpty }
+
     public func mod(id modId: Int) async throws -> CurseForgeMod? {
         let response = try await request("/v1/mods/\(modId)")
         if response.statusCode == 404 { return nil }
@@ -26,6 +29,61 @@ public class CurseForgeAPIClient {
         let response = try await request("/v1/mods/\(modId)/files/\(fileId)")
         if response.statusCode == 404 { return nil }
         return try response.decode(Response<CurseForgeModFile>.self).data
+    }
+
+    /// 获取指定项目的全部文件（按时间倒序）。
+    public func files(modId: Int) async throws -> [CurseForgeModFile] {
+        let response = try await request("/v1/mods/\(modId)/files")
+        guard (200..<300).contains(response.statusCode) else {
+            throw SimpleError("获取 CurseForge 文件列表失败（HTTP \(response.statusCode)）。")
+        }
+        return try response.decode(Response<[CurseForgeModFile]>.self).data
+    }
+
+    /// 搜索 CurseForge 项目。Minecraft 的 gameId 固定为 432。
+    public func search(
+        type: ResourceType,
+        _ query: String?,
+        forVersion gameVersion: String?,
+        loader: ModLoader? = nil,
+        pageIndex: Int = 0,
+        pageSize: Int = 40
+    ) async throws -> [CurseForgeMod] {
+        await semaphore.wait()
+        defer { Task { await semaphore.signal() } }
+        var params: [String: String?] = [
+            "gameId": "432",
+            "classId": String(CurseForgeMod.classId(for: type)),
+            "pageSize": String(pageSize),
+            "index": String(pageIndex * pageSize),
+            "sortField": "2", // 按最后更新时间排序
+            "sortOrder": "desc",
+            "searchFilter": (query ?? "").isEmpty ? nil : query
+        ]
+        if let gameVersion {
+            params["gameVersion"] = gameVersion
+        }
+        if let loader {
+            params["modLoaderType"] = String(Self.modLoaderType(of: loader))
+        }
+        let response = try await HTTPClient.shared.get(
+            apiRoot.appending(path: "/v1/mods/search"),
+            headers: ["x-api-key": apiKey],
+            params: params,
+            revalidate: true
+        )
+        guard (200..<300).contains(response.statusCode) else {
+            throw SimpleError("CurseForge 搜索失败（HTTP \(response.statusCode)）。")
+        }
+        return try response.decode(Response<[CurseForgeMod]>.self).data
+    }
+    /// CurseForge 的 modLoaderType 参数值。
+    private static func modLoaderType(of loader: ModLoader) -> Int {
+        switch loader {
+        case .forge: 1
+        case .fabric: 4
+        case .neoforge: 6
+        }
     }
 
     private func request(
