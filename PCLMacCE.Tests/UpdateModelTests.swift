@@ -31,4 +31,28 @@ struct UpdateModelTests {
         #expect(try release(tag: "v1.2.1", digest: nil)
             .installableVersion(currentVersion: "1.2.0") == nil)
     }
+
+    @Test func discardingPreparedUpdateRemovesArchiveAndExtraction() throws {
+        let version: UpdateModel.Version = try #require(
+            release(tag: "v1.2.1", digest: "sha256:\(hash)").installableVersion(currentVersion: "1.2.0")
+        )
+        let root: URL = FileManager.default.temporaryDirectory.appending(path: "prepared-update-\(UUID().uuidString)")
+        let extraction: URL = root.appending(path: "extraction")
+        let archive: URL = root.appending(path: "update.zip")
+        try FileManager.default.createDirectory(at: extraction, withIntermediateDirectories: true)
+        try Data("bundle".utf8).write(to: extraction.appending(path: "PCLMacCE.app"))
+        try Data("archive".utf8).write(to: archive)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let prepared: UpdateManager.PreparedUpdate = .init(
+            version: version,
+            newBundleURL: extraction.appending(path: "PCLMacCE.app"),
+            extractionDirectory: extraction,
+            archiveURL: archive
+        )
+        prepared.discard()
+
+        #expect(!FileManager.default.fileExists(atPath: extraction.path))
+        #expect(!FileManager.default.fileExists(atPath: archive.path))
+    }
 }

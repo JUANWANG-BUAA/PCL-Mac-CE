@@ -14,6 +14,7 @@ class UpdateManager {
         let version: UpdateModel.Version
         let newBundleURL: URL
         let extractionDirectory: URL
+        let archiveURL: URL
 
         /// 用新版本替换当前应用并重启启动器。
         func apply() async throws {
@@ -30,7 +31,13 @@ class UpdateManager {
 
         /// 放弃本次已准备的更新（用户选择稍后重启时清理临时文件）。
         func discard() {
-            try? FileManager.default.removeItem(at: extractionDirectory)
+            for url in [extractionDirectory, archiveURL] where FileManager.default.fileExists(atPath: url.path) {
+                do {
+                    try FileManager.default.removeItem(at: url)
+                } catch {
+                    warn("清理更新临时文件失败（\(url.lastPathComponent)）：\(error.localizedDescription)")
+                }
+            }
         }
     }
 
@@ -64,7 +71,7 @@ class UpdateManager {
                 throw SimpleError("更新包应用身份不匹配，请从项目 Release 页面手动安装。")
             }
             try verifySignature(of: newBundle)
-            return .init(version: version, newBundleURL: newBundle, extractionDirectory: extraction)
+            return .init(version: version, newBundleURL: newBundle, extractionDirectory: extraction, archiveURL: destination)
         } catch {
             try? FileManager.default.removeItem(at: destination)
             try? FileManager.default.removeItem(at: extraction)
