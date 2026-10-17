@@ -67,12 +67,7 @@ public class CurseForgeAPIClient {
         if let loader {
             params["modLoaderType"] = String(Self.modLoaderType(of: loader))
         }
-        let response = try await HTTPClient.shared.get(
-            apiRoot.appending(path: "/v1/mods/search"),
-            headers: ["x-api-key": apiKey],
-            params: params,
-            revalidate: true
-        )
+        let response = try await requestSearch(params: params)
         guard (200..<300).contains(response.statusCode) else {
             throw SimpleError("CurseForge 搜索失败（HTTP \(response.statusCode)）。")
         }
@@ -84,6 +79,26 @@ public class CurseForgeAPIClient {
             .first { !$0.isEmpty }
             .flatMap { Int($0) }
         return (mods, totalCount)
+    }
+
+    /// 发送搜索请求。官方文档的路径是小写 `search`，但部分 CloudFront 边缘节点
+    /// 会对小写路径持续返回 403「API Key missing or invalid」（同 Key 请求
+    /// `Search`、其他端点均正常）。因此小写失败时自动回退到大写变体。
+    private func requestSearch(params: [String: String?]) async throws -> HTTPClient.Response {
+        let lowercase = try await HTTPClient.shared.get(
+            apiRoot.appending(path: "/v1/mods/search"),
+            headers: ["x-api-key": apiKey],
+            params: params,
+            revalidate: true
+        )
+        guard lowercase.statusCode == 403 else { return lowercase }
+        warn("CurseForge 搜索小写路径返回 403，尝试大写路径")
+        return try await HTTPClient.shared.get(
+            apiRoot.appending(path: "/v1/mods/Search"),
+            headers: ["x-api-key": apiKey],
+            params: params,
+            revalidate: true
+        )
     }
 
     /// CurseForge 的 modLoaderType 参数值。
