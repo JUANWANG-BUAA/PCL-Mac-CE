@@ -22,7 +22,8 @@ jobs:
             -only-testing:PCLMacCE.Tests/MyTaskTests \
             -only-testing:PCLMacCE.Tests/LauncherConfigPersistenceTests \
             -only-testing:PCLMacCE.Tests/ModpackPathTests \
-            -only-testing:PCLMacCE.Tests/AuditRegressionTests
+            -only-testing:PCLMacCE.Tests/AuditRegressionTests \
+            -only-testing:PCLMacCE.Tests/ResourceSearchTests
 
   build:
     uses: ./.github/workflows/build.yml

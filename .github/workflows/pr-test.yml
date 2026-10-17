@@ -7,6 +7,7 @@ on:
       - ".github/workflows/**"
       - "PCLMacCE/**"
       - "PCLMacCE.Core/**"
+      - "PCLMacCE.Tests/**"
       - "PCLMacCE.xcodeproj/**"
       - "Resources/**"
 
@@ -31,3 +32,22 @@ jobs:
       build_configuration: Debug
       upload_artifact: false
     secrets: inherit
+
+  offline-regression-tests:
+    name: Offline regression tests
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run offline regression tests
+        run: |
+          xcodebuild test -project PCLMacCE.xcodeproj -scheme PCLMacCE \
+            -destination 'platform=macOS,arch=arm64' \
+            -only-testing:PCLMacCE.Tests/ArchitectureTests \
+            -only-testing:PCLMacCE.Tests/UUIDUtilsTest \
+            -only-testing:PCLMacCE.Tests/MinecraftVersionTests \
+            -only-testing:PCLMacCE.Tests/ClientManifestTests \
+            -only-testing:PCLMacCE.Tests/MyTaskTests \
+            -only-testing:PCLMacCE.Tests/LauncherConfigPersistenceTests \
+            -only-testing:PCLMacCE.Tests/ModpackPathTests \
+            -only-testing:PCLMacCE.Tests/AuditRegressionTests \
+            -only-testing:PCLMacCE.Tests/ResourceSearchTests
