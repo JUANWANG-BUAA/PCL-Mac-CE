@@ -35,7 +35,7 @@ public class ResourceLoadService {
 
         let sha1: String
         do {
-            sha1 = try FileUtils.sha1(of: fileURL)
+            sha1 = try cache.sha1(for: fileURL) { try FileUtils.sha1(of: fileURL) }
         } catch {
             throw .readError(underlying: error)
         }
@@ -81,13 +81,19 @@ public class ResourceLoadService {
 
         let remoteLookupResult: [String: ResourceRemoteLookupService.RemoteResourceInfo]
         do {
-            remoteLookupResult = try await remoteLookupService.lookup(hashes: Array(hashes.values))
+            remoteLookupResult = try await remoteLookupService.lookup(hashes: Array(Set(hashes.values)).sorted())
         } catch {
             err("加载远端资源信息失败：\(error.localizedDescription)")
             remoteLookupResult = [:]
         }
 
+        var parsedByHash: [String: Resource] = [:]
         for (fileURL, hash) in hashes {
+            if let resource = parsedByHash[hash] {
+                result[fileURL] = resource
+                stats.loaded += 1
+                continue
+            }
             do {
                 guard let resource = try parseFile(at: fileURL, remoteInfo: remoteLookupResult[hash], sha1: hash) else {
                     stats.unsupported += 1
@@ -95,6 +101,7 @@ public class ResourceLoadService {
                     continue
                 }
                 result[fileURL] = resource
+                parsedByHash[hash] = resource
                 stats.loaded += 1
                 cache.store(resource, forHash: hash)
             } catch {
@@ -133,7 +140,7 @@ public class ResourceLoadService {
             stats.total += 1
             do {
                 try autoreleasepool {
-                    let hash = try FileUtils.sha1(of: fileURL)
+                    let hash = try cache.sha1(for: fileURL) { try FileUtils.sha1(of: fileURL) }
                     if let resource = cache.resource(forHash: hash) {
                         stats.cached += 1
                         result[fileURL] = resource
