@@ -74,7 +74,7 @@ public extension ModpackIndex {
 
         private var cachedMod: CurseForgeMod?
         private var cachedModFile: CurseForgeModFile?
-        private var infoFetched: Bool = false
+        private(set) var infoFetched: Bool = false
 
         public init(client: CurseForgeAPIClient, url: URL?, projectId: Int, fileId: Int) {
             self.client = client
@@ -106,7 +106,6 @@ public extension ModpackIndex {
 
         public func fetchInfo() async throws {
             if infoFetched { return }
-            infoFetched = true
 
             guard !client.apiKeyIsEmpty else {
                 throw SimpleError("未配置 CurseForge API Key，无法解析整合包文件信息。请在「设置 → 下载」中配置。")
@@ -119,6 +118,8 @@ public extension ModpackIndex {
             }
             cachedMod = mod
             cachedModFile = file
+            // 仅在两项元数据都读取成功后缓存完成状态，网络/API 错误后允许重试。
+            infoFetched = true
         }
 
         /// 该文件的必需依赖工程 ID（`fetchInfo()` 之后可用）。
@@ -140,9 +141,7 @@ public extension ModpackIndex {
             let files: [CurseForgeModFile] = try await client.files(modId: Int(projectId))
             let gameVersion: String = minecraftVersion.id
             guard let candidate = files.first(where: { file in
-                file.available
-                    && file.minecraftVersions.contains(gameVersion)
-                    && (loader.map { file.loaders.contains($0) } ?? true)
+                file.isCompatible(withGameVersion: gameVersion, loader: loader)
             }) else {
                 return nil
             }

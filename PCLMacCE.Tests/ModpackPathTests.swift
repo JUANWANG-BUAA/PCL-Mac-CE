@@ -33,4 +33,14 @@ struct ModpackPathTests {
             try ModpackImportTask.validatedDestination(for: path, in: URL(fileURLWithPath: "/tmp/pcl-modpack-test"))
         }
     }
+
+    @Test func failedCurseForgeMetadataFetchRemainsRetryable() async {
+        let client: CurseForgeAPIClient = .init(apiKey: "")
+        let file: ModpackIndex.CurseForgeFile = .init(client: client, url: nil, projectId: 1, fileId: 1)
+
+        await #expect(throws: SimpleError.self) {
+            try await file.fetchInfo()
+        }
+        #expect(!file.infoFetched)
+    }
 }

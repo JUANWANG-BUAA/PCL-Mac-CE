@@ -35,13 +35,14 @@ public enum ModpackImportTask {
             at: subTasks.count - 2
         )
 
+        let model: Model = minecraftInstallTask.model
         return .init(
             name: "整合包安装：\(index.name)",
-            model: minecraftInstallTask.model,
+            model: model,
             subTasks
         ) { _ in
-            // 复用安装子任务时也必须继承失败清理。
-            cleanupFailedImport(at: repository.versionsDirectory.appending(path: name))
+            // 复用安装子任务时也必须继承“仅清理本任务拥有目录”的约束。
+            model.cleanupFailedInstallation()
         }
     }
 
@@ -106,23 +107,29 @@ public enum ModpackImportTask {
             .flatMap { file in file.requiredDependencyModIds.map { ($0, 1) } }
         while !pending.isEmpty {
             let entry = pending.removeFirst()
-            guard entry.depth <= 3, !knownProjectIds.contains(entry.projectId) else { continue }
+            guard !knownProjectIds.contains(entry.projectId) else { continue }
+            guard entry.depth <= 3 else {
+                throw SimpleError("CurseForge 必需前置依赖层级过深，无法安全完成整合包安装。")
+            }
             knownProjectIds.insert(entry.projectId)
+            let dependency: ModpackIndex.CurseForgeFile
             do {
-                guard let dependency = try await reference.resolveDependency(
+                guard let resolved = try await reference.resolveDependency(
                     projectId: entry.projectId, minecraftVersion: minecraftVersion, loader: loader
                 ) else {
-                    warn("CurseForge 依赖工程 \(entry.projectId) 没有适配 \(minecraftVersion)\(loader.map { " / \($0)" } ?? "") 的文件，已跳过")
-                    continue
+                    let loaderDescription: String = loader.map { " / \($0)" } ?? ""
+                    throw SimpleError(
+                        "CurseForge 必需前置 \(entry.projectId) 没有适配 Minecraft \(minecraftVersion)\(loaderDescription) 的文件。"
+                    )
                 }
-                try await dependency.fetchInfo()
-                files.append(dependency)
-                log("已解析 CurseForge 必需依赖：\(dependency.projectIdValue)")
-                pending += dependency.requiredDependencyModIds.map { ($0, entry.depth + 1) }
+                try await resolved.fetchInfo()
+                dependency = resolved
             } catch {
-                // 单个依赖解析失败不应让整个整合包安装失败
-                warn("解析 CurseForge 依赖 \(entry.projectId) 失败：\(error.localizedDescription)")
+                throw SimpleError("解析 CurseForge 必需前置 \(entry.projectId) 失败，已取消安装：\(error.localizedDescription)")
             }
+            files.append(dependency)
+            log("已解析 CurseForge 必需依赖：\(dependency.projectIdValue)")
+            pending += dependency.requiredDependencyModIds.map { ($0, entry.depth + 1) }
         }
         return files
     }
@@ -145,15 +152,6 @@ public enum ModpackImportTask {
             } catch {
                 throw Error.failedToApplyOverrides(underlying: error)
             }
-        }
-    }
-
-    private static func cleanupFailedImport(at url: URL) {
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
-        do {
-            try FileManager.default.removeItem(at: url)
-        } catch {
-            err("清理失败的整合包实例失败：\(error.localizedDescription)")
         }
     }
 
@@ -227,13 +225,16 @@ public enum SimpleModpackImportTask {
         name: String,
         completion: (@MainActor (MinecraftInstance) -> Void)? = nil
     ) -> MyTask<Model> {
-        let runningDirectory = repository.versionsDirectory.appending(path: name)
+        let model: Model = .init(name: name, repository: repository)
+        let runningDirectory = model.directoryReservation.url
 
         return .init(
             name: "整合包安装：\(index.name)",
-            .init(0, "拷贝整合包文件") { _, _ in
-                try FileManager.default.createDirectory(at: runningDirectory, withIntermediateDirectories: true)
-                try Data().write(to: runningDirectory.appending(path: ".incomplete"), options: .atomic)
+            model: model,
+            [
+            .init(0, "拷贝整合包文件") { _, model in
+                try model.directoryReservation.create()
+                try model.directoryReservation.createIncompleteMarker()
 
                 for dirName in index.overridesDirectories {
                     let overridesDirectory = try ModpackImportTask.validatedDestination(for: dirName, in: modpackDirectory)
@@ -246,21 +247,35 @@ public enum SimpleModpackImportTask {
                     }
                 }
             },
-            .init(1, "__completion", display: false) { _, _ in
-                try? FileManager.default.removeItem(at: runningDirectory.appending(path: ".incomplete"))
+            .init(1, "__completion", display: false) { _, model in
+                try model.directoryReservation.markComplete()
                 try await repository.load()
                 guard let instance = repository.instance(named: name) else {
-                    try? FileManager.default.removeItem(at: runningDirectory)
                     throw SimpleError("该实例无法被加载。")
                 }
                 await MainActor.run {
                     completion?(instance)
                 }
             }
+            ]
         ) { _ in
-            try? FileManager.default.removeItem(at: runningDirectory)
+            model.cleanupFailedInstallation()
         }
     }
 
-    public typealias Model = EmptyModel
+    public final class Model: TaskModel, @unchecked Sendable {
+        let directoryReservation: InstallationDirectoryReservation
+
+        init(name: String, repository: MinecraftRepository) {
+            self.directoryReservation = .init(url: repository.versionsDirectory.appending(path: name))
+        }
+
+        func cleanupFailedInstallation() {
+            do {
+                try directoryReservation.removeIfOwned()
+            } catch {
+                err("清理失败的整合包实例失败：\(error.localizedDescription)")
+            }
+        }
+    }
 }

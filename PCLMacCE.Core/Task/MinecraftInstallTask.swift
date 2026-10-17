@@ -46,7 +46,7 @@ public enum MinecraftInstallTask {
             )
         }
         return .init(name: "\(name) 安装", model: model, subTasks) { _ in
-            try? FileManager.default.removeItem(at: repository.versionsDirectory.appending(path: name))
+            model.cleanupFailedInstallation()
         }
     }
 
@@ -70,13 +70,10 @@ public enum MinecraftInstallTask {
     private static func makeDownloadSubTasks(version: MinecraftVersion) -> [SubTask] {
         return [
             .init(0, "__pre", display: false) { _, model in
-                try FileManager.default.createDirectory(at: model.runningDirectory, withIntermediateDirectories: true)
-                // 标记创建失败必须中止：否则中断的半成品实例会被当成完整实例加载
-                guard FileManager.default.createFile(atPath: model.runningDirectory.appending(path: ".incomplete").path, contents: nil) else {
-                    throw SimpleError("创建实例安装标记失败，无法继续安装。")
-                }
+                try model.directoryReservation.create()
+                try model.directoryReservation.createIncompleteMarker()
             },
-            .init(0, "下载客户端 JSON 文件") { task, model in
+            .init(1, "下载客户端 JSON 文件") { task, model in
                 guard let versionManifest = VersionManifest.shared else {
                     err("VersionManifest.shared 为空")
                     throw TaskError.unknownError
@@ -89,7 +86,7 @@ public enum MinecraftInstallTask {
                 )
                 model.manifest = manifest
             },
-            .init(1, "下载资源索引文件") { task, model in
+            .init(2, "下载资源索引文件") { task, model in
                 guard let assetIndexInfo = model.manifest.assetIndex else {
                     warn("manifest.assetIndex 不存在")
                     return
@@ -101,7 +98,7 @@ public enum MinecraftInstallTask {
                 )
                 model.assetIndex = assetIndex
             },
-            .init(2, "下载客户端本体") { task, model in
+            .init(3, "下载客户端本体") { task, model in
                 guard let downloads = model.manifest.downloads else {
                     throw SimpleError("客户端清单中没有本体下载信息。")
                 }
@@ -123,7 +120,7 @@ public enum MinecraftInstallTask {
         completion: (@MainActor (MinecraftInstance) -> Void)?
     ) -> [SubTask] {
         return [
-            .init(5, "__modify_manifest", display: false) { _, model in
+            .init(6, "__modify_manifest", display: false) { _, model in
                 let manifestURL: URL = model.runningDirectory.appending(path: "\(model.name).json")
                 if var dict: [String: Any] = try JSON(data: Data(contentsOf: manifestURL)).dictionaryObject {
                     dict["id"] = model.name
@@ -149,7 +146,7 @@ public enum MinecraftInstallTask {
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(7, "解压本地库文件", display: version < .init("1.19.1")) { task, model in
+            .init(8, "解压本地库文件", display: version < .init("1.19.1")) { task, model in
                 try await extractNatives(
                     manifest: model.mappedManifest,
                     runningDirectory: model.runningDirectory,
@@ -157,7 +154,7 @@ public enum MinecraftInstallTask {
                     progressHandler: task.setProgress(_:)
                 )
             },
-            .init(8, "__completion", display: false) { _, model in
+            .init(9, "__completion", display: false) { _, model in
                 let instance = MinecraftInstance(
                     id: .init(),
                     url: repository.versionsDirectory.appending(path: name),
@@ -166,9 +163,12 @@ public enum MinecraftInstallTask {
                     manifest: model.manifest,
                     config: .default
                 )
+                try Data("lang:zh_cn".utf8).write(
+                    to: model.runningDirectory.appending(path: "options.txt"),
+                    options: .atomic
+                )
+                try model.directoryReservation.markComplete()
                 await repository.addInstance(instance)
-                try? FileManager.default.removeItem(at: model.runningDirectory.appending(path: ".incomplete"))
-                FileManager.default.createFile(atPath: model.runningDirectory.appending(path: "options.txt").path, contents: Data("lang:zh_cn".utf8))
                 await MainActor.run {
                     completion?(instance)
                 }
@@ -187,7 +187,7 @@ public enum MinecraftInstallTask {
         switch modLoader.type {
         case .fabric:
             subTasks.append(
-                .init(3, "安装 Fabric Loader") { task, model in
+                .init(4, "安装 Fabric Loader") { task, model in
                     let manifest: ClientManifest = try await downloadFabricManifest(
                         version: version,
                         repository: repository,
@@ -201,7 +201,7 @@ public enum MinecraftInstallTask {
 
         case .forge:
             subTasks.append(
-                .init(3, "下载 Forge 安装器文件") { task, model in
+                .init(4, "下载 Forge 安装器文件") { task, model in
                     let service: ForgeInstallService = .init(
                         minecraftVersion: model.version, version: modLoader.version, repository: model.repository,
                         manifest: model.manifest, runningDirectory: model.runningDirectory
@@ -211,14 +211,14 @@ public enum MinecraftInstallTask {
                 }
             )
             subTasks.append(
-                .init(4, "执行 Forge 安装器") { task, model in
+                .init(5, "执行 Forge 安装器") { task, model in
                     try await model.forgeInstallService!.executeProcessors(progressHandler: task.setProgress(_:))
                     model.manifest = try MinecraftInstanceLoader.loadManifest(at: model.runningDirectory.appending(path: "\(model.name).json"))
                 }
             )
         case .neoforge:
             subTasks.append(
-                .init(3, "下载 NeoForge 安装器文件") { task, model in
+                .init(4, "下载 NeoForge 安装器文件") { task, model in
                     let service: NeoforgeInstallService = .init(
                         minecraftVersion: model.version, version: modLoader.version, repository: model.repository,
                         manifest: model.manifest, runningDirectory: model.runningDirectory
@@ -228,7 +228,7 @@ public enum MinecraftInstallTask {
                 }
             )
             subTasks.append(
-                .init(4, "执行 NeoForge 安装器") { task, model in
+                .init(5, "执行 NeoForge 安装器") { task, model in
                     try await model.forgeInstallService!.executeProcessors(progressHandler: task.setProgress(_:))
                     model.manifest = try MinecraftInstanceLoader.loadManifest(at: model.runningDirectory.appending(path: "\(model.name).json"))
                 }
@@ -410,6 +410,7 @@ public enum MinecraftInstallTask {
         public let version: MinecraftVersion
         public let runningDirectory: URL
         public let repository: MinecraftRepository
+        let directoryReservation: InstallationDirectoryReservation
 
         public var manifest: ClientManifest!
         public var mappedManifest: ClientManifest!
@@ -422,6 +423,15 @@ public enum MinecraftInstallTask {
             self.version = version
             self.runningDirectory = repository.versionsDirectory.appending(path: name)
             self.repository = repository
+            self.directoryReservation = .init(url: runningDirectory)
+        }
+
+        func cleanupFailedInstallation() {
+            do {
+                try directoryReservation.removeIfOwned()
+            } catch {
+                err("清理失败的实例安装目录失败：\(error.localizedDescription)")
+            }
         }
     }
 
