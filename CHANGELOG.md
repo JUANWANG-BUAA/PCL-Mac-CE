@@ -7,13 +7,14 @@
 
 ## [未发布] 1.2.0 — PCL Mac CE
 
-> 更名后的首个独立版本。相对 1.1.1 基线，本版本聚焦「与已停更上游切割 + 工程质量归零」。
+> 当前维护者的首个独立发行版本。相对 1.1.1 历史代码起点，本版本聚焦独立产品身份、界面重设计与工程质量治理。
 
 ### 变更
 
 - 产品更名为 **PCL Mac CE**（社区版）：PCL 前缀保留（符合《PCL 存储库合理使用指南》
   重度使用条款），工程/目标/数据目录/Bundle ID 全面自有化（`PCLMacCE`），
   老用户数据目录自动迁移（`PCL.Mac.Refactor` / `PCL.Mac` → `PCLMacCE`）（ADR-012）
+- 明确当前项目与此前 PCL.Mac 项目及其维护团队没有隶属或继承关系；品牌界面改用青绿主题、系统字体和 SF Symbols（ADR-014）
 - 版本序列从 1.2.0 重新起算，与上游版本号脱钩
 - 微软登录缺省 client ID 切换为 Prism Launcher 公开的公共客户端 ID，
   支持构建期注入自有 Entra client ID（`MS_CLIENT_ID` / `PCLMAC_MS_CLIENT_ID`）（ADR-010）

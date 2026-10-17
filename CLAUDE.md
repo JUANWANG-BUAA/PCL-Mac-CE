@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-PCL Mac CE（技术标识 `PCLMacCE`，社区版）是 [Plain Craft Launcher](https://github.com/Meloong-Git/PCL)（a Minecraft launcher）的第三方 macOS 衍生作品，完全使用 SwiftUI 重写。It supports macOS 12.0+ (Universal: Intel + Apple Silicon).
+PCL Mac CE（技术标识 `PCLMacCE`）是 [Plain Craft Launcher](https://github.com/Meloong-Git/PCL) 的第三方 macOS 衍生作品，由 JUANWANG-BUAA 独立维护，使用 SwiftUI 构建，支持 macOS 12.0+ 与 Intel / Apple Silicon。它不是此前 PCL.Mac 项目或其维护团队的延续；PCL 来源和许可证署名仍须保留。
 
-> 更名史：原“PCL.Mac”（已停更的直系上游）→ 本仓库自 2026-10-15 起改名为 PCL Mac CE（PCL 前缀保留，符合《PCL 存储库合理使用指南》重度使用条款的命名要求，详见 `docs-book` ADR-012）。
+> 历史说明：当前维护序列使用 PCL Mac CE 名称。v1.1.1 是历史代码起点；后续产品、设计和发行由当前维护者独立负责，详见 ADR-008、ADR-012 与 ADR-014。
 
 ## Build and test
 
@@ -79,7 +79,7 @@ PCLMacCE imports `Core` (PCLMacCE.Core). PCLMacCE.Core has no UI dependencies; g
 - **Naming**: never use backtick-escaped type names — use `Style` (`MyButton.Style`) / `Kind` (`HintModel.Kind`) suffixes for associated enums.
 - **Global logging**: `log()`, `err()`, `warn()`, `debug()` are global functions defined in `PCLMacCE.Core/Minecraft/Launch/LogManager.swift`. They write to rotating log files (`Log1.log` through `Log5.log`) in `~/Library/Application Support/PCLMacCE/Logs/`.
 - **Remote URL registry**: ALL remote endpoints live in `PCLMacCE.Core/Utils/APIEndpoints.swift` (program-requested APIs) and `PCLMacCE.Core/Utils/WebLinks.swift` (browser-opened links). Never inline `https://…` literals in services or views; add or reference a constant there instead. Dead endpoints are removed from code; their history is recorded in `docs-book` ADRs and the risk register.
-- **UI design tokens**: `PCLMacCE/Extensions/DesignTokens.swift` defines `Spacing`, `Radius`, `ShadowToken`, `Font.pcl(_:)`/`Font.cardTitle`, and semantic colors (`.danger`). The `My*` components are the token consumption boundary — prefer tokens over raw values in new UI code. The brand palette `Color.color1-8` / `colorGray1-8` (from PCL2-CE, issue #13) is the primitive layer; do not rename it.
+- **UI design tokens**: `PCLMacCE/Extensions/DesignTokens.swift` defines `Spacing`, `Radius`, `ShadowToken`, `Font.app(_:)`/`Font.cardTitle`, and semantic colors (`.danger`). The `My*` components are the token consumption boundary — prefer tokens over raw values in new UI code. `Color.color1-8` / `colorGray1-8` are compatibility slots for the independently maintained Qinglan palette.
 - **UI hints**: `hint()` global function (defined in `PCLMacCE/Managers/HintManager.swift`) shows a floating toast notification.
 - **Shared JSON coders**: `JSONDecoder.shared` / `JSONEncoder.shared` (ISO8601 dates, pretty-printed/sorted-key encoding). Always use these.
 - **Secrets**: Loaded from `Resources/Secrets.properties` or environment variables prefixed `PCLMAC_`. Currently only `CURSE_FORGE_API_KEY`.

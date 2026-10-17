@@ -1,7 +1,7 @@
 [book]
-title = "PCL.Mac 现状架构手册"
+title = "PCL Mac CE 架构手册"
 authors = ["JUANWANG"]
-description = "PCL.Mac v1.1.1（dev 基线）的 as-is 文档：分层架构、全部外部接口契约、鉴权与 Token 链路、持久化模型、风险与死依赖清单"
+description = "PCL Mac CE 的架构、外部接口、鉴权与 Token 链路、持久化模型、风险及历史决策记录"
 language = "zh"
 src = "src"
 

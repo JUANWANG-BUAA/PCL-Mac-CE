@@ -26,6 +26,7 @@
 
 - [游戏启动流程](run/launch-flow.md)
 - [启动器自更新](run/update-flow.md)
+- [发布操作手册](run/release-playbook.md)
 - [配置持久化与 flags](run/persistence.md)
 
 ## 风险
@@ -49,3 +50,4 @@
 - [ADR-011 移除回声洞与联机功能，全面替换上游痕迹](decisions/adr-011-remove-upstream-features.md)
 - [ADR-012 产品更名：PCL.Mac → PCL Mac CE（保留 PCL 前缀）](decisions/adr-012-rename-pcl-mac-ce.md)
 - [ADR-013 上游残留二次清除、质量治理归零与开源工程文档补全](decisions/adr-013-cleanup-quality-docs.md)
+- [ADR-014 独立品牌边界与 macOS 原生视觉](decisions/adr-014-independent-brand-and-design.md)

@@ -78,6 +78,9 @@ swiftlint lint --config .swiftlint.yml --strict
 - `PCLMacCE.Core/LICENSE`（MIT）与 `Resources/licenses/` 三方许可声明；
 - 产品名须保持 `PCL` 前缀 + 第三方标识（`Mac CE`），不得"去 PCL 化"。
 
+本项目由当前维护者独立开发与发行，不是此前 PCL.Mac 项目或其维护团队的延续，也不代表 PCL 官方。
+PCL 来源说明仅用于准确履行许可证与署名要求；品牌视觉、界面和项目支持渠道由本项目独立维护。
+
 ## 维护者
 
 - [@JUANWANG-BUAA](https://github.com/JUANWANG-BUAA)（独立维护）

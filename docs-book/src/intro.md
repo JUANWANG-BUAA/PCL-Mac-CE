@@ -2,10 +2,10 @@
 
 ## 这是什么
 
-PCL Mac CE（原 PCL.Mac）的**现状（as-is）**架构手册。只记录"代码现在是怎么做的"以及"为什么现在是这个样子"，**不包含任何改造设计**。改造方案（自建后端、替换正版登录链路等）另开文档。
+PCL Mac CE 的**现状（as-is）**架构手册。只记录"代码现在是怎么做的"以及"为什么现在是这个样子"，**不包含任何改造设计**。改造方案（自建后端、替换正版登录链路等）另开文档。
 
 > 命名说明：2026-10-15 起产品更名为 **PCL Mac CE**（PCL 前缀保留，符合《PCL 存储库合理使用指南》重度使用条款；见 [ADR-012](decisions/adr-012-rename-pcl-mac-ce.md)）。
-> 手册中历史章节引用的 `PCL.Mac` / `PCL.Mac.Core` 等旧名均指更名前的同一代码库（技术标识今为 `PCLMacCE` / `PCLMacCE.Core`），行号与路径按引用当时的快照理解。
+> 历史章节中的 `PCL.Mac` / `PCL.Mac.Core` 指本项目早期代码与目录名称；这段代码来源不构成项目、维护团队或发行渠道的延续关系。当前产品由 JUANWANG-BUAA 独立维护，技术标识为 `PCLMacCE` / `PCLMacCE.Core`。
 
 ## 版本基线
 
@@ -16,7 +16,7 @@ PCL Mac CE（原 PCL.Mac）的**现状（as-is）**架构手册。只记录"代�
 | 内容树 | `dd27019e2e43eec2edbd172cc74294a91d23b2da` |
 | 等价于 | 上游 `CylorineStudio/PCL.Mac.Refactor` 的 `416cde35`（tree 完全一致，已逐字节校验） |
 | 上游现状 | 已转私有，本机凭据不可读；详见 [ADR-001](decisions/adr-001-baseline.md) |
-| 维护者 | JUANWANG（[github.com/JUANWANG-BUAA](https://github.com/JUANWANG-BUAA)）——原项目停更后接手，持续开发中；与上游的切割边界见 [ADR-008](decisions/adr-008-upstream-detachment.md) |
+| 维护者 | JUANWANG（[github.com/JUANWANG-BUAA](https://github.com/JUANWANG-BUAA)）——独立维护与发行；历史代码来源和品牌边界见 [ADR-008](decisions/adr-008-upstream-detachment.md) 与 [ADR-014](decisions/adr-014-independent-brand-and-design.md) |
 | 规模 | 186 个 Swift 文件（App 93 + Core 84 + 测试 9）/ 约 19.1k 行主代码 |
 
 > 注意：`dev` 与 `main`（停在 v1.1.0）**没有共同祖先**——上游历史在镜像仓库里被从根重写过。文件内容可信，SHA 谱系不可信。
