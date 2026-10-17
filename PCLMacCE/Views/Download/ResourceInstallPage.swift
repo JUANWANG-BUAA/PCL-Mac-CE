@@ -30,10 +30,20 @@ struct ResourceInstallPage: View {
             MyCard(nil) {
                 ProjectListItemView(project: viewModel.project, primary: true)
                 HStack {
-                    MyButton("Modrinth", type: .highlight) {
-                        NSWorkspace.shared.open(WebLinks.modrinthProject(id: viewModel.project.id))
+                    Group {
+                        switch viewModel.project.source {
+                        case .modrinth(let projectId):
+                            MyButton("在 Modrinth 打开", type: .highlight) {
+                                NSWorkspace.shared.open(WebLinks.modrinthProject(id: projectId))
+                            }
+                        case .curseforge(let modId):
+                            MyButton("在 CurseForge 打开", type: .highlight) {
+                                NSWorkspace.shared.open(URL(string: "https://www.curseforge.com/projects/\(modId)")!)
+                            }
+                        }
                     }
-                    .frame(width: 120)
+                    .frame(minWidth: 150)
+                    .fixedSize(horizontal: true, vertical: false)
                     Spacer(minLength: 0)
                 }
                 .frame(height: 35)

@@ -211,8 +211,9 @@ class InstalledResourcesViewModel: ObservableObject {
         let validResources: [(URL, Resource)] = loadResult.lazy
             .filter {
                 searchKeyword.isEmpty
-                || $0.1.name.contains(searchKeyword)
-                || $0.1.description?.contains(searchKeyword) == true
+                || $0.1.name.localizedCaseInsensitiveContains(searchKeyword)
+                || ($0.1.description?.localizedCaseInsensitiveContains(searchKeyword) ?? false)
+                || $0.0.lastPathComponent.localizedCaseInsensitiveContains(searchKeyword)
             }
 
         self.pageCount = validResources.isEmpty ? 0 : Int(ceil(Double(validResources.count) / Double(entriesPerPage)))

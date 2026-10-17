@@ -19,6 +19,12 @@ enum InstallContext: Hashable, Equatable, CustomStringConvertible {
         case .instance(let id): "instance:\(id)"
         }
     }
+
+    /// 是否处于实例定向下载模式。
+    var isInstanceContext: Bool {
+        if case .instance = self { return true }
+        return false
+    }
 }
 
 enum AppRoute: Identifiable, Hashable, Equatable {

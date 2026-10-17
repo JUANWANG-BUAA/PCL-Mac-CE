@@ -72,7 +72,10 @@ struct MinecraftInstallOptionsPage: View {
                             AppRouter.shared.removeLast()
                         }
                     }
-                })
+                }) { _ in
+                    // 任务结束时（无论成功、失败还是取消）都必须复位，否则按钮永久失效
+                    self.isDownloading = false
+                }
                 AppRouter.shared.append(.tasks)
             }
             .padding()
@@ -123,6 +126,13 @@ struct ModLoaderCard: View {
                         MyText(currentLoader.version, color: .colorGray1)
                     } else {
                         MyText(loadState.description, color: .textTertiary)
+                    }
+                    if case .error = loadState {
+                        MyButton("重试") {
+                            loadState = .loading
+                            Task { await loadVersions() }
+                        }
+                        .frame(width: 54, height: 22)
                     }
                 }
                 .padding(.leading, 300)

@@ -10,6 +10,8 @@ import SwiftyJSON
 struct MinecraftDownloadPage: View {
     @EnvironmentObject private var viewModel: MinecraftDownloadPageViewModel
     @StateObject private var loadingModel: MyLoadingViewModel = .init(text: "加载中")
+    /// 版本号关键词过滤；为空时显示全部分类。
+    @State private var versionFilter: String = ""
     private static let dateFormatter: DateFormatter = {
         let formatter: DateFormatter = .init()
         formatter.dateFormat = "yyyy/MM/dd HH:mm"
@@ -19,7 +21,12 @@ struct MinecraftDownloadPage: View {
     var body: some View {
         CardContainer {
             if viewModel.loaded {
-                latestVersionsCard
+                MySearchBox(placeholder: "搜索版本号（如 1.12.2、23w）") { keyword in
+                    versionFilter = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                if versionFilter.isEmpty {
+                    latestVersionsCard
+                }
                 categoryCard(.release)
                     .cardIndex(1)
                 categoryCard(.snapshot)
@@ -33,13 +40,22 @@ struct MinecraftDownloadPage: View {
             }
         }
         .onChange(of: viewModel.errorMessage) { errorMessage in
-            if let errorMessage {
-                loadingModel.fail(with: "加载失败：\(errorMessage)") {
-                    viewModel.reload()
-                }
-            } else {
-                loadingModel.reset()
+            syncLoadingState(errorMessage)
+        }
+        .onAppear {
+            // 页面出现前可能已加载失败：onChange 不会对初始值触发，需显式同步一次
+            syncLoadingState(viewModel.errorMessage)
+        }
+    }
+
+    /// 把 ViewModel 的错误状态同步到加载视图（含重试入口）。
+    private func syncLoadingState(_ errorMessage: String?) {
+        if let errorMessage {
+            loadingModel.fail(with: "加载失败：\(errorMessage)") {
+                viewModel.reload()
             }
+        } else {
+            loadingModel.reset()
         }
     }
 
@@ -60,16 +76,22 @@ struct MinecraftDownloadPage: View {
 
     @ViewBuilder
     func categoryCard(_ category: MinecraftVersion.VersionType) -> some View {
-        let versions: [VersionManifest.Version] = viewModel.versionMap[category] ?? []
-        MyCard("\(category.localizedName)（\(versions.count)）") {
-            LazyVStack(spacing: 0) {
-                ForEach(versions, id: \.id) { version in
-                    VersionView(
-                        version,
-                        description: version.type == .aprilFool
-                            ? viewModel.aprilFoolVersionDescription(version.id)
-                            : Self.dateFormatter.string(from: version.releaseTime)
-                    )
+        let allVersions: [VersionManifest.Version] = viewModel.versionMap[category] ?? []
+        let versions: [VersionManifest.Version] = versionFilter.isEmpty
+            ? allVersions
+            : allVersions.filter { $0.id.localizedCaseInsensitiveContains(versionFilter) }
+        // 过滤时隐藏没有匹配项的分类，避免一屏空白卡片
+        if versionFilter.isEmpty || !versions.isEmpty {
+            MyCard("\(category.localizedName)（\(versions.count)）") {
+                LazyVStack(spacing: 0) {
+                    ForEach(versions, id: \.id) { version in
+                        VersionView(
+                            version,
+                            description: version.type == .aprilFool
+                                ? viewModel.aprilFoolVersionDescription(version.id)
+                                : Self.dateFormatter.string(from: version.releaseTime)
+                        )
+                    }
                 }
             }
         }
