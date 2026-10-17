@@ -105,6 +105,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 try FileManager.default.removeItem(at: url)
             }
         }
+        // 失败下载留下的断点分段超过 14 天后回收（成功前会一直保留以支持续传）
+        executeDetachedTask("清理过期下载分段", silent: true) {
+            FileDownloader.cleanupStalePartFiles(
+                olderThan: 14 * 24 * 3600,
+                in: LauncherConfig.shared.minecraftRepositories.map(\.url)
+            )
+        }
 
         let cacheURL: URL = URLConstants.cacheURL.appending(path: "version_manifest.json")
         if FileManager.default.fileExists(atPath: cacheURL.path) {

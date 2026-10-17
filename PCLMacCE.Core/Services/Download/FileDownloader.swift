@@ -259,4 +259,29 @@ public class FileDownloader {
     public func download(url: URL, destination: URL, sha1: String? = nil, preferMirror: Bool? = nil, progressHandler: (@MainActor (Double) -> Void)? = nil) async throws {
         try await download(.init(url: url, destination: destination, sha1: sha1), preferMirror: preferMirror, progressHandler: progressHandler)
     }
+
+    /// 清理超过指定时长未更新的下载分段文件（`.download` 及其来源标记）。
+    /// 断点续传的分段会一直保留到下次成功下载；失败的下载留下的分段靠本方法回收。
+    public static func cleanupStalePartFiles(olderThan maxAge: TimeInterval, in roots: [URL]) {
+        let cutoff: Date = .now.addingTimeInterval(-maxAge)
+        let fileManager = FileManager.default
+        for root in roots {
+            guard let enumerator = fileManager.enumerator(
+                at: root, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey]
+            ) else { continue }
+            for case let url as URL in enumerator {
+                let path: String = url.lastPathComponent
+                guard path.hasSuffix(".download") || path.hasSuffix(".source") else { continue }
+                guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
+                      values.isRegularFile == true,
+                      let modified = values.contentModificationDate, modified < cutoff else { continue }
+                do {
+                    try fileManager.removeItem(at: url)
+                    log("清理过期下载分段 \(url.lastPathComponent)")
+                } catch {
+                    warn("清理过期下载分段失败：\(error.localizedDescription)")
+                }
+            }
+        }
+    }
 }

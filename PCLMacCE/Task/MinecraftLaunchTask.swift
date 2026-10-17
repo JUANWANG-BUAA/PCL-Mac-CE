@@ -412,10 +412,12 @@ extension MinecraftLaunchTask {
                 log("正在下载 Authlib Injector \(latestArtifact.version)")
             }
             try await FileDownloader.shared.download(downloadItem, progressHandler: task.setProgress(_:))
-        } catch let error as URLError where error.code == .notConnectedToInternet {
-            log("似乎已断开与互联网的连接")
+        } catch let error as URLError {
+            // DNS 失败、超时等所有网络层错误都回退到本地缓存，而不仅是完全断网：
+            // 外置登录账号不应因为网络波动无法启动
+            log("获取 Authlib Injector 失败（\(error.localizedDescription)），尝试使用本地缓存")
             if FileManager.default.fileExists(atPath: authlibInjectorURL.path) {
-                log("尝试使用本地缓存的 Authlib Injector")
+                log("使用本地缓存的 Authlib Injector")
             } else {
                 err("本地缓存中没有 Authlib Injector")
                 throw error
