@@ -68,6 +68,20 @@ public enum FileUtils {
         return try checkFile(at: item.destination, with: checksums)
     }
 
+    /// 校验下载项对应的本地文件，命中校验缓存（size+mtime 未变）时跳过整文件哈希。
+    /// 校验通过会写入缓存；失败会从缓存移除。
+    public static func checkCached(_ item: DownloadItem, using cache: FileVerificationCache) throws -> Bool {
+        guard let checksums = item.checksums else { return true }
+        if cache.isVerified(item.destination) { return true }
+        let passed: Bool = try checkFile(at: item.destination, with: checksums)
+        if passed {
+            cache.markVerified(item.destination)
+        } else {
+            cache.remove(item.destination)
+        }
+        return passed
+    }
+
     public static func isExecutable(at url: URL) -> Bool {
         return Architecture.architecture(of: url) != .unknown
     }

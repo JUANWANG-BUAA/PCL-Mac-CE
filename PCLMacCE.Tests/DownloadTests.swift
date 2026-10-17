@@ -18,6 +18,12 @@ struct DownloadTests {
 
         try await FileDownloader.shared.download(item)
 
+        // 校验缓存按 size+mtime 判定“文件未变更即已验证”。这里改动 mtime 模拟
+        // 文件被外部修改，覆盖“缓存失效后重新哈希并发现校验和不匹配”的路径
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(1)],
+            ofItemAtPath: item.destination.path
+        )
         await #expect(throws: DownloadError.checksumMismatch) {
             try await FileDownloader.shared.download(
                 .init(

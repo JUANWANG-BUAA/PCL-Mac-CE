@@ -9,8 +9,15 @@ public class FileDownloader {
     public static let shared: FileDownloader = {
         let configuration = URLSessionConfiguration.default
         let session = URLSession(configuration: configuration, delegate: DownloadDelegate.shared, delegateQueue: DownloadDelegate.queue)
-        return .init(session: session)
+        let downloader: FileDownloader = .init(session: session)
+        downloader.verificationCache.load()
+        return downloader
     }()
+
+    /// 文件校验缓存：命中（size+mtime 未变）时跳过整文件哈希，显著加快启动前的资源补全。
+    public let verificationCache: FileVerificationCache = .init(
+        fileURL: URLConstants.cacheURL.appending(path: "file-verification.json")
+    )
 
     private let session: URLSession
     private let sourceManager: DownloadSourceManager
@@ -33,8 +40,10 @@ public class FileDownloader {
         progressHandler: (@MainActor (Double) -> Void)? = nil,
         checkDestination: Bool = true
     ) async throws {
+        // 缓存条目在整次下载（含全部重试）结束后统一落盘，避免批量下载时逐文件写 JSON
+        defer { verificationCache.flush() }
         if checkDestination && FileManager.default.fileExists(atPath: file.destination.path) {
-            if try FileUtils.check(file) {
+            if try FileUtils.checkCached(file, using: verificationCache) {
                 debug("文件 \(file.destination.lastPathComponent) 已存在且校验通过，跳过下载")
                 await progressHandler?(1)
                 return
@@ -128,7 +137,7 @@ public class FileDownloader {
 
         // 校验
         if file.checksums != nil {
-            guard try FileUtils.check(file) else {
+            guard try FileUtils.checkCached(file, using: verificationCache) else {
                 // 校验失败时连同分段文件一起清理，避免损坏的分段被再次续传
                 try? FileManager.default.removeItem(at: file.destination)
                 try? FileManager.default.removeItem(at: partURL)
@@ -187,6 +196,8 @@ public class FileDownloader {
         maxConcurrency: Int? = nil,
         progressHandler: (@MainActor (Double) -> Void)? = nil
     ) async throws {
+        // 批量结束后统一写回校验缓存（单文件下载入口已有各自的 defer flush）
+        defer { verificationCache.flush() }
         let total = files.count
         var skipped = 0
 
@@ -195,7 +206,7 @@ public class FileDownloader {
 
         for file in files {
             if FileManager.default.fileExists(atPath: file.destination.path) {
-                if try FileUtils.check(file) {
+                if try FileUtils.checkCached(file, using: verificationCache) {
                     skipped += 1
                     continue
                 }
