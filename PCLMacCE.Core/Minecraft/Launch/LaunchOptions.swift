@@ -16,6 +16,11 @@ public struct LaunchOptions {
     public var mainClass: String!
     public var extraJvmArguments: [String] = []
     public var demo: Bool = false
+    /// 自定义窗口分辨率；宽高任一为 `nil` 时不指定，使用游戏内设置。
+    public var windowWidth: Int?
+    public var windowHeight: Int?
+    /// 启动时是否强制全屏（写入实例 options.txt）。
+    public var fullscreen: Bool = false
 
     // Authlib Injector
     public var authlibInjectorPath: String?

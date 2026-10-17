@@ -351,8 +351,13 @@ public class ClientManifest: Decodable {
                 if name == "is_demo_user" && value != options.demo {
                     return !allow
                 }
+                if name == "has_custom_resolution" {
+                    // 仅当用户为实例设置了自定义分辨率时启用
+                    let hasCustomResolution: Bool = options.windowWidth != nil && options.windowHeight != nil
+                    if value != hasCustomResolution { return !allow }
+                    continue
+                }
                 if [
-                    "has_custom_resolution",
                     "has_quick_plays_support",
                     "is_quick_play_singleplayer",
                     "is_quick_play_multiplayer",

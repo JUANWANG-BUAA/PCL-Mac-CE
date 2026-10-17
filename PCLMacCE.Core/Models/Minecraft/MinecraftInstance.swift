@@ -43,13 +43,28 @@ public class MinecraftInstance: Hashable, Identifiable, Equatable {
         public var jvmHeapSize: UInt64
         public var javaURL: URL?
         public var jvmArguments: [String]
+        /// 自定义游戏窗口宽度；与高度同时有值时才生效，否则使用游戏内设置。
+        public var windowWidth: Int?
+        public var windowHeight: Int?
+        /// 启动时强制全屏（写入 options.txt 的 fullscreen 项）。
+        public var fullscreen: Bool
 
         public static let `default`: Config = .init(jvmHeapSize: 4096, javaURL: nil)
 
-        public init(jvmHeapSize: UInt64, javaURL: URL?, jvmArguments: [String] = []) {
+        public init(
+            jvmHeapSize: UInt64,
+            javaURL: URL?,
+            jvmArguments: [String] = [],
+            windowWidth: Int? = nil,
+            windowHeight: Int? = nil,
+            fullscreen: Bool = false
+        ) {
             self.jvmHeapSize = jvmHeapSize
             self.javaURL = javaURL
             self.jvmArguments = jvmArguments
+            self.windowWidth = windowWidth
+            self.windowHeight = windowHeight
+            self.fullscreen = fullscreen
         }
 
         public init(from decoder: any Decoder) throws {
@@ -57,6 +72,20 @@ public class MinecraftInstance: Hashable, Identifiable, Equatable {
             self.jvmHeapSize = try container.decode(UInt64.self, forKey: .jvmHeapSize)
             self.javaURL = try container.decodeIfPresent(URL.self, forKey: .javaURL)
             self.jvmArguments = try container.decodeIfPresent([String].self, forKey: .jvmArguments) ?? []
+            // 旧版本配置文件没有以下字段：缺省表示跟随游戏内设置
+            self.windowWidth = try container.decodeIfPresent(Int.self, forKey: .windowWidth)
+            self.windowHeight = try container.decodeIfPresent(Int.self, forKey: .windowHeight)
+            self.fullscreen = try container.decodeIfPresent(Bool.self, forKey: .fullscreen) ?? false
+        }
+
+        /// 自定义分辨率；宽高任一缺失或非法时为 nil。
+        public var customResolution: (width: Int, height: Int)? {
+            guard let windowWidth, let windowHeight,
+                  windowWidth >= 320, windowHeight >= 240,
+                  windowWidth <= 7680, windowHeight <= 4320 else {
+                return nil
+            }
+            return (windowWidth, windowHeight)
         }
     }
 }

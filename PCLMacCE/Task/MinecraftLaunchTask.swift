@@ -538,6 +538,9 @@ extension MinecraftLaunchTask {
             self.options.repository = repository
             self.options.memory = instance.config.jvmHeapSize
             self.options.extraJvmArguments = instance.config.jvmArguments
+            self.options.windowWidth = instance.config.customResolution?.width
+            self.options.windowHeight = instance.config.customResolution?.height
+            self.options.fullscreen = instance.config.fullscreen
         }
     }
 }

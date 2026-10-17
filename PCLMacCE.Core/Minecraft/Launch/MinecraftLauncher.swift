@@ -40,12 +40,18 @@ public class MinecraftLauncher {
             "version_type": "PCLMacCE",
             "user_properties": "{}"
         ]
+        // 自定义分辨率：has_custom_resolution 规则通过时才注入对应参数
+        if let width = options.windowWidth, let height = options.windowHeight {
+            values["resolution_width"] = String(width)
+            values["resolution_height"] = String(height)
+        }
     }
 
     /// 启动 Minecraft。
     /// - Returns: 游戏进程。
     public func launch() throws -> Process {
         values["classpath"] = buildClasspath()
+        applyFullscreenSetting()
         let process: Process = .init()
         process.executableURL = options.javaRuntime.executableURL
         process.currentDirectoryURL = runningDirectory
@@ -99,6 +105,29 @@ public class MinecraftLauncher {
             }
         }
         return process
+    }
+
+    /// 把实例的全屏设置写回 `options.txt`（保留文件中的其他选项）。
+    /// 游戏启动时读取该文件决定初始窗口状态；仅在设置与文件不一致时写入。
+    private func applyFullscreenSetting() {
+        let optionsURL: URL = runningDirectory.appending(path: "options.txt")
+        let desired: Bool = options.fullscreen
+        var lines: [String] = []
+        if let content = try? String(contentsOf: optionsURL, encoding: .utf8) {
+            lines = content.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        }
+        let newLine: String = "fullscreen:\(desired)"
+        if let index = lines.firstIndex(where: { $0.hasPrefix("fullscreen:") }) {
+            guard lines[index] != newLine else { return }
+            lines[index] = newLine
+        } else {
+            lines.append(newLine)
+        }
+        do {
+            try lines.joined(separator: "\n").write(to: optionsURL, atomically: true, encoding: .utf8)
+        } catch {
+            warn("写入全屏设置失败：\(error.localizedDescription)")
+        }
     }
 
     private func buildClasspath() -> String {

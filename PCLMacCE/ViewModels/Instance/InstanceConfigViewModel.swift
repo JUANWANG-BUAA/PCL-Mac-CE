@@ -98,6 +98,32 @@ class InstanceConfigViewModel: ObservableObject {
         scheduleSave()
     }
 
+    /// 设置自定义窗口分辨率；任一参数为 nil 时恢复为跟随游戏内设置。
+    @MainActor
+    public func setWindowSize(width: Int?, height: Int?) {
+        guard let instance else { return }
+        // 限制在合理范围，避免误输入导致窗口不可用
+        if let width, let height {
+            let clampedWidth: Int = min(max(width, 320), 7680)
+            let clampedHeight: Int = min(max(height, 240), 4320)
+            instance.config.windowWidth = clampedWidth
+            instance.config.windowHeight = clampedHeight
+        } else {
+            instance.config.windowWidth = nil
+            instance.config.windowHeight = nil
+        }
+        instance.markDirty()
+        scheduleSave()
+    }
+
+    @MainActor
+    public func setFullscreen(_ enabled: Bool) {
+        guard let instance else { return }
+        instance.config.fullscreen = enabled
+        instance.markDirty()
+        scheduleSave()
+    }
+
     @MainActor
     public func switchJava(to runtime: JavaRuntime) throws {
         guard let instance else { return }

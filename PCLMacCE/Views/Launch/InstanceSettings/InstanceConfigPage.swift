@@ -12,10 +12,19 @@ struct InstanceConfigPage: View {
     @StateObject private var loadingVM: MyLoadingViewModel = .init(text: "加载中")
     /// 补装加载器时选择的加载器与版本。
     @State private var selectedLoader: MinecraftInstallTask.Loader?
+    /// 窗口分辨率输入框的文本值（空字符串表示跟随游戏设置）。
+    @State private var windowWidth: String = ""
+    @State private var windowHeight: String = ""
+    @State private var fullscreen: Bool = false
 
     init(instanceManager: InstanceManager, id: String) {
         self._viewModel = .init(wrappedValue: .init(instanceManager: instanceManager, id: id))
         self._instanceVM = .init(wrappedValue: InstanceViewModel(instanceManager: instanceManager))
+        let instance = instanceManager.currentRepository.instance(named: id)
+            ?? instanceManager.repositories.values.compactMap { $0.instance(named: id) }.first
+        self._windowWidth = .init(initialValue: instance?.config.windowWidth?.description ?? "")
+        self._windowHeight = .init(initialValue: instance?.config.windowHeight?.description ?? "")
+        self._fullscreen = .init(initialValue: instance?.config.fullscreen ?? false)
     }
 
     var body: some View {
@@ -63,10 +72,51 @@ struct InstanceConfigPage: View {
             .cardIndex(1)
             jvmCard
                 .cardIndex(2)
-            modLoaderCard
+            windowCard
                 .cardIndex(3)
+            modLoaderCard
+                .cardIndex(4)
         }
         .onDisappear { viewModel.savePendingChanges() }
+    }
+
+    /// 游戏窗口设置：自定义分辨率与全屏。
+    @ViewBuilder
+    private var windowCard: some View {
+        MyCard("游戏窗口", foldable: false) {
+            configLine(label: "分辨率") {
+                MyTextField(text: $windowWidth, placeholder: "宽度")
+                    .frame(width: 90)
+                    .onChange(of: windowWidth) { _ in applyWindowSize() }
+                MyText("×")
+                MyTextField(text: $windowHeight, placeholder: "高度")
+                    .frame(width: 90)
+                    .onChange(of: windowHeight) { _ in applyWindowSize() }
+                MyButton("跟随游戏设置") {
+                    windowWidth = ""
+                    windowHeight = ""
+                    viewModel.setWindowSize(width: nil, height: nil)
+                }
+                .frame(width: 110)
+            }
+            configLine(label: "启动全屏") {
+                MyComboBox(checked: $fullscreen, text: "启动游戏时强制全屏（重启游戏后生效）")
+                    .onChange(of: fullscreen) { newValue in
+                        viewModel.setFullscreen(newValue)
+                    }
+            }
+        }
+    }
+
+    private func applyWindowSize() {
+        let width: Int? = windowWidth.isEmpty ? nil : Int(windowWidth)
+        let height: Int? = windowHeight.isEmpty ? nil : Int(windowHeight)
+        // 只在宽高都有效时写入；输入过程中不打断用户
+        if let width, let height {
+            viewModel.setWindowSize(width: width, height: height)
+        } else if windowWidth.isEmpty && windowHeight.isEmpty {
+            viewModel.setWindowSize(width: nil, height: nil)
+        }
     }
 
     /// 补装 / 更换 Mod 加载器。
