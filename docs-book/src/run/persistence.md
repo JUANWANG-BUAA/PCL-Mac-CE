@@ -4,11 +4,12 @@
 
 | 层 | 位置 | 内容 |
 |---|---|---|
-| 全局配置 | `~/Library/Application Support/PCL.Mac.Refactor/config.json` | 15 个字段，含**明文账号令牌** |
+| 全局配置 | `~/Library/Application Support/PCLMacCE/config.json` | 启动器设置与账号元数据，不含账号令牌 |
 | 实例级 | 每个版本目录下的 `.clconfig.json` + `.clmetadata.json` | 该实例的 JVM/Java/参数 + uuid/version |
-| 密钥 | `.app` 内 `Contents/Resources/Secrets.properties`，或环境变量 | CurseForge API Key |
+| 账号令牌 | macOS Keychain；Keychain 不可用时为 `config.tokens.json` | 文件应急路径权限为 `0600`，仍是明文 |
+| 应用密钥 | `Secrets.local.properties`、环境变量或注释模板 | CurseForge Key 不由 CI 注入、不随发行包配置 |
 
-**没有数据库、没有钥匙串、没有 UserDefaults**（全项目零 `UserDefaults` 使用，配置统一走自己的 JSON）。
+**没有数据库，也没有 `UserDefaults` 使用**；设置保存在 JSON，账号凭据由 Keychain 保存。
 
 ## `LauncherConfig` 全部字段
 
@@ -25,10 +26,13 @@
 | `launchCount: Int` | 0 | 正版劝导弹窗阈值 | 56,84 |
 | `hasEnteredLauncher: Bool` | false | — | 57,85 |
 | `ignoreLauncherUpdates: Bool` | false | "不再提示" | 59,87 |
+| `autoInstallLauncherUpdates: Bool` | true | 下载后自动安装更新 | — |
+| `downloadConcurrency: Int?` | nil | 下载并发上限；nil 跟随下载源建议 | — |
 | `downloadSourcePolicy` | `.officialFirst` | 镜像策略 | 60,88 |
 | `homepageType` | `.empty`（可选 `.demo`） | 主页类型（#215） | 61,89,136-145 |
 | `enabledFlags: Set<FeatureFlag>?` | nil → 用 flags 默认 | 实验开关 | 62,90,109 |
 | `customJavaRuntimes: [URL]` | `[]` | 手动添加的 Java（#243） | 63,91 |
+| `theme: AppTheme` | `.classic` | 当前外观主题 | — |
 
 编码时只有 `enabledFlags` 用 `encodeIfPresent`，其余恒编（`:94-111`）；`CodingKeys` 在 `:118-134`。
 
@@ -36,16 +40,15 @@
 
 | 动作 | 位置 | 现状 |
 |---|---|---|
-| 读 | `LauncherConfig.swift:12-44` | 首次访问 `shared` 时惰性加载；文件不存在则建默认并 save（`:15-24`） |
-| 解码失败 | `:28-43` | 先 `copyItem` 到 `config.bak.json`（先删旧备份，`:31-38`，路径 `:46`）→ 置 `loadError` → **落默认配置并覆盖写**（`:40-42`）；启动时弹窗告知（`AppDelegate.swift:145-151`） |
-| 写 | `App/AppDelegate.swift:183-186` | **唯一 save 调用点在 `applicationWillTerminate`**；写之前先回灌 `enabledFlags` |
-| 实例保存 | `AppDelegate.swift:180-181` → `InstanceManager.saveAllInstances` | 退出时批量写 `.clconfig.json` |
+| 读 | `App/LauncherConfig.swift` | 首次访问 `shared` 时惰性加载；解码后恢复 Keychain/应急令牌，并迁移旧版 JSON 中的明文令牌 |
+| 解码失败 | 同上 | 先将原文件原子备份到 `config.bak.json`；备份失败时阻止自动覆盖，备份成功后才恢复默认配置 |
+| 写 | `LauncherConfig.save()` | 账号变更、设置变更和令牌刷新后即时写入；应用退出时再次保存配置 |
+| 实例保存 | `AppDelegate.applicationWillTerminate` → `InstanceManager.saveAllInstances` | 退出时批量写 `.clconfig.json` |
 
 ### 这条设计的现实后果
 
-1. 运行期所有字段修改都只在内存（Combine 同步仓库 `:126-137`；`homepageType`/`downloadSourcePolicy` 在 `Views/Settings/LauncherSettingsPage.swift:25-26,38`；`ignoreLauncherUpdates` 在 `Services/UpdateService.swift:56`；`launchCount` 在 `Task/MinecraftLaunchTask.swift:317`）。
-2. **崩溃或强杀 = 本次会话的全部设置与登录丢失**。
-3. **单个账号解码失败会连带丢全部账号**：`:28-43` 是整体解码，例如某个 `YggdrasilAccount.authServerURL` 解析不出来（`Core/Models/Account/YggdrasilAccount.swift:14`）→ 整个 `config.json` 判为损坏 → 写空配置覆盖，且 `try? save`（`:41`）吞掉写盘错误。备份文件是唯一的救济。
+1. 会调用保存入口的账号、主题、更新和下载设置会立即写盘；其他运行期状态在保存前仍可能仅驻留内存。
+2. 整个配置作为一个 JSON 解码，单个账号字段格式错误仍可能令整份配置加载失败；应用会先保全原文件，且备份失败时禁止自动覆盖。
 
 ## 实例级配置
 

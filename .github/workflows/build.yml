@@ -24,8 +24,6 @@ on:
         type: boolean
         default: true
     secrets:
-      CURSE_FORGE_API_KEY:
-        required: false
       MACOS_CERTIFICATE:
         required: false
       MACOS_CERTIFICATE_PASSWORD:
@@ -60,12 +58,6 @@ jobs:
           test -n "$SIGNING_IDENTITY" || { echo "Missing MACOS_SIGNING_IDENTITY" >&2; exit 1; }
           test -n "$SIGNING_TEAM" || { echo "Missing MACOS_SIGNING_TEAM" >&2; exit 1; }
 
-      - name: Generate Secrets.properties
-        run: |
-          cat > ./Resources/Secrets.properties <<'EOF'
-          CURSE_FORGE_API_KEY=${{ secrets.CURSE_FORGE_API_KEY }}
-          EOF
-
       - name: Import codesign cert
         if: ${{ inputs.build_configuration == 'Release' }}
         uses: apple-actions/import-codesign-certs@v7
@@ -81,6 +73,7 @@ jobs:
             -scheme PCLMacCE
             -configuration "${{ inputs.build_configuration }}"
             CURRENT_PROJECT_VERSION=$BUILD_NUMBER
+            ARCHS=arm64
             -archivePath build
           )
 

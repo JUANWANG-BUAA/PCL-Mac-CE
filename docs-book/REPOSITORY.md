@@ -30,13 +30,13 @@
 
 ## 当前验证证据
 
-- 2026-10-17，Apple Silicon M5 Pro / macOS 27.0.1：完整 XCTest 套件 **53/53 通过**，包含真实 CurseForge 搜索、项目文件和必需依赖链请求；严格 SwiftLint 与 `git diff --check` 通过。
-- 发布离线门禁 **23/23 通过**；新增 `ResourceSearchTests` 覆盖文件对目标 Minecraft 版本与加载器的兼容判断，并已纳入 PR 与 Release 工作流。PR 路径筛选现包含 `PCLMacCE.Tests/**`。
-- Release 配置成功归档，`1.2.0` App 包含 arm64 与 x86_64 可执行切片。该归档没有 Developer ID Team 签名，不能公证或对外分发。
-- 未完成真实 UI 窗口操作、微软/Yggdrasil 登录、客户端下载与游戏启动；macOS 12/14 实机兼容性也未验收。Intel 实机已降为非阻塞项，Universal 构建切片仍保留。
+- 2026-10-17，Apple Silicon / macOS 27.0.1：最新完整测试套件 **65/65 通过**；Mojang 元数据、Modrinth、下载和上游安装器在线用例通过。CurseForge 在线用例未设置本机测试 Key，另一次带 Key 的在线依赖链验收记录见上文。
+- Release/PR 离线筛选集 **48/48 通过**，覆盖启动参数、下载续传、哈希/校验缓存、安装事务、更新器与配置；严格 SwiftLint、Release arm64 无签名归档、工作流 YAML/shell 语法检查和 `git diff --check` 通过。
+- 之前的 Release 配置曾归档 `1.2.0`，包含 arm64 与 x86_64 可执行切片；工作流现在固定为 arm64。已有归档没有 Developer ID Team 签名，不能公证或对外分发。
+- 未完成真实 UI 窗口操作、微软/Yggdrasil 登录、客户端下载与游戏启动；macOS 12/14 实机兼容性也未验收。Intel 不在本次发行目标范围。
 
 ## 发布判断
 
 **仍不建议公开发布安装包，包括 `0.1 α`。** 项目独立版本基线为 `1.2.0`；`release.yml` 固定按此版本创建 `v1.2.0` 草稿，没有 α 预发布流程。仓库还保留历史 `v0.1.x` 标签，因此使用 `0.1` 会与历史版本和现行版本序列混淆。若要邀请用户测试，建议以 `1.2.0-alpha.1` 标记预发布并调整工作流；应用内更新不会发现预发布，测试者需手动下载。
 
-当前 Mac 没有有效 Apple Developer ID 签名身份，GitHub Release Secrets 列表也为空；因此只能生成本地未签名归档，无法公证、创建可验证的 Draft Release 或公开分发。完整测试与在线依赖 API 验收虽已通过，仍需完成 UI/下载/启动验收和 macOS 12/14 兼容性检查。Intel 实机测试不作为本轮发布门槛。
+GitHub Release Secrets 列表为空；因此 Release 工作流目前会在签名凭据检查阶段停止，无法公证、创建 Draft Release 或公开分发。完整测试与在线依赖 API 验收虽已通过，仍需完成 Apple 芯片上的 UI/下载/启动验收和 macOS 12/14 兼容性检查。Intel 不在本轮发布门槛内。

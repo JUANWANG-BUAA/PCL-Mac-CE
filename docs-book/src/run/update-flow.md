@@ -16,4 +16,4 @@ ZIP 在独立临时目录解压。安装前检查内部 `PCLMacCE.app` 的 Bundl
 
 ## 发布前条件
 
-GitHub Actions Release 构建要求签名证书、证书密码、签名身份和 Team ID；公证还要求 Apple ID 与 app 专用密码。缺少这些仓库 Secrets 时，工作流会失败，不应发布未签名或未经公证的安装包。CI 的离线测试不能替代 Intel 与 Apple 芯片上的真实安装、登录和游戏启动验收。
+GitHub Actions Release 构建要求签名证书、证书密码、签名身份和 Team ID；公证还要求 Apple ID 与 app 专用密码。缺少这些仓库 Secrets 时，工作流会失败，不应发布未签名或未经公证的安装包。CI 的离线测试不能替代 Apple 芯片 Mac 上的真实安装、登录和游戏启动验收。

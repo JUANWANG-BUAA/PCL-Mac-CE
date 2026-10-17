@@ -36,6 +36,11 @@ public class MinecraftLauncher {
             "auth_access_token": options.accessToken,
             "access_token": options.accessToken,
             "auth_session": options.accessToken,
+            // Mojang manifests include these for authenticated launchers, but the Minecraft profile
+            // response does not provide an XUID. Empty values are supported; unresolved placeholders
+            // would otherwise be passed literally to the game.
+            "clientid": "",
+            "auth_xuid": "",
             "user_type": "msa",
             "version_type": "PCLMacCE",
             "user_properties": "{}"
@@ -69,7 +74,7 @@ public class MinecraftLauncher {
         }
         arguments.append(options.mainClass)
         arguments.append(contentsOf: manifest.gameArguments.flatMap { $0.rules.allSatisfy { $0.test(with: options) } ? $0.value : [] })
-        arguments = arguments.map { $0.replacingPlaceholders(with: values) }
+        arguments = resolveArguments(arguments)
         process.arguments = arguments
 
         let pipe: Pipe = .init()
@@ -105,6 +110,10 @@ public class MinecraftLauncher {
             }
         }
         return process
+    }
+
+    func resolveArguments(_ arguments: [String]) -> [String] {
+        return arguments.map { $0.replacingPlaceholders(with: values) }
     }
 
     /// 把实例的全屏设置写回 `options.txt`（保留文件中的其他选项）。

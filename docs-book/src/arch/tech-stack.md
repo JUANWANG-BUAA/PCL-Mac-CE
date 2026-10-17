@@ -7,7 +7,7 @@
 | 语言模式 | **Swift 5**（`SWIFT_VERSION = 5.0`） | `PCL.Mac.xcodeproj/project.pbxproj` 各 buildSettings |
 | UI | SwiftUI 为主 + AppKit 混用（`NSWorkspace`、`NSApplication`、`NSOpenPanel`、`NSWindowDelegate`、`SecureField`） | `App/AppWindow.swift`、`App/AppDelegate.swift` |
 | 最低系统 | App 与 Core 均 `MACOSX_DEPLOYMENT_TARGET = 12.0`；测试 target 14.0 | 同上 |
-| 架构 | Universal（Intel + Apple Silicon）；运行时按 `Architecture.systemArchitecture()` 分派 | `Core/Utils/Architecture.swift` |
+| 架构 | 发包与 CI 目标为 Apple Silicon `arm64`；本地 Java 搜索仍能识别 arm64、x86_64 与 Universal 二进制 | `PCLMacCE.Core/Utils/Architecture.swift`、`.github/workflows/build.yml` |
 | 签名 | `CODE_SIGN_STYLE = Automatic`（本地）；CI Release 改 Manual + `ENABLE_HARDENED_RUNTIME=YES` | `.github/workflows/build.yml:74-84` |
 | 公证 | `notarytool` + `MACOS_NOTARY_APPLE_ID/PASSWORD/TEAM_ID` | `.github/workflows/release.yml:44-48` |
 | 本机实测 | Xcode 27 / macOS 27 上 `xcodebuild` **编译通过，0 error**，5 类代码告警 | 见[风险章](../risk/security-findings.md) |
@@ -18,7 +18,7 @@
 
 | 字段 | 来源 | 值 |
 |---|---|---|
-| `MARKETING_VERSION` | `Configs/Base.xcconfig:1` | `1.1.1` |
+| `MARKETING_VERSION` | `Configs/Base.xcconfig:1` | `1.2.0` |
 | `CURRENT_PROJECT_VERSION` | `Configs/Base.xcconfig:2` | **`0`** |
 | `DebugMode` | `Configs/Debug.xcconfig:2` → `Info.plist:4-5` | Debug 配置为 `YES`，Release 为 `NO` |
 | CI 实际 build number | `.github/workflows/build.yml:66-71` | 命令行覆盖成 `BUILD_NUMBER`（GitHub run 号） |
@@ -44,7 +44,7 @@
 
 ## 持久化与网络
 
-- **无数据库**，**无 Keychain**。全部是文件 JSON：`config.json` + 每实例的 `.clconfig.json` / `.clmetadata.json`。见[配置持久化](../run/persistence.md)。
+- **无数据库**。设置使用 JSON，账号凭据正常情况下使用 macOS Keychain；Keychain 不可用时写入 `0600` 应急文件。见[配置持久化](../run/persistence.md)。
 - 网络：`URLSession`。API 请求用 `URLSession.shared`（`Core/Utils/HTTPClient.swift:129`），下载用自建 session（`Core/Services/Download/FileDownloader.swift:11-15`）。
 - 编码：`JSONEncoder.shared` / `JSONDecoder.shared`（`Core/Extensions/JSONCoder+Shared.swift`），ISO8601 + 无排序 key。
 
@@ -52,9 +52,9 @@
 
 | 项 | 位置 | 现状 |
 |---|---|---|
-| CurseForge API Key | `Resources/Secrets.properties`，键 `CURSE_FORGE_API_KEY` | 仓库内是**全注释模板**，无真实值；CI 用 heredoc 写入（`build.yml:50-53`，#204 修的就是变量被提前展开） |
+| CurseForge API Key | `Secrets.local.properties` / 环境变量 / 包内模板 | 仓库内仅有注释模板；设置页本地文件权限为 `0600`；CI 不注入，Release 工作流会检查产物 |
 | 环境变量优先 | `App/Secrets.swift:30` | `PCLMAC_CURSE_FORGE_API_KEY` 优先于文件 |
-| 打包方式 | `project.pbxproj:100-103` | `Resources` 作为同步根组整体进 bundle → **该文件会被拷进 `.app` 内**，任何人可从成品 app 里读出 key |
+| 打包方式 | `PCLMacCE.xcodeproj/project.pbxproj` | 资源模板进入 bundle，但真实 Key 不进入模板或发行包 |
 | 微软 client ID | `Core/Services/MicrosoftAuthService.swift` | 缺省为 Prism 公共 ID，可用 `Secrets.properties` / `PCLMAC_MS_CLIENT_ID` 覆盖（见 ADR-010） |
 | ATS | `PCL.Mac/Info.plist:6-10` | `NSAllowsArbitraryLoads = true` |
 | 沙盒 | `PCL.Mac/PCL_Mac.entitlements` | 只有 `app-sandbox = false` 与 `audio-input = true` |
@@ -65,7 +65,7 @@
 
 | 文件 | 触发 | 作用 |
 |---|---|---|
-| `build.yml` | 被复用（workflow_call） | 生成 Secrets.properties → 导入证书（仅 Release）→ `xcodebuild archive` → ditto 打包上传 artifact |
+| `build.yml` | 被复用（workflow_call） | arm64 `xcodebuild archive` → 导入证书（仅 Release）→ ditto 打包上传 artifact；不注入 CurseForge Key |
 | `release.yml` | `workflow_dispatch` | 调 build.yml → 下载 artifact → notarytool 公证 → 建 GitHub Release（含 DMG，#189） |
 | `test.yml` | push/PR | 跑 `PCL.Mac.Tests`（注意有会打真实网络的用例） |
 | `pr-test.yml` | PR | 复用 build.yml 做编译验证 |

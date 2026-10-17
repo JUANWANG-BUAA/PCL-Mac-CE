@@ -17,7 +17,7 @@ PCL Mac CE 是基于 [Plain Craft Launcher（PCL）](https://github.com/Meloong-
 
 项目发布页：[PCL Mac CE Releases](https://github.com/JUANWANG-BUAA/PCL-Mac-CE/releases)。首个版本尚未正式发布；正式下载仅以该页面的签名、公证安装包为准。
 
-维护者下一步应配置 Apple 签名与公证凭据、运行发布工作流生成草稿、在 Intel 和 Apple 芯片上验收安装包，再公开发布。操作步骤和检查项见[发布操作手册](docs-book/src/run/release-playbook.md)。首版暂保持 1.2.0，完成验收前不发布正式版本。
+维护者下一步应配置 Apple 签名与公证凭据、运行发布工作流生成草稿，并在 Apple 芯片 Mac 上验收安装包后再公开发布。操作步骤和检查项见[发布操作手册](docs-book/src/run/release-playbook.md)。首版暂保持 1.2.0，完成验收前不发布正式版本。
 
 ## 环境要求
 
@@ -26,7 +26,7 @@ PCL Mac CE 是基于 [Plain Craft Launcher（PCL）](https://github.com/Meloong-
 | 普通使用 |       macOS 12.0        | macOS 14.0+ |
 |   开发   | macOS 14.5 (Xcode 16) |      —      |
 
-同时支持 Intel 与 Apple 芯片。
+当前 CI 与发行包目标为 Apple 芯片（arm64）。
 
 ## 许可证
 - PCL Mac CE 使用与 [PCL](https://github.com/Meloong-Git/PCL) 相同的许可证（见 `LICENSE`），并遵守其中关于“重度使用”的规定：关于页首位保留龙腾猫跃署名与赞助链接，已实现 Minecraft 正版购买劝导，名称以 PCL 开头并带第三方标识（Mac CE）。

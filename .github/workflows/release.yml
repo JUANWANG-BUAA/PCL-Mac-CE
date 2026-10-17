@@ -6,9 +6,42 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  preflight:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Validate release branch and version tag
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          SIGNING_TEAM: ${{ secrets.MACOS_SIGNING_TEAM }}
+          NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/dev" || { echo "Release workflow must run from dev." >&2; exit 1; }
+          VERSION_NUMBER=$(grep '^MARKETING_VERSION' Configs/Base.xcconfig | cut -d '=' -f2 | xargs)
+          [[ "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "MARKETING_VERSION must be stable X.Y.Z." >&2; exit 1; }
+          TAG_NAME="v$VERSION_NUMBER"
+          EXISTING_TAGS=$(git ls-remote --tags origin "refs/tags/$TAG_NAME" "refs/tags/$TAG_NAME^{}")
+          test -z "$EXISTING_TAGS" || { echo "Tag $TAG_NAME already exists; bump MARKETING_VERSION before releasing." >&2; exit 1; }
+          test -n "$CERTIFICATE" || { echo "Missing MACOS_CERTIFICATE" >&2; exit 1; }
+          test -n "$CERTIFICATE_PASSWORD" || { echo "Missing MACOS_CERTIFICATE_PASSWORD" >&2; exit 1; }
+          test -n "$SIGNING_IDENTITY" || { echo "Missing MACOS_SIGNING_IDENTITY" >&2; exit 1; }
+          test -n "$SIGNING_TEAM" || { echo "Missing MACOS_SIGNING_TEAM" >&2; exit 1; }
+          test -n "$NOTARY_APPLE_ID" || { echo "Missing MACOS_NOTARY_APPLE_ID" >&2; exit 1; }
+          test -n "$NOTARY_PASSWORD" || { echo "Missing MACOS_NOTARY_PASSWORD" >&2; exit 1; }
+
   offline_tests:
     runs-on: macos-26
+    needs: preflight
     steps:
       - uses: actions/checkout@v6
       - name: Run offline regression tests (no Java or game launch)
@@ -19,13 +52,23 @@ jobs:
             -only-testing:PCLMacCE.Tests/UUIDUtilsTest \
             -only-testing:PCLMacCE.Tests/MinecraftVersionTests \
             -only-testing:PCLMacCE.Tests/ClientManifestTests \
+            -only-testing:PCLMacCE.Tests/MinecraftLaunchArgumentTests \
             -only-testing:PCLMacCE.Tests/MyTaskTests \
             -only-testing:PCLMacCE.Tests/LauncherConfigPersistenceTests \
             -only-testing:PCLMacCE.Tests/ModpackPathTests \
             -only-testing:PCLMacCE.Tests/AuditRegressionTests \
-            -only-testing:PCLMacCE.Tests/ResourceSearchTests
+            -only-testing:PCLMacCE.Tests/ResourceSearchTests \
+            -only-testing:PCLMacCE.Tests/InstallationTransactionTests \
+            -only-testing:PCLMacCE.Tests/ResourceHashCacheTests \
+            -only-testing:PCLMacCE.Tests/FileVerificationCacheTests \
+            -only-testing:PCLMacCE.Tests/UpdateModelTests \
+            -only-testing:PCLMacCE.Tests/CrashAnalyzerTests \
+            -only-testing:PCLMacCE.Tests/JavaCompatibilityTests \
+            -only-testing:PCLMacCE.Tests/WindowSettingsTests \
+            -only-testing:PCLMacCE.Tests/DownloadTests/resumesFromPersistedPartAfterInterruptedResponse
 
   build:
+    needs: preflight
     uses: ./.github/workflows/build.yml
     with:
       build_configuration: Release
@@ -55,20 +98,29 @@ jobs:
           path: ./artifact
           skip-decompress: true
 
-      - name: Check release credentials
+      - name: Validate release artifact
         env:
-          NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
-          NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
-          SIGNING_TEAM: ${{ secrets.MACOS_SIGNING_TEAM }}
-        run: |
-          test -n "$NOTARY_APPLE_ID"
-          test -n "$NOTARY_PASSWORD"
-          test -n "$SIGNING_TEAM"
-      
-      - name: Notarize app
+          EXPECTED_VERSION: ${{ env.VERSION_NUMBER }}
+          EXPECTED_TEAM_ID: ${{ secrets.MACOS_SIGNING_TEAM }}
         run: |
           ditto -x -k ./artifact/PCLMacCE-artifact.zip ./artifact
-          
+          APP="./artifact/PCLMacCE.app"
+          test -d "$APP"
+          test -d "./artifact/build.xcarchive"
+          test -f "$APP/Contents/Resources/Secrets.properties"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = "io.github.juanwang-buaa.pclmacce"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")" = "$EXPECTED_VERSION"
+          test "$(/usr/bin/lipo -archs "$APP/Contents/MacOS/PCLMacCE")" = "arm64"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          TEAM_ID=$(codesign -dv --verbose=4 "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+          test "$TEAM_ID" = "$EXPECTED_TEAM_ID"
+          if grep -Eq '^[[:space:]]*CURSE_FORGE_API_KEY[[:space:]]*=[[:space:]]*[^#[:space:]]' "$APP/Contents/Resources/Secrets.properties"; then
+            echo "A CurseForge API key must not be embedded in the distributable app." >&2
+            exit 1
+          fi
+
+      - name: Notarize app
+        run: |
           ditto -c -k --sequesterRsrc --keepParent ./artifact/PCLMacCE.app ./PCLMacCE.zip
           xcrun notarytool submit "./PCLMacCE.zip" \
             --apple-id "${{ secrets.MACOS_NOTARY_APPLE_ID }}" \
@@ -100,6 +152,11 @@ jobs:
       - name: Generate SHA-256 checksums
         run: |
           shasum -a 256 "PCLMacCE-${{ env.TAG_NAME }}.zip" "PCLMacCE-${{ env.TAG_NAME }}.dmg" > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+          hdiutil verify "PCLMacCE-${{ env.TAG_NAME }}.dmg"
+          ZIP_ENTRIES=$(unzip -Z1 "PCLMacCE-${{ env.TAG_NAME }}.zip")
+          [[ "$ZIP_ENTRIES" == *"PCLMacCE.app/Contents/Info.plist"* ]]
+          [[ "$ZIP_ENTRIES" != *"PCLMacCE-artifact/"* ]]
       
       - name: Create release
         run: |

@@ -1,48 +1,41 @@
 # Token 存储与生命周期
 
-这一章集中回答"关键请求 token 到底在哪"。**结论先行：全部明文存在一个 JSON 文件里，没有钥匙串。**
+这一章集中回答关键请求 token 的落点。正常路径使用 macOS Keychain；Keychain 不可用时，应用会写入同目录下权限为 `0600` 的应急 JSON 文件，并在下次启动时重试迁移。
 
 ## 存储位置
 
 ```
-~/Library/Application Support/PCL.Mac.Refactor/config.json
+~/Library/Application Support/PCLMacCE/config.json
 ```
 
 - 路径定义：`Core/Utils/URLConstants.swift:14`（`applicationSupportURL`）、`:16`（`configURL`）
-- 写出：`App/LauncherConfig.swift:113-116`，`JSONEncoder.shared.encode(config)` → `Data.write(to:)`
-- **无文件权限收紧、无加密、无 `NSFileProtection`**
-- 损坏时自动备份到 `config.bak.json`（`:28-38`，备份路径 `:46`）
+- 写出：`App/LauncherConfig.swift`；配置 JSON 不包含账号 token
+- Keychain 不可用时写入 `config.tokens.json`，并对配置、应急文件和损坏配置备份设置 `0600`
+- 损坏时先备份原文件；无法备份时禁止自动覆盖
 
-### 为什么不是钥匙串
+### Keychain 与迁移
 
-全仓库对 `SecItem` / `kSecClass` / `Keychain` 的引用数为 **0**；`PCL.Mac/PCL_Mac.entitlements` 只有两项：
+`Core/Utils/AccountTokenStore.swift` 提供 Keychain 与内存实现。账号加入或更新后立即保存凭据；Keychain 写入失败时将凭据暂存为权限 `0600` 的应急文件，启动后尝试回写 Keychain。旧版本保存在 `config.json` 中的明文 token 会迁移到 Keychain，并触发配置重写。
 
-```xml
-<key>com.apple.security.app-sandbox</key><false/>
-<key>com.apple.security.device.audio-input</key><true/>
-```
-
-没有 keychain-groups、没有 app group。加上沙盒关闭，`config.json` 就是一个**同用户任意进程可直接读取**的普通文件。
-
-> 网上能搜到的"PCL macOS 移植版把令牌存进钥匙串 / 有访客模式与信任模式 / 可切换到本机加密文件"，说的是**另一个同名项目**（白枫的独立移植版，后改名 Bug Craft Launcher）。不要拿那些描述理解本仓库。
+应急文件仍是明文；`0600` 只限制其他本机用户，不能阻止同一用户运行的恶意进程读取。它是 Keychain 不可用时的保全路径，不等同于加密存储。
 
 ## 每种凭据的落点
 
 | 凭据 | 属于 | 字段 | 是否落盘 | 是否加密 | 行 |
 |---|---|---|---|---|---|
-| Microsoft OAuth `access_token` | 正版 | 仅内存 `oAuthToken` | 否 | — | `Core/Services/MicrosoftAuthService.swift:16` |
-| Microsoft `refresh_token` | 正版 | `MicrosoftAccount.refreshToken` | **是** | 否 | `Core/Models/Account/MicrosoftAccount.swift:13`，`CodingKeys:18` |
-| Minecraft `access_token` | 正版 | `MicrosoftAccount.accessToken` | **是** | 否 | `:12` |
+| Microsoft OAuth `access_token` | 正版 | 仅内存 `oAuthToken` | 否 | — | `Core/Services/MicrosoftAuthService.swift` |
+| Microsoft `refresh_token` | 正版 | Keychain；不可用时权限 `0600` 的应急文件 | 是 | Keychain / 应急明文 | `Core/Models/Account/MicrosoftAccount.swift` |
+| Minecraft `access_token` | 正版 | Keychain；不可用时权限 `0600` 的应急文件 | 是 | Keychain / 应急明文 | 同上 |
 | `lastRefresh` | 正版 | `MicrosoftAccount.lastRefresh` | 是（只是时间戳） | — | `:14` |
 | XBL / XSTS Token | 正版 | 函数局部变量 | 否 | — | `MicrosoftAuthService.swift:159-198` |
-| Yggdrasil `accessToken` | 第三方 | `YggdrasilAccount.accessToken` | **是** | 否 | `YggdrasilAccount.swift:18` |
-| Yggdrasil `clientToken` | 第三方 | `YggdrasilAccount.clientToken` | **是** | 否 | `:19` |
+| Yggdrasil `accessToken` | 第三方 | Keychain；不可用时权限 `0600` 的应急文件 | 是 | Keychain / 应急明文 | `YggdrasilAccount.swift` |
+| Yggdrasil `clientToken` | 第三方 | Keychain；不可用时权限 `0600` 的应急文件 | 是 | Keychain / 应急明文 | 同上 |
 | Yggdrasil 服务器 URL | 第三方 | `authServerURL` | 是 | — | `:14` |
 | ALI metadata（Base64） | 第三方 | `cachedMetadata` | 是 | — | `:16` |
 | **Yggdrasil 密码** | 第三方 | 不存字段 | **否** | — | 只在 VM 内存 `AccountViewModel.swift:32-34` |
 | 离线 accessToken | 离线 | computed var，每次新随机 UUID | 否 | — | `OfflineAccount.swift:19-21` |
-| CurseForge API Key | 应用 | `Resources/Secrets.properties` 或环境变量 `PCLMAC_CURSE_FORGE_API_KEY` | 是（**随 `.app` 打包**） | 否 | `App/Secrets.swift:19-30`、`project.pbxproj:100-103` |
-| Microsoft client ID | 应用 | 硬编码字面量 | 在源码里 | — | `MicrosoftAuthService.swift:14` |
+| CurseForge API Key | 应用 | 设置页本地文件、环境变量，或仅注释的包内模板 | 是 | 本地文件权限 `0600`；环境变量依赖调用方 | `App/Secrets.swift`；Release CI 不注入 Key |
+| Microsoft client ID | 应用 | 默认公共 ID；可由本机配置或环境变量覆盖 | 在源码或本机配置 | — | `MicrosoftAuthService.swift`、`App/Secrets.swift` |
 
 ## 生命周期一览
 
@@ -51,44 +44,31 @@ stateDiagram-v2
     [*] --> 有令牌: 登录成功
     有令牌 --> 有令牌: 距 lastRefresh < 24h<br/>（本地时钟，不校验服务端）
     有令牌 --> 刷新中: shouldRefresh() == true<br/>启动任务第 2 步
-    刷新中 --> 有令牌: refresh() 成功<br/>（新 refreshToken 只在内存）
+    刷新中 --> 有令牌: refresh() 成功并立即保存新凭据
     刷新中 --> 有令牌但失效: refresh() 失败<br/>弹窗可选“继续”→ 用旧 token 启动
     有令牌 --> [*]: 移除账号（无 revoke 调用）
 ```
 
 要点：
 
-- 正版**没有任何服务端有效性探测**，判据只有 `Date.now - lastRefresh >= 86400`（`MicrosoftAccount.swift:38-40`）。
+- 正版刷新触发仍由 `Date.now - lastRefresh >= 86400` 决定；刷新成功后立即保存新凭据。
 - 第三方**有**探测（`YggdrasilAccount.swift:49-51` → `POST /authserver/validate`，只认 204）。
 - 移除账号（`AccountViewModel.swift:72-82`）**不调用任何撤销端点**：全仓库没有 `/oauth2/v2.0/revoke`、没有 signout。refresh_token 只是本地丢弃，微软侧授权仍然有效，需要用户自己去 account.live.com 撤。
 
 ## 落盘时机（这是最容易丢凭据的地方）
 
-`LauncherConfig.save()` 全仓库**只有一处调用**：`App/AppDelegate.swift:183-186`（`applicationWillTerminate`）。
+`LauncherConfig.save()` 在账号变更后立即调用，并在应用退出时再次保存。
 
-后果链：
-
-1. 新登录的 token、轮转后的新 refresh_token 都只在内存；
-2. 崩溃 / `kill -9` / 强制退出 → 本次登录全部丢失；
-3. 正常退出后拿到的是**上一次**的 refresh_token；
-4. 账号是 class 且 `@Published accounts` 存引用（`AccountViewModel.swift:14`），token 原地 mutate **不触发 UI 刷新**。
+账号增删、切换和微软令牌刷新后都会立即保存；应用退出时还会保存配置与实例。Keychain 写入失败时退回应急文件，并在下次启动时尝试迁移。保存失败会记录错误并提示用户，未保存的普通设置变更仍可能在异常退出时丢失。
 
 ## 凭据外泄面清单
 
 | # | 面 | 说明 | 行 |
 |---|---|---|---|
-| 1 | 明文 `config.json` | 见上 | `LauncherConfig.swift:113-116` |
-| 2 | 启动参数日志 | 脱敏只做**逐项等值替换** `$0 == options.accessToken ? "🥚" : $0`；token 作为子串的参数不会被遮蔽；且 `-javaagent:…=<authServerURL>` 与 `-Dauthlibinjector…=<base64>` **全文入日志** | `Core/Minecraft/Launch/MinecraftLauncher.swift:74`、`:61-62` |
-| 3 | 日志三重出口 | 写文件（`LogManager.swift:51-59`，保留 5 代 `Log1-5.log`）、INFO 级 `print` 到 stdout（`:48`）、WARN/ERROR 进 `os.Logger`（`:45-46`） | — |
-| 4 | 一键导出 | 设置页导出日志 → `~/Desktop/PCL.Mac-logs-*.zip`（`ViewModels/SettingsViewModel.swift:21-25`）；崩溃报告含游戏原始终出（`Managers/MinecraftLaunchManager.swift:120-153`） | — |
-| 5 | UI 主动放大 | 界面反复教育用户"把完整日志发给他人"（`AccountViewModel.swift:186,199`、`MinecraftLaunchTask.swift:148,167`）→ 与 2/3 叠加 | — |
-| 6 | 原始响应体进 UI 与日志 | 非 JSON 响应体整段塞进 `apiError` 文案（`YggdrasilService.swift:225-228`），再经弹窗 + `log()` 落盘（`AccountViewModel.swift:301-308`）→ 被劫持的验证服务器可做**日志换行注入**与文案仿冒 | — |
-| 7 | 微软错误分支同样回显响应 | `MicrosoftAuthService.swift:152-154` 把整个响应体写进 `err()`，`:144-146` 把 `error_description` 写日志，`AccountViewModel.swift:178-182` 弹窗显示"响应体：…" | — |
-| 8 | 明文传输 | ATS 全局放行（`Info.plist:6-10`）+ 代码显式允许 http（`AccountViewModel.swift:241`）→ 密码与 accessToken 可走明文链路（`YggdrasilService.swift:47-49,77-79,104-111`） | — |
-| 9 | ALI 头可静默改走凭据端点 | 服务端返回的 `x-authlib-injector-api-location` 可以是**任意绝对 URL**（含跨主机、含降级 http），添加账号时一次性永久固化（`YggdrasilService.swift:26-28`、`AccountViewModel.swift:260-264,289`） | — |
-| 10 | 档案从不验签 | `fullProfile` 用 `unsigned=true`（`YggdrasilService.swift:160-162`），`Property.signature` 解析了但从未使用（`PlayerProfile.swift:47`） | — |
-| 11 | key 随包分发 | `Resources/Secrets.properties` 整体进 bundle → 成品 `.app` 内可直接读出 CurseForge key | `project.pbxproj:100-103` |
+| 1 | Keychain 不可用时的应急文件 | `config.tokens.json` 是明文，但权限为 `0600`；同一 macOS 用户下的恶意进程仍可读取 | `App/LauncherConfig.swift` |
+| 2 | 游戏原始日志 | 游戏进程输出由启动器保存并可导出；是否包含敏感信息取决于 Minecraft 版本或模组，分享前应检查 | `Core/Minecraft/Launch/MinecraftLauncher.swift` |
+| 3 | 第三方认证传输 | 仍允许用户选择 HTTP Yggdrasil 服务；账号凭据可能经明文链路传输 | `ViewModels/AccountViewModel.swift`、`Core/Services/YggdrasilService.swift` |
+| 4 | 认证端点重定向 | 跨主机或 HTTPS 降级会要求确认；同主机的路径、端口仍由服务端提供 | 同上 |
+| 5 | CurseForge Key 分发 | **已修复**：Release CI 不注入 Key，并在打包前检查应用模板；真实 Key 只由用户保存在本机配置 | `.github/workflows/build.yml`、`.github/workflows/release.yml` |
 
-## 密码处理的一个不对称
-
-清理明文密码只发生在**成功路径**：`AccountViewModel.swift:297-299`；失败分支 `:301-309` **不清理** → 登录失败后明文密码持续驻留 VM 与输入框。
+Yggdrasil 登录密码只保存在 ViewModel 内存，并在请求完成后清除（成功或失败都会执行 `defer`）。

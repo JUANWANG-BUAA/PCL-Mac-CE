@@ -46,8 +46,17 @@ jobs:
             -only-testing:PCLMacCE.Tests/UUIDUtilsTest \
             -only-testing:PCLMacCE.Tests/MinecraftVersionTests \
             -only-testing:PCLMacCE.Tests/ClientManifestTests \
+            -only-testing:PCLMacCE.Tests/MinecraftLaunchArgumentTests \
             -only-testing:PCLMacCE.Tests/MyTaskTests \
             -only-testing:PCLMacCE.Tests/LauncherConfigPersistenceTests \
             -only-testing:PCLMacCE.Tests/ModpackPathTests \
             -only-testing:PCLMacCE.Tests/AuditRegressionTests \
-            -only-testing:PCLMacCE.Tests/ResourceSearchTests
+            -only-testing:PCLMacCE.Tests/ResourceSearchTests \
+            -only-testing:PCLMacCE.Tests/InstallationTransactionTests \
+            -only-testing:PCLMacCE.Tests/ResourceHashCacheTests \
+            -only-testing:PCLMacCE.Tests/FileVerificationCacheTests \
+            -only-testing:PCLMacCE.Tests/UpdateModelTests \
+            -only-testing:PCLMacCE.Tests/CrashAnalyzerTests \
+            -only-testing:PCLMacCE.Tests/JavaCompatibilityTests \
+            -only-testing:PCLMacCE.Tests/WindowSettingsTests \
+            -only-testing:PCLMacCE.Tests/DownloadTests/resumesFromPersistedPartAfterInterruptedResponse

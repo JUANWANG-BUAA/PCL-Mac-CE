@@ -60,18 +60,18 @@ manifest.gameArguments（按 rules 过滤）            :66
 
 ### 替换机制与其缺口
 
-替换实现 `Core/Extensions/String+Template.swift:9-15`：对字典 key 逐个 `replacingOccurrences(of: "${key}")`。**字典里没有的 key 会以字面量 `${...}` 原样传给 JVM。**
+替换实现 `Core/Extensions/String+Template.swift:9-15`：对字典 key 逐个 `replacingOccurrences(of: "${key}")`。字典里没有的 key 会以字面量 `${...}` 原样传给 JVM，因此启动器必须为清单声明的占位符提供值。
 
 对照本仓库测试 fixture 里的真实清单（`PCL.Mac.Tests/Minecraft/ClientManifestTests.swift:14`）：
 
 ```
 --accessToken ${auth_access_token}   ← 正常注入
 --uuid ${auth_uuid}                  ← 正常注入
---clientId ${clientid}               ← 字典里没有这个 key
---xuid ${auth_xuid}                  ← 字典里没有这个 key
+--clientId ${clientid}               ← 映射为空字符串
+--xuid ${auth_xuid}                  ← 映射为空字符串（档案 API 不返回 XUID）
 ```
 
-`--clientId` / `--xuid` 是 1.20.2+ 清单字段，**既不在 values 字典、也没有 rules 保护**，会以未替换的字面量进入 argv。
+`--clientId` / `--xuid` 是较新清单字段。启动器尚未获取独立的 Xbox XUID，因此显式传空值；离线回归测试会确认占位符不会以字面量进入 argv。真实游戏启动仍列入发布实机验收。
 
 其余未供给的占位符是被 rule 正确兜住的：`resolution_width/height` 因 `has_custom_resolution` 被强制丢弃（`ClientManifest.swift:351-358`，与 quickplay 系列一起标了 `// not implemented`）。
 
