@@ -28,5 +28,5 @@ body:
 - type: markdown
   attributes:
     value: |
-      请点击 `“PCL.Mac”意外退出。` 弹窗中的“报告…”按钮，并将下面以 `Translated Report (Full Report Below)` 开头的文本完整地复制到上面的输入框中。
+      请点击 `“PCL Mac CE”意外退出。` 弹窗中的“报告…”按钮，并将下面以 `Translated Report (Full Report Below)` 开头的文本完整地复制到上面的输入框中。
       ~~为什么 macOS 就没有一个纯文本编辑工具啊啊啊~~

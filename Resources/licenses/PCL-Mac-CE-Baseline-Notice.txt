@@ -1,0 +1,7 @@
+PCL Mac CE 历史代码来源说明
+
+本项目的历史代码起点基于此前 PCL.Mac 项目公开的 v1.1.1 源码。感谢该项目的贡献者公开这份代码。
+PCL Mac CE 由 JUANWANG-BUAA 独立维护与发行，不隶属或延续此前的 PCL.Mac 项目及其维护团队。
+
+本说明用于记录来源与致谢，不替代许可条款。PCL 相关许可和分发条件见仓库根目录 LICENSE；
+PCLMacCE.Core 的 MIT 许可见 ../../PCLMacCE.Core/LICENSE；第三方依赖许可见本目录对应文件。

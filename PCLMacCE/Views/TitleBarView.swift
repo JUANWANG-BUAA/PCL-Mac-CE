@@ -38,12 +38,9 @@ struct TitleBarView: View {
                     }
                 } else {
                     HStack {
-                        Image(.iconTitleLogo)
-                            .resizable()
-                            .scaledToFit()
+                        Text("PCL Mac CE")
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(isNative ? Color.primary : .white)
-                            .frame(height: 19)
-                        MyTag("CE", labelColor: isNative ? .primary : .color2, backgroundColor: isNative ? Color.primary.opacity(0.22) : .white)
 
                         if Metadata.debugMode {
                             MyTag("Debug", backgroundColor: .green)

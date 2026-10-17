@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 import Core
 
 struct AboutPage: View {
@@ -15,21 +16,20 @@ struct AboutPage: View {
                                 .init("GitHub 主页", "https://github.com/LTCatt"),
                                 .init("前往赞助", WebLinks.Afdian.ltCat.absoluteString))
 
-                    // 新维护者：原项目停更后接手本版本，持续开发中
-                    ProfileView(.network(url: "https://github.com/JUANWANG-BUAA.png"), "JUANWANG", "PCL Mac CE 社区维护版的维护者 · 持续开发中",
+                    ProfileView(.network(url: "https://github.com/JUANWANG-BUAA.png"), "JUANWANG", "PCL Mac CE 的独立维护者 · 负责设计、开发与发布",
                                 .init("GitHub 主页", "https://github.com/JUANWANG-BUAA"))
 
-                    // 上游（CylorineStudio/PCL.Mac.Refactor）已关闭：不再提供其站点/仓库/赞助等外链
-                    // （原链接均已成死链、头像图源已下线），仅保留事实性的代码基线说明；
-                    // 本项目自身的仓库地址待确定后在此补充
-                    ProfileView(.local(.pclMac), "PCL Mac CE",
-                                "基于已停止公开开发的 PCL.Mac 项目（风花AnemoFlower 与 Cylorine Studio）v1.1.1 代码基线独立维护"
-                                + " · 当前版本 \(Metadata.appVersion) (\(Metadata.bundleVersion))")
+                    ProfileView(.appIcon, "PCL Mac CE",
+                                "PCL 的第三方 macOS 衍生作品，由 JUANWANG-BUAA 独立维护。"
+                                + "当前版本 \(Metadata.appVersion) (\(Metadata.bundleVersion))")
                 }
             }
 
             MyCard("特别鸣谢", foldable: false) {
                 VStack(spacing: 0) {
+                    ProfileView(.appIcon, "PCL.Mac 项目贡献者",
+                                "感谢原项目贡献者公开 v1.1.1 代码，作为本项目的历史代码起点。当前项目独立维护与发行。")
+
                     ProfileView(.local(.pclCommunity), "PCL Community", "Plain Craft Launcher 非官方社区",
                                 .init("GitHub 主页", "https://github.com/PCL-Community"))
 
@@ -43,6 +43,10 @@ struct AboutPage: View {
 
             MyCard("许可与版权声明", foldable: false) {
                 VStack(spacing: 15) {
+                    MyText("PCL Mac CE 的分发条件见仓库根目录 LICENSE；历史代码来源与致谢见 PCL-Mac-CE-Baseline-Notice.txt。")
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+
                     LicenseListItem(
                         "SwiftyJSON", "Copyright (c) 2017 Ruoyu Fu\nLicensed under the MIT License.",
                         sourceURL: "https://github.com/SwiftyJSON/SwiftyJSON",
@@ -93,6 +97,7 @@ struct AboutPage: View {
                     Group {
                         switch avatar {
                         case .local(let imageResource): Image(imageResource).resizable()
+                        case .appIcon: Image(nsImage: NSApp.applicationIconImage)
                         case .network:
                             if let avatarURL {
                                 NetworkImage(url: avatarURL)
@@ -138,6 +143,7 @@ struct AboutPage: View {
 
         enum Avatar {
             case local(ImageResource)
+            case appIcon
             case network(url: String)
         }
     }

@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "ECC26BC22EBEDD67002B7E3E"
-               BuildableName = "PCL.Mac.app"
-               BlueprintName = "PCL.Mac"
-               ReferencedContainer = "container:PCL.Mac.xcodeproj">
+               BuildableName = "PCLMacCE.app"
+               BlueprintName = "PCLMacCE"
+               ReferencedContainer = "container:PCLMacCE.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -30,7 +30,7 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:Configs/PCL.Mac.xctestplan"
+            reference = "container:Configs/PCLMacCE.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>
@@ -41,9 +41,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "EC71A32C2EC034AA006E496F"
-               BuildableName = "PCL.Mac.Tests.xctest"
-               BlueprintName = "PCL.Mac.Tests"
-               ReferencedContainer = "container:PCL.Mac.xcodeproj">
+               BuildableName = "PCLMacCE.Tests.xctest"
+               BlueprintName = "PCLMacCE.Tests"
+               ReferencedContainer = "container:PCLMacCE.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -63,9 +63,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "ECC26BC22EBEDD67002B7E3E"
-            BuildableName = "PCL.Mac.app"
-            BlueprintName = "PCL.Mac"
-            ReferencedContainer = "container:PCL.Mac.xcodeproj">
+            BuildableName = "PCLMacCE.app"
+            BlueprintName = "PCLMacCE"
+            ReferencedContainer = "container:PCLMacCE.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -80,9 +80,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "ECC26BC22EBEDD67002B7E3E"
-            BuildableName = "PCL.Mac.app"
-            BlueprintName = "PCL.Mac"
-            ReferencedContainer = "container:PCL.Mac.xcodeproj">
+            BuildableName = "PCLMacCE.app"
+            BlueprintName = "PCLMacCE"
+            ReferencedContainer = "container:PCLMacCE.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

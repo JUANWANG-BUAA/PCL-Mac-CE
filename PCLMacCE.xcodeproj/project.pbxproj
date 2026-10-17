@@ -632,7 +632,7 @@
 			baseConfigurationReferenceAnchor = ECE3EC022F1B8DB200754684 /* Configs */;
 			baseConfigurationReferenceRelativePath = Debug.xcconfig;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = PCLMacCEIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PCLMacCE/PCLMacCE.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -651,7 +651,7 @@
 				);
 				LOCALIZED_STRING_SWIFTUI_SUPPORT = NO;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.github.juanwang-buaa.pclmacce";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.juanwang-buaa.pclmacce.debug";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -664,7 +664,7 @@
 			baseConfigurationReferenceAnchor = ECE3EC022F1B8DB200754684 /* Configs */;
 			baseConfigurationReferenceRelativePath = Release.xcconfig;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = PCLMacCEIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PCLMacCE/PCLMacCE.entitlements;
 				CODE_SIGN_STYLE = Automatic;
