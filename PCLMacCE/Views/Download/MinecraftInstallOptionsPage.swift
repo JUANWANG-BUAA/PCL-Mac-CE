@@ -89,7 +89,7 @@ struct MinecraftInstallOptionsPage: View {
     }
 }
 
-private struct ModLoaderCard: View {
+struct ModLoaderCard: View {
     @Binding private var currentLoader: MinecraftInstallTask.Loader?
     @State private var versions: [Version]?
     @State private var loadState: LoadState = .loading
@@ -158,34 +158,10 @@ private struct ModLoaderCard: View {
 
     private func loadVersions() async {
         do {
-            guard let url = switch type {
-            case .fabric:
-                DownloadSourceManager.shared.fabricVersionListURL(for: minecraftVersion)
-            case .forge:
-                DownloadSourceManager.shared.forgeVersionListURL(for: minecraftVersion)
-            case .neoforge:
-                DownloadSourceManager.shared.neoforgeVersionListURL(for: minecraftVersion)
-            } else {
-                loadState = .noUsableVersion
-                return
-            }
-            let versions: [Version] = switch type {
-            case .fabric:
-                try await HTTPClient.shared.get(url).json().arrayValue
-                    .map { Version(id: $0["loader"]["version"].stringValue) }
-            case .forge:
-                try await HTTPClient.shared.get(url).json().arrayValue
-                    .map { Version(id: $0["version"].stringValue) }
-            case .neoforge:
-                try await HTTPClient.shared.get(url).json().arrayValue
-                    .map { json in
-                        let version: String = json["version"].stringValue
-                        return Version(id: version.hasPrefix("1.20.1-") ? String(version.dropFirst("1.20.1-".count)) : version)
-                    }
-            }
+            let fetched: [ModLoaderVersions.Version] = try await ModLoaderVersions.fetch(type: type, minecraftVersion: minecraftVersion)
             await MainActor.run {
-                self.versions = versions.sorted { $0.id.compare($1.id, options: .numeric) == .orderedDescending }
-                loadState = versions.isEmpty ? .noUsableVersion : .finished
+                self.versions = fetched.map { Version(id: $0.id) }
+                loadState = fetched.isEmpty ? .noUsableVersion : .finished
             }
         } catch {
             err("加载 \(type) 版本列表失败：\(error.localizedDescription)")

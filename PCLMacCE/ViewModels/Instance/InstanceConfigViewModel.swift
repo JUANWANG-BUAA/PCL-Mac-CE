@@ -54,6 +54,24 @@ class InstanceConfigViewModel: ObservableObject {
             .sorted { $0.version > $1.version }
     }
 
+    /// 用重载后的实例替换当前实例（补装加载器完成后调用）。
+    public func replaceInstance(_ updated: MinecraftInstance) {
+        self.instance = updated
+        self.jvmHeapSize = updated.config.jvmHeapSize.description
+        self.jvmArguments = updated.config.jvmArguments.joinedToArgumentLine()
+        do {
+            self.javaDescription = try updated.config.javaURL.map({ try JavaSearcher.load(from: $0) })?.description ?? "无"
+        } catch {}
+    }
+
+    /// 重命名实例；返回重载后的实例，失败时抛出。
+    public func rename(to newName: String) async throws -> MinecraftInstance {
+        guard let instance else { throw SimpleError("实例不存在。") }
+        let renamed: MinecraftInstance = try await instanceManager.currentRepository.renameInstance(instance, to: newName)
+        replaceInstance(renamed)
+        return renamed
+    }
+
     @MainActor
     public func setHeapSize(_ heapSize: UInt64) {
         guard let instance else { return }
@@ -85,6 +103,11 @@ class InstanceConfigViewModel: ObservableObject {
         guard let instance else { return }
         if runtime.majorVersion < instance.manifest.javaVersion.majorVersion {
             throw Error.invalidJavaVersion(min: instance.manifest.javaVersion.majorVersion)
+        }
+        // 上界仅警告（不阻止）：某些兼容层或特殊场景下用户可能需要更高版本
+        if let maxVersion = JavaSearcher.maximumJavaVersion(for: instance.version),
+           runtime.majorVersion > maxVersion {
+            hint("注意：这个实例通常需要 Java \(maxVersion) 或更低，所选版本可能无法启动。", type: .critical)
         }
         instance.config.javaURL = runtime.executableURL
         instance.markDirty()

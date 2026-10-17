@@ -177,8 +177,9 @@ public enum MinecraftInstallTask {
     }
 
     /// 按加载器类型追加对应安装子任务（Fabric / Forge / NeoForge）。
-    private static func appendModLoaderSubTasks(
-        into subTasks: inout [SubTask],
+    /// 供全新安装与已有实例补装（`ModLoaderInstallTask`）共用。
+    public static func appendModLoaderSubTasks(
+        into subTasks: inout [MyTask<Model>.SubTask],
         modLoader: Loader,
         version: MinecraftVersion,
         repository: MinecraftRepository
