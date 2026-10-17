@@ -97,44 +97,61 @@ class MinecraftLaunchManager: ObservableObject {
     }
 
     private func onGameCrash(instance: MinecraftInstance, options: LaunchOptions, logURL: URL) {
-        hint("检测到 Minecraft 发生崩溃，崩溃分析已开始……", type: .critical)
-        MessageBoxManager.shared.showText(
-            title: "Minecraft 发生崩溃",
-            content: "你的游戏发生了一些问题，无法继续运行。\n很抱歉，PCLMacCE 暂时没有崩溃分析功能……\n\n若要寻求帮助，请点击“导出崩溃报告”并将导出的文件发给他人，而不是发送关于此页面的图片！！！",
-            level: .error,
-            .no(label: "返回"),
-            .yes(label: "导出崩溃报告")
-        ) { result in
-            if result == 1 {
-                let dateFormatter: DateFormatter = .init()
-                dateFormatter.dateFormat = "yyyy_MM_dd_HH_mm_ss"
-                let fileName: String = "崩溃报告-\(dateFormatter.string(from: .now)).zip"
-                let panel = NSSavePanel()
-                panel.title = "选择报告位置"
-                panel.allowedContentTypes = [.zip]
-                panel.canCreateDirectories = true
-                panel.nameFieldStringValue = fileName
-                let handleSave: (NSApplication.ModalResponse) -> Void = { response in
-                    guard response == .OK, let url: URL = panel.url else { return }
-                    hint("正在导出崩溃报告……")
-                    // 报告打包与压缩是磁盘 IO，放后台执行，避免大日志导出时冻结界面
-                    Task.detached(priority: .userInitiated) {
-                        do {
-                            try Self.exportCrashReport(for: instance, to: url, with: fileName, options: options, logURL: logURL)
-                            log("导出崩溃报告成功")
-                            await MainActor.run { hint("导出崩溃报告成功！", type: .finish) }
-                        } catch {
-                            err("导出崩溃报告失败：\(error.localizedDescription)")
-                            await MainActor.run { hint("导出崩溃报告失败：\(error.localizedDescription)", type: .critical) }
-                        }
+        hint("检测到 Minecraft 发生崩溃，正在分析崩溃原因……", type: .critical)
+        let crashReportsDirectory: URL = instance.url.appending(path: "crash-reports")
+        Task.detached(priority: .userInitiated) {
+            // 日志与崩溃报告的读取和匹配都在后台执行，避免大日志卡住界面
+            let diagnosis: CrashAnalyzer.Diagnosis = await CrashAnalyzer.analyze(
+                logURL: logURL, crashReportsDirectory: crashReportsDirectory
+            )
+            let suggestionText: String = diagnosis.isIdentified
+                ? diagnosis.suggestions.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
+                : "可以尝试导出崩溃报告并发给他人协助分析。"
+            await MainActor.run {
+                MessageBoxManager.shared.showText(
+                    title: "Minecraft 发生崩溃",
+                    content: "你的游戏发生了一些问题，无法继续运行。\n\n初步分析：\(diagnosis.title)\n\n\(suggestionText)\n\n若要寻求帮助，请点击“导出崩溃报告”并将导出的文件发给他人，而不是发送关于此页面的图片！！！",
+                    level: .error,
+                    .no(label: "返回"),
+                    .yes(label: "导出崩溃报告")
+                ) { result in
+                    if result == 1 {
+                        self.exportCrashReportFlow(instance: instance, options: options, logURL: logURL)
                     }
                 }
-                if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
-                    panel.beginSheetModal(for: window, completionHandler: handleSave)
-                } else {
-                    panel.begin(completionHandler: handleSave)
+            }
+        }
+    }
+
+    /// 弹出保存面板并在后台导出崩溃报告。
+    private func exportCrashReportFlow(instance: MinecraftInstance, options: LaunchOptions, logURL: URL) {
+        let dateFormatter: DateFormatter = .init()
+        dateFormatter.dateFormat = "yyyy_MM_dd_HH_mm_ss"
+        let fileName: String = "崩溃报告-\(dateFormatter.string(from: .now)).zip"
+        let panel = NSSavePanel()
+        panel.title = "选择报告位置"
+        panel.allowedContentTypes = [.zip]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = fileName
+        let handleSave: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let url: URL = panel.url else { return }
+            hint("正在导出崩溃报告……")
+            // 报告打包与压缩是磁盘 IO，放后台执行，避免大日志导出时冻结界面
+            Task.detached(priority: .userInitiated) {
+                do {
+                    try Self.exportCrashReport(for: instance, to: url, with: fileName, options: options, logURL: logURL)
+                    log("导出崩溃报告成功")
+                    await MainActor.run { hint("导出崩溃报告成功！", type: .finish) }
+                } catch {
+                    err("导出崩溃报告失败：\(error.localizedDescription)")
+                    await MainActor.run { hint("导出崩溃报告失败：\(error.localizedDescription)", type: .critical) }
                 }
             }
+        }
+        if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
+            panel.beginSheetModal(for: window, completionHandler: handleSave)
+        } else {
+            panel.begin(completionHandler: handleSave)
         }
     }
 
