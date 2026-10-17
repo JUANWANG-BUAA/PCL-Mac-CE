@@ -9,6 +9,14 @@ import Core
 
 /// 构建于后台线程、发布于主线程；@Published 状态仅主线程变更，以 @unchecked 担保跨隔离传递。
 class ResourceDisplayModel: ObservableObject, Hashable, Equatable, @unchecked Sendable {
+    /// 检查更新后发现的可用新版本。
+    struct ResourceUpdate {
+        let versionNumber: String
+        let fileName: String
+        let url: URL
+        let sha1: String?
+    }
+
     let id: UUID = .init()
     let name: String
     let version: String?
@@ -18,8 +26,11 @@ class ResourceDisplayModel: ObservableObject, Hashable, Equatable, @unchecked Se
     let sources: [Resource.Source]
     @Published var url: URL
     @Published var disabled: Bool
+    /// 检查到的可用更新；`nil` 表示没有更新或尚未检查。
+    @Published var availableUpdate: ResourceUpdate?
 
     var fileName: String { url.lastPathComponent }
+    var updateAvailable: Bool { availableUpdate != nil }
 
     init(
         name: String,

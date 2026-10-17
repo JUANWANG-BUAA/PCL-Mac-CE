@@ -82,6 +82,27 @@ public class ModrinthAPIClient {
         return try await HTTPClient.shared.get(url, revalidate: revalidate).decode([ModrinthVersion].self)
     }
 
+    /// 获取指定 project 在特定游戏版本（与加载器）下的版本列表，服务器按发布时间倒序返回。
+    /// - Parameters:
+    ///   - slug: 指定 project 的 id 或 slug。
+    ///   - gameVersion: 目标游戏版本（如 `1.20.1`）。
+    ///   - loader: 目标 Mod 加载器；`nil` 时不按加载器过滤。
+    public func versions(
+        ofProject slug: String,
+        forGameVersion gameVersion: String,
+        loader: ModLoader?,
+        revalidate: Bool = false
+    ) async throws -> [ModrinthVersion] {
+        var params: [String: String] = [
+            "game_versions": String(data: try JSONSerialization.data(withJSONObject: [gameVersion]), encoding: .utf8)!
+        ]
+        if let loader {
+            params["loaders"] = String(data: try JSONSerialization.data(withJSONObject: [loader.rawValue]), encoding: .utf8)!
+        }
+        let url: URL = apiRoot.appending(path: "/v2/project/\(slug)/version")
+        return try await HTTPClient.shared.get(url, params: params, revalidate: revalidate).decode([ModrinthVersion].self)
+    }
+
     /// 获取指定 project 的所有 `ModrinthVersion`。
     /// - Parameters:
     ///   - slug: 指定 `ModrinthProject`。

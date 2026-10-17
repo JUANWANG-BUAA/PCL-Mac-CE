@@ -62,6 +62,12 @@ struct InstalledResourcesPage: View {
                                 downloadMore()
                             }
                             .frame(width: 150)
+                            if viewModel.type == .mod {
+                                MyButton(viewModel.checkingUpdates ? "检查中…" : "检查更新") {
+                                    Task { await viewModel.checkForUpdates() }
+                                }
+                                .frame(width: 120)
+                            }
                             MyButton("打开文件夹") {
                                 if let directory = viewModel.directory() {
                                     NSWorkspace.shared.open(directory)
@@ -178,6 +184,10 @@ private struct ResourceListItem: View {
                         .animation(.easeInOut(duration: 0.1), value: resource.disabled)
 
                         MyText(" | \(resource.fileName)", size: 12, color: .textSecondary)
+                        if resource.updateAvailable {
+                            MyTag("有更新", labelColor: .white, backgroundColor: .color2, size: 12)
+                                .padding(.leading, 3)
+                        }
                         HStack(spacing: 3) {
                             ForEach(resource.tags, id: \.self) { tag in
                                 MyTag(tag, labelColor: .colorGray2, backgroundColor: .black.opacity(0.05), size: 12)
@@ -198,6 +208,9 @@ private struct ResourceListItem: View {
                 Spacer(minLength: 0)
 
                 HStack {
+                    if resource.updateAvailable {
+                        ListItemButton(.system("arrow.down.circle"), scale: 0.9, clickPerform: performUpdate)
+                    }
                     ListItemButton(.resource(.btnOpen), scale: 0.8) {
                         NSWorkspace.shared.activateFileViewerSelecting([resource.url])
                     }
@@ -228,6 +241,10 @@ private struct ResourceListItem: View {
                 hint("获取资源信息失败：\(error.localizedDescription)", type: .critical)
             }
         }
+    }
+
+    private func performUpdate() {
+        viewModel.performUpdate(resource)
     }
 
     private func toggleDisabled() {
