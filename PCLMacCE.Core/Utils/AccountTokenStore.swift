@@ -105,4 +105,11 @@ public final class InMemoryTokenStore: AccountTokenStore {
         secrets.removeValue(forKey: key)
         lock.unlock()
     }
+
+    /// 当前全部键值（用于应急落盘）。
+    public func snapshot() -> [String: String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return secrets
+    }
 }

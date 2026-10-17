@@ -23,6 +23,8 @@ class LauncherConfig: Codable {
         do {
             let data = try Data(contentsOf: url)
             let config = try JSONDecoder.shared.decode(LauncherConfig.self, from: data)
+            // Keychain 不可用期间落盘的应急令牌在此恢复并重试迁移
+            config.restoreEmergencyTokens(at: url)
             if config.migratedLegacyTokens {
                 // 旧版明文凭据已进入安全存储，立即重写一次配置把 JSON 中的凭据清除掉
                 do {
@@ -111,13 +113,58 @@ class LauncherConfig: Codable {
         self.customJavaRuntimes = try container.decodeIfPresent([URL].self, forKey: .customJavaRuntimes) ?? []
         self.theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? .classic
 
-        // 账号令牌从安全存储恢复；旧版本写在 JSON 里的明文凭据在此时迁移
-        for account in self.accounts {
+        // Keychain 优先恢复；旧版本写在 JSON 里的明文凭据在此时迁移。
+        // 应急文件的恢复需要知道来源路径，由静态工厂在解码后调用 restoreEmergencyTokens(at:)
+        restoreTokensFromKeychain()
+    }
+
+    /// 从 Keychain 恢复账号令牌；JSON 中的旧版明文凭据在此迁移进安全存储。
+    private func restoreTokensFromKeychain() {
+        for account in accounts {
             do {
                 migratedLegacyTokens = (try account.restoreSecrets(from: LauncherConfig.tokenStore)) || migratedLegacyTokens
             } catch {
                 err("从安全存储恢复账号令牌失败：\(error.localizedDescription)")
             }
+        }
+    }
+
+    /// 从配置文件旁边的应急令牌文件恢复令牌（Keychain 不可用期间落盘的内容），
+    /// 并尝试回写 Keychain；回写成功会触发配置重写以清理明文/应急文件。
+    func restoreEmergencyTokens(at configURL: URL) {
+        guard let emergencyStore = Self.loadEmergencyTokenStore(at: Self.emergencyTokensURL(for: configURL)) else {
+            return
+        }
+        for account in accounts {
+            _ = try? account.restoreSecrets(from: emergencyStore)
+        }
+        restoreTokensFromKeychain()
+    }
+
+    /// 应急令牌文件路径：与配置文件同目录（`config.json` → `config.tokens.json`）。
+    /// 按配置文件派生而非全局固定路径，避免向其他路径保存配置时误删真实应急文件。
+    public static func emergencyTokensURL(for configURL: URL) -> URL {
+        return configURL.deletingLastPathComponent()
+            .appending(path: configURL.deletingPathExtension().lastPathComponent + ".tokens.json")
+    }
+
+    /// 读取应急令牌文件；不存在或损坏时返回 `nil`（损坏的文件会被移除以免反复报错）。
+    private static func loadEmergencyTokenStore(at emergencyURL: URL) -> InMemoryTokenStore? {
+        guard FileManager.default.fileExists(atPath: emergencyURL.path) else { return nil }
+        do {
+            let data: Data = try Data(contentsOf: emergencyURL)
+            guard let dict = try JSONSerialization.jsonObject(with: data) as? [String: String] else {
+                throw SimpleError("应急令牌文件格式错误。")
+            }
+            let store: InMemoryTokenStore = .init()
+            for (key, value) in dict {
+                store.saveSecret(value, for: key)
+            }
+            return store
+        } catch {
+            err("读取应急令牌文件失败：\(error.localizedDescription)")
+            try? FileManager.default.removeItem(at: emergencyURL)
+            return nil
         }
     }
 
@@ -141,10 +188,38 @@ class LauncherConfig: Codable {
     }
 
     public static func save(_ config: LauncherConfig = .shared, to url: URL = URLConstants.configURL) throws {
-        // 令牌先进安全存储，JSON 里不再包含任何凭据
+        // 令牌优先写入 Keychain；Keychain 不可用时落到权限 600 的应急文件，
+        // 保证配置保存不被阻断、令牌不丢失，下次启动会自动重试迁移
+        let emergencyURL: URL = emergencyTokensURL(for: url)
+        let stagedSecrets: InMemoryTokenStore = .init()
+        var keychainFailed: Bool = false
         for account in config.accounts {
-            try account.persistSecrets(to: tokenStore)
+            do {
+                try account.persistSecrets(to: tokenStore)
+            } catch {
+                keychainFailed = true
+                err("写入账号令牌到安全存储失败：\(error.localizedDescription)")
+            }
+            try? account.persistSecrets(to: stagedSecrets)
         }
+        if keychainFailed {
+            do {
+                let data: Data = try JSONSerialization.data(
+                    withJSONObject: stagedSecrets.snapshot(),
+                    options: [.prettyPrinted, .sortedKeys]
+                )
+                try data.write(to: emergencyURL, options: .atomic)
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: emergencyURL.path)
+                warn("Keychain 暂不可用，账号令牌已保存到应急文件（\(emergencyURL.lastPathComponent)，权限 600）")
+            } catch {
+                err("写入应急令牌文件失败：\(error.localizedDescription)")
+                throw SimpleError("账号令牌无法保存：Keychain 与应急文件均写入失败。")
+            }
+        } else if FileManager.default.fileExists(atPath: emergencyURL.path) {
+            // Keychain 已恢复：清理应急文件
+            try? FileManager.default.removeItem(at: emergencyURL)
+        }
+
         let data = try JSONEncoder.shared.encode(config)
         if let saveBlockedReason, url == URLConstants.configURL {
             throw SimpleError("原配置文件未能备份，已停止自动保存以防覆盖：\(saveBlockedReason.localizedDescription)")

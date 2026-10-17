@@ -21,4 +21,11 @@ public class OfflineAccount: Account {
     public func refresh() async throws {}
 
     public func shouldRefresh() -> Bool { false }
+
+    // 离线账号没有需要保管的令牌
+    public func persistSecrets(to store: AccountTokenStore) throws {}
+
+    public func restoreSecrets(from store: AccountTokenStore) -> Bool { false }
+
+    public func removeSecrets(from store: AccountTokenStore) {}
 }

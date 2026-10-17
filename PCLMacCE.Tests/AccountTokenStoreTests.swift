@@ -81,4 +81,63 @@ struct AccountTokenStoreTests {
         decoded.removeSecrets(from: store)
         #expect(try store.readSecret(for: "yggdrasil.\(decoded.id.uuidString).accessToken") == nil)
     }
+
+    /// Keychain 不可用时令牌落到应急文件，重启后可恢复；Keychain 恢复后应急文件被清理。
+    @Test func emergencyFilePreservesTokensWhenKeychainUnavailable() throws {
+        let directory: URL = FileManager.default.temporaryDirectory
+            .appending(path: "config-emergency-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        // 应急文件路径由配置文件路径派生（config.json → config.tokens.json），与其他测试天然隔离
+        let url: URL = directory.appending(path: "config.json")
+        let emergencyURL: URL = LauncherConfig.emergencyTokensURL(for: url)
+        let originalStore: AccountTokenStore = LauncherConfig.tokenStore
+        defer {
+            LauncherConfig.tokenStore = originalStore
+        }
+        LauncherConfig.tokenStore = FailingTokenStore()
+
+        let profile: PlayerProfile = .init(name: "Steve", id: .init(), properties: [])
+        let account: MicrosoftAccount = .init(profile: profile, accessToken: "emergency-access", refreshToken: "emergency-refresh")
+        let config: LauncherConfig = .init()
+        config.accounts = [account]
+        try LauncherConfig.save(config, to: url)
+
+        let json: String = try String(data: Data(contentsOf: url), encoding: .utf8) ?? ""
+        #expect(!json.contains("emergency-access"))
+        let emergency: String = try String(data: Data(contentsOf: emergencyURL), encoding: .utf8) ?? ""
+        #expect(emergency.contains("emergency-access"))
+        #expect(emergency.contains("emergency-refresh"))
+
+        // 模拟重启：Keychain 仍然不可用，令牌应从应急文件恢复
+        let reloaded: LauncherConfig = try JSONDecoder.shared.decode(LauncherConfig.self, from: Data(contentsOf: url))
+        reloaded.restoreEmergencyTokens(at: url)
+        let restored = reloaded.accounts.first as? MicrosoftAccount
+        #expect(restored != nil)
+        guard let restored else { return }
+        #expect(restored.accessToken == "emergency-access")
+
+        // Keychain 恢复后保存：令牌进入存储，应急文件被清理
+        let recoveredStore: InMemoryTokenStore = .init()
+        LauncherConfig.tokenStore = recoveredStore
+        try LauncherConfig.save(reloaded, to: url)
+        #expect(!FileManager.default.fileExists(atPath: emergencyURL.path))
+        #expect(try recoveredStore.readSecret(for: "microsoft.\(restored.id.uuidString).accessToken") == "emergency-access")
+    }
+}
+
+/// 模拟 Keychain 完全不可用的存储。
+private final class FailingTokenStore: AccountTokenStore {
+    func saveSecret(_ value: String, for key: String) throws {
+        throw SimpleError("Keychain 不可用")
+    }
+
+    func readSecret(for key: String) throws -> String? {
+        throw SimpleError("Keychain 不可用")
+    }
+
+    func deleteSecret(for key: String) throws {
+        throw SimpleError("Keychain 不可用")
+    }
 }
