@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 import Core
 
 /// 主题管理器：持有当前主题并提供切换与持久化。
@@ -25,10 +26,17 @@ class ThemeManager: ObservableObject {
         guard theme != self.theme else { return }
         self.theme = theme
         LauncherConfig.shared.theme = theme
+        applyAppearance()
         do {
             try LauncherConfig.save()
         } catch {
             err("保存主题设置失败：\(error.localizedDescription)")
         }
+    }
+
+    /// 按主题应用全局外观：Liquid Glass 跟随系统深浅色（解锁深色模式）；
+    /// 经典主题固定浅色——其色板按浅色设计，且包含跟随系统外观的 AppKit 控件，需要全局锁定。
+    func applyAppearance() {
+        NSApplication.shared.appearance = theme.isNativeStyle ? nil : NSAppearance(named: .aqua)
     }
 }

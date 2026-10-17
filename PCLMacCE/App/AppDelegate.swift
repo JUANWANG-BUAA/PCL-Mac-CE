@@ -158,7 +158,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
-        NSApplication.shared.appearance = NSAppearance(named: .aqua)
+        // Liquid Glass 主题跟随系统深浅色；经典主题在此锁定为浅色（见 ThemeManager）
+        ThemeManager.shared.applyAppearance()
         self.window = AppWindow(instanceManager: instanceManager)
         self.window.makeKeyAndOrderFront(nil)
         log("成功创建窗口")
