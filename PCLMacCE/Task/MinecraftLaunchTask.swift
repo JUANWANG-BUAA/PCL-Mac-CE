@@ -292,51 +292,74 @@ public enum MinecraftLaunchTask {
             switch entry {
             case .javaVersionTooLow(let min):
                 try await fail(task: task, title: "Java 版本过低", content: "你正在使用 Java \(model.options.javaRuntime.majorVersion) 启动游戏，但这个版本需要 \(min)！")
+            case .javaVersionTooHigh(let max):
+                try await confirmJavaVersionTooHigh(task: task, model: model, max: max)
             case .noMicrosoftAccount:
-                if LauncherConfig.shared.accounts.contains(where: { $0.type == .microsoft }) {
-                    LauncherConfig.shared.hasMicrosoftAccount = true
-                    continue
-                }
-                // https://github.com/Meloong-Git/PCL/blob/73bdc533097cfd36867b9249416cd681ec0b5a28/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModLaunch.vb#L263-L285
-                if await LocaleUtils.isInChinaMainland(strict: false) {
-                    if [3, 8, 15, 30, 50, 70, 90, 110, 130, 180, 220, 280, 330, 380, 450, 550, 660, 750, 880, 950, 1100, 1300, 1500, 1700, 1900]
-                        .contains(LauncherConfig.shared.launchCount) {
-                        Task {
-                            if await MessageBoxManager.shared.showTextAsync(
-                                title: "考虑一下正版？",
-                                content: "你已经启动了 \(LauncherConfig.shared.launchCount) 次 Minecraft 啦！\n"
-                                    + "如果觉得 Minecraft 还不错，可以购买正版支持一下，毕竟开发游戏也真的很不容易……不要一直白嫖啦。\n\n"
-                                    + "在登录一次正版账号后，就不会再出现这个提示了！",
-                                level: .info,
-                                .yes(label: "支持正版游戏！", type: .highlight),
-                                .no(label: "下次一定")
-                            ) == 1 {
-                                NSWorkspace.shared.open(WebLinks.minecraftStore)
-                            }
-                        }
-                    }
-                } else {
-                    let result: Int = await MessageBoxManager.shared.showTextAsync(
-                        title: "正版验证",
-                        content: "你必须先登录正版账号，才能进行离线登录！",
+                try await checkMicrosoftAccount(task: task, model: model)
+            }
+        }
+    }
+
+    /// Java 版本高于常见兼容上界：警告后由用户决定是否继续。
+    private static func confirmJavaVersionTooHigh(task: SubTask, model: Model, max: Int) async throws {
+        // 上界只是常见兼容范围，用户可能有意使用（如已装好兼容层），警告后允许继续
+        let result = await MessageBoxManager.shared.showTextAsync(
+            title: "Java 版本可能过高",
+            content: "这个游戏版本通常需要 Java \(max) 或更低，"
+                + "但你正在使用 Java \(model.options.javaRuntime.majorVersion)。\n\n"
+                + "过高的 Java 版本可能以 UnsupportedClassVersionError 或模组不兼容等方式导致崩溃。\n"
+                + "建议在实例设置中切换到合适的 Java 版本。\n\n是否仍然继续启动？",
+            level: .error,
+            .no(),
+            .yes(label: "继续启动", type: .red)
+        )
+        if result == 0 { try task.cancel() }
+    }
+
+    /// 离线账号的正版提示与试玩逻辑。
+    private static func checkMicrosoftAccount(task: SubTask, model: Model) async throws {
+        if LauncherConfig.shared.accounts.contains(where: { $0.type == .microsoft }) {
+            LauncherConfig.shared.hasMicrosoftAccount = true
+            return
+        }
+        // https://github.com/Meloong-Git/PCL/blob/73bdc533097cfd36867b9249416cd681ec0b5a28/Plain%20Craft%20Launcher%202/Modules/Minecraft/ModLaunch.vb#L263-L285
+        if await LocaleUtils.isInChinaMainland(strict: false) {
+            if [3, 8, 15, 30, 50, 70, 90, 110, 130, 180, 220, 280, 330, 380, 450, 550, 660, 750, 880, 950, 1100, 1300, 1500, 1700, 1900]
+                .contains(LauncherConfig.shared.launchCount) {
+                Task {
+                    if await MessageBoxManager.shared.showTextAsync(
+                        title: "考虑一下正版？",
+                        content: "你已经启动了 \(LauncherConfig.shared.launchCount) 次 Minecraft 啦！\n"
+                            + "如果觉得 Minecraft 还不错，可以购买正版支持一下，毕竟开发游戏也真的很不容易……不要一直白嫖啦。\n\n"
+                            + "在登录一次正版账号后，就不会再出现这个提示了！",
                         level: .info,
-                        .init(id: 0, label: "购买正版", type: .highlight),
-                        .yes(label: "试玩"),
-                        .init(id: 2, label: "返回", type: .normal)
-                    )
-                    switch result {
-                    case 0:
+                        .yes(label: "支持正版游戏！", type: .highlight),
+                        .no(label: "下次一定")
+                    ) == 1 {
                         NSWorkspace.shared.open(WebLinks.minecraftStore)
-                        try task.cancel()
-                    case 1:
-                        hint("游戏将以试玩模式启动！", type: .critical)
-                        model.options.demo = true
-                    case 2:
-                        try task.cancel()
-                    default:
-                        break
                     }
                 }
+            }
+        } else {
+            let result: Int = await MessageBoxManager.shared.showTextAsync(
+                title: "正版验证",
+                content: "你必须先登录正版账号，才能进行离线登录！",
+                level: .info,
+                .init(id: 0, label: "购买正版", type: .highlight),
+                .yes(label: "试玩"),
+                .init(id: 2, label: "返回", type: .normal)
+            )
+            switch result {
+            case 0:
+                NSWorkspace.shared.open(WebLinks.minecraftStore)
+                try task.cancel()
+            case 1:
+                hint("游戏将以试玩模式启动！", type: .critical)
+                model.options.demo = true
+            case 2:
+                try task.cancel()
+            default:
+                break
             }
         }
     }

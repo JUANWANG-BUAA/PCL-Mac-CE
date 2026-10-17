@@ -25,6 +25,10 @@ public enum LaunchPrecheck {
             log("当前 Java 版本（\(actualVersion)）低于最低 Java 版本（\(minVersion)）")
             entries.append(.javaVersionTooLow(min: minVersion))
         }
+        if let maxVersion = JavaSearcher.maximumJavaVersion(for: instance.version), actualVersion > maxVersion {
+            log("当前 Java 版本（\(actualVersion)）高于该实例的兼容上限（\(maxVersion)）")
+            entries.append(.javaVersionTooHigh(max: maxVersion))
+        }
         return entries
     }
 
@@ -38,6 +42,8 @@ public enum LaunchPrecheck {
 
     public enum Entry {
         case javaVersionTooLow(min: Int)
+        /// Java 版本高于该游戏版本的常见兼容上界，可能以 UnsupportedClassVersionError 等方式崩溃。
+        case javaVersionTooHigh(max: Int)
         case noMicrosoftAccount
     }
 }

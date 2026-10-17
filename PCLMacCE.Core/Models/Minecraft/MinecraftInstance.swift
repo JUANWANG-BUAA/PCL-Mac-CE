@@ -62,20 +62,35 @@ public class MinecraftInstance: Hashable, Identifiable, Equatable {
 }
 
 public extension JavaSearcher {
+    /// 该实例可用的 Java 版本上界。
+    /// Mojang 官方清单只给出最低版本，但高版本 Java 会以 `UnsupportedClassVersionError`
+    /// 或反射/模块系统变更让老版本游戏直接崩溃，因此需要上界约束。
+    static func maximumJavaVersion(for version: MinecraftVersion) -> Int? {
+        // 1.16.5 及更早：Java 17 会因模块访问限制与老版 ASM 崩溃，上界取 16
+        if version <= .init("1.16.5") { return 16 }
+        // 1.17 开始官方要求 Java 16+，1.18 起要求 17+；20.x 起兼容 21
+        if version <= .init("1.20.4") { return 21 }
+        return nil
+    }
+
     static func pick(for instance: MinecraftInstance) -> JavaRuntime? {
         let systemArch: Architecture = .systemArchitecture()
         let instanceNeedsX64 = instance.version < .init("1.7.2")
+        let minimumVersion: Int = instance.manifest.javaVersion.majorVersion
+        let maximumVersion: Int? = maximumJavaVersion(for: instance.version)
 
         func score(of javaRuntime: JavaRuntime) -> Int {
             var score = 0
-            if javaRuntime.architecture == (instance.version > .init("1.7.2") ? systemArch : .x64) { score += 3 }
-            if javaRuntime.majorVersion == instance.manifest.javaVersion.majorVersion { score += 2 }
+            if javaRuntime.architecture == (instanceNeedsX64 ? .x64 : systemArch) { score += 3 }
+            if javaRuntime.majorVersion == minimumVersion { score += 2 }
+            // 超出上界的 Java 虽然能装，但大概率无法启动：显著降权
+            if let maximumVersion, javaRuntime.majorVersion > maximumVersion { score -= 10 }
             if javaRuntime.type == .jdk { score += 1 }
             return score
         }
 
         let javaRuntimes = JavaManager.shared.javaRuntimes.lazy
-            .filter { $0.majorVersion >= instance.manifest.javaVersion.majorVersion && !(systemArch == .x64 && $0.architecture == .arm64) }
+            .filter { $0.majorVersion >= minimumVersion && !(systemArch == .x64 && $0.architecture == .arm64) }
             .filter { !(instanceNeedsX64 && $0.architecture != .x64)  }
 
         return javaRuntimes.max(by: { score(of: $0) < score(of: $1) })
