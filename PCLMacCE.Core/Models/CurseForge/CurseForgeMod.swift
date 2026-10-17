@@ -101,6 +101,23 @@ public struct CurseForgeModFile: Codable {
         public let algo: Int
     }
 
+    /// 文件依赖。`relationType`：1 = 内置库，2 = 可选依赖，3 = 必需依赖，
+    /// 4 = 工具，5 = 不兼容，6 = 包含在整合包中。
+    public struct Dependency: Codable {
+        public let modId: Int32
+        public let relationType: Int32
+
+        private enum CodingKeys: String, CodingKey {
+            case modId, relationType
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.modId = try container.decode(Int32.self, forKey: .modId)
+            self.relationType = try container.decodeIfPresent(Int32.self, forKey: .relationType) ?? 0
+        }
+    }
+
     public let id: Int32
     public let modId: Int32
     public let available: Bool
@@ -111,6 +128,12 @@ public struct CurseForgeModFile: Codable {
     public let gameVersions: [String]
     public let releaseType: Int?
     public let fileDate: Date?
+    public let dependencies: [Dependency]
+
+    /// 必需依赖的工程 ID（relationType == 3）。
+    public var requiredDependencyModIds: [Int32] {
+        return dependencies.filter { $0.relationType == 3 }.map(\.modId)
+    }
 
     /// 从 gameVersions 中解析出的 Mod 加载器。
     public var loaders: [ModLoader] {
@@ -133,7 +156,7 @@ public struct CurseForgeModFile: Codable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, modId, fileName, hashes, gameVersions, releaseType, fileDate
+        case id, modId, fileName, hashes, gameVersions, releaseType, fileDate, dependencies
         case available = "isAvailable", downloadURL = "downloadUrl"
     }
 
@@ -147,6 +170,7 @@ public struct CurseForgeModFile: Codable {
         self.gameVersions = (try? container.decode([String].self, forKey: .gameVersions)) ?? []
         self.releaseType = try? container.decode(Int.self, forKey: .releaseType)
         self.fileDate = (try? container.decode(String.self, forKey: .fileDate)).flatMap(FlexibleISO8601.parse)
+        self.dependencies = (try? container.decode([Dependency].self, forKey: .dependencies)) ?? []
         let fallbackURL: URL = APIEndpoints.CurseForge.forgeCDN
             .appending(path: "files/\(id / 1000)/\(id % 1000)/\(fileName)")
         self.downloadURL = try container.decodeIfPresent(URL.self, forKey: .downloadURL) ?? fallbackURL

@@ -117,5 +117,36 @@ public extension ModpackIndex {
             cachedMod = mod
             cachedModFile = file
         }
+
+        /// 该文件的必需依赖工程 ID（`fetchInfo()` 之后可用）。
+        var requiredDependencyModIds: [Int32] {
+            return cachedModFile?.requiredDependencyModIds ?? []
+        }
+
+        /// 工程 ID（`fetchInfo()` 之前即可用）。
+        var projectIdValue: Int32 {
+            return Int32(projectId)
+        }
+
+        /// 为依赖工程选择与整合包上下文（游戏版本 + 加载器）匹配的最新文件。
+        /// - Parameters:
+        ///   - projectId: 依赖的工程 ID。
+        ///   - minecraftVersion: 整合包目标游戏版本。
+        ///   - loader: 整合包的 Mod 加载器。
+        func resolveDependency(projectId: Int32, minecraftVersion: MinecraftVersion, loader: ModLoader?) async throws -> CurseForgeFile? {
+            let files: [CurseForgeModFile] = try await client.files(modId: Int(projectId))
+            let gameVersion: String = minecraftVersion.id
+            guard let candidate = files.first(where: { file in
+                file.available
+                    && file.minecraftVersions.contains(gameVersion)
+                    && (loader.map { file.loaders.contains($0) } ?? true)
+            }) else {
+                return nil
+            }
+            return CurseForgeFile(
+                client: client, url: nil,
+                projectId: Int(projectId), fileId: Int(candidate.id)
+            )
+        }
     }
 }

@@ -46,17 +46,18 @@ public enum ModpackImportTask {
     }
 
     private static func downloadModpackFiles(index: ModpackIndex, model: Model, task: MyTask<Model>.SubTask) async throws {
+        let files: [ModpackIndex.File] = try await resolveCurseForgeDependencies(index: index)
         let progressHandler = await ConcurrentProgressHandler(totalHandler: task.setProgress(_:))
         let fetchProgressHandler = await progressHandler.handler(withMultiplier: 0.2)
-        let total = Double(index.files.count)
+        let total = Double(files.count)
         var completed = 0.0
         var downloadItems: [DownloadItem] = []
         await progressHandler.startCalculate()
 
         do {
             try await withThrowingTaskGroup(of: DownloadItem.self) { group in
-                var remaining = index.files.makeIterator()
-                for _ in 0..<min(16, index.files.count) {
+                var remaining = files.makeIterator()
+                for _ in 0..<min(16, files.count) {
                     guard let file = remaining.next() else { break }
                     group.addTask {
                         try await fetchDownloadItem(file, in: model.runningDirectory)
@@ -73,7 +74,7 @@ public enum ModpackImportTask {
                     }
                 }
             }
-            if index.files.isEmpty { await fetchProgressHandler(1) }
+            if files.isEmpty { await fetchProgressHandler(1) }
             let downloadProgressHandler = await progressHandler.handler(withMultiplier: 0.8)
             try await FileDownloader.shared.download(files: downloadItems, progressHandler: downloadProgressHandler)
             await progressHandler.stopCalculate()
@@ -81,6 +82,49 @@ public enum ModpackImportTask {
             await progressHandler.cancelCalculate()
             throw error
         }
+    }
+
+    /// CurseForge 整合包只记录整合包作者显式选择的文件，必需依赖（如 Fabric API、
+    /// 前置库）不一定在其中。这里按整合包目标游戏版本与加载器解析缺失的必需依赖
+    /// （最多递归 3 层）并追加到下载列表。
+    private static func resolveCurseForgeDependencies(index: ModpackIndex) async throws -> [ModpackIndex.File] {
+        guard index.format == .curseforge, let minecraftVersion = index.minecraftVersion else {
+            return index.files
+        }
+        let loader: ModLoader? = index.modLoader?.0
+        var files: [ModpackIndex.File] = index.files
+        var knownProjectIds: Set<Int32> = []
+        for case let file as ModpackIndex.CurseForgeFile in files {
+            try await file.fetchInfo()
+            knownProjectIds.insert(file.projectIdValue)
+        }
+        guard let reference = files.compactMap({ $0 as? ModpackIndex.CurseForgeFile }).first else {
+            return files
+        }
+
+        var pending: [(projectId: Int32, depth: Int)] = files.compactMap { $0 as? ModpackIndex.CurseForgeFile }
+            .flatMap { file in file.requiredDependencyModIds.map { ($0, 1) } }
+        while !pending.isEmpty {
+            let entry = pending.removeFirst()
+            guard entry.depth <= 3, !knownProjectIds.contains(entry.projectId) else { continue }
+            knownProjectIds.insert(entry.projectId)
+            do {
+                guard let dependency = try await reference.resolveDependency(
+                    projectId: entry.projectId, minecraftVersion: minecraftVersion, loader: loader
+                ) else {
+                    warn("CurseForge 依赖工程 \(entry.projectId) 没有适配 \(minecraftVersion)\(loader.map { " / \($0)" } ?? "") 的文件，已跳过")
+                    continue
+                }
+                try await dependency.fetchInfo()
+                files.append(dependency)
+                log("已解析 CurseForge 必需依赖：\(dependency.projectIdValue)")
+                pending += dependency.requiredDependencyModIds.map { ($0, entry.depth + 1) }
+            } catch {
+                // 单个依赖解析失败不应让整个整合包安装失败
+                warn("解析 CurseForge 依赖 \(entry.projectId) 失败：\(error.localizedDescription)")
+            }
+        }
+        return files
     }
 
     private static func fetchDownloadItem(_ file: ModpackIndex.File, in directory: URL) async throws -> DownloadItem {
