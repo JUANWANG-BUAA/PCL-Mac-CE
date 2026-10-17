@@ -25,6 +25,17 @@ public class DownloadSourceManager {
     public static let officialConcurrency: Int = 64
     public static let mirrorConcurrency: Int = 16
 
+    /// 用户在设置中指定的并发上限；`nil` 时跟随下载源推荐值。
+    public var preferredConcurrency: Int?
+
+    /// 批量下载实际使用的并发数：用户设置优先，其次按地区/策略推荐。
+    public var effectiveConcurrency: Int {
+        if let preferredConcurrency, preferredConcurrency > 0 {
+            return preferredConcurrency
+        }
+        return recommendedConcurrency
+    }
+
     public var recommendedConcurrency: Int {
         if !isChinaRegion && policy != .mirrorFirst {
             return Self.officialConcurrency

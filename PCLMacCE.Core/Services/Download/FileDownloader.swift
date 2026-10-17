@@ -227,7 +227,7 @@ public class FileDownloader {
         await progressHandler.startCalculate()
 
         do {
-            let concurrency = max(1, maxConcurrency ?? sourceManager.recommendedConcurrency)
+            let concurrency = max(1, maxConcurrency ?? sourceManager.effectiveConcurrency)
             try await withThrowingTaskGroup(of: Void.self) { group in
                 var remaining = items.makeIterator()
                 for _ in 0..<min(concurrency, items.count) {

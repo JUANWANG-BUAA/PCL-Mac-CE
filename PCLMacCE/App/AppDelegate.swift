@@ -90,6 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         _ = Secrets.shared
 
         DownloadSourceManager.shared = .init(policy: LauncherConfig.shared.downloadSourcePolicy, curseforgeApiKey: Secrets.shared.curseforgeApiKey)
+        DownloadSourceManager.shared.preferredConcurrency = LauncherConfig.shared.downloadConcurrency
 
         FlagsManager.shared = .init(enabledFlags: LauncherConfig.shared.enabledFlags)
 

@@ -20,11 +20,13 @@ struct LauncherConfigPersistenceTests {
         config.launchCount = 42
         config.theme = .liquidGlass
         config.autoInstallLauncherUpdates = false
+        config.downloadConcurrency = 8
         try LauncherConfig.save(config, to: url)
         let reloaded = try JSONDecoder.shared.decode(LauncherConfig.self, from: Data(contentsOf: url))
         #expect(reloaded.launchCount == 42)
         #expect(reloaded.theme == .liquidGlass)
         #expect(reloaded.autoInstallLauncherUpdates == false)
+        #expect(reloaded.downloadConcurrency == 8)
 
         config.launchCount = 43
         try LauncherConfig.save(config, to: url)

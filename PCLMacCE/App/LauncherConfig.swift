@@ -79,6 +79,8 @@ class LauncherConfig: Codable {
     public var hasEnteredLauncher: Bool = false
     public var ignoreLauncherUpdates: Bool = false
     public var autoInstallLauncherUpdates: Bool = true
+    /// 批量下载并发上限；`nil` 时跟随下载源推荐值。
+    public var downloadConcurrency: Int?
     public var downloadSourcePolicy: DownloadSourcePolicy = .officialFirst
     public var homepageType: HomepageType = .empty
     public var enabledFlags: Set<FeatureFlag>?
@@ -107,6 +109,7 @@ class LauncherConfig: Codable {
         self.hasEnteredLauncher = try container.decodeIfPresent(Bool.self, forKey: .hasEnteredLauncher) ?? false
         self.ignoreLauncherUpdates = try container.decodeIfPresent(Bool.self, forKey: .ignoreLauncherUpdates) ?? false
         self.autoInstallLauncherUpdates = try container.decodeIfPresent(Bool.self, forKey: .autoInstallLauncherUpdates) ?? true
+        self.downloadConcurrency = try container.decodeIfPresent(Int.self, forKey: .downloadConcurrency)
         self.downloadSourcePolicy = try container.decodeIfPresent(DownloadSourcePolicy.self, forKey: .downloadSourcePolicy) ?? .officialFirst
         self.homepageType = try container.decodeIfPresent(HomepageType.self, forKey: .homepageType) ?? .empty
         self.enabledFlags = try container.decodeIfPresent(Set<FeatureFlag>.self, forKey: .enabledFlags)
@@ -180,6 +183,7 @@ class LauncherConfig: Codable {
         try container.encode(hasEnteredLauncher, forKey: .hasEnteredLauncher)
         try container.encode(ignoreLauncherUpdates, forKey: .ignoreLauncherUpdates)
         try container.encode(autoInstallLauncherUpdates, forKey: .autoInstallLauncherUpdates)
+        try container.encodeIfPresent(downloadConcurrency, forKey: .downloadConcurrency)
         try container.encode(downloadSourcePolicy, forKey: .downloadSourcePolicy)
         try container.encode(homepageType, forKey: .homepageType)
         try container.encodeIfPresent(enabledFlags, forKey: .enabledFlags)
@@ -239,6 +243,7 @@ class LauncherConfig: Codable {
         case hasEnteredLauncher
         case ignoreLauncherUpdates
         case autoInstallLauncherUpdates
+        case downloadConcurrency
         case downloadSourcePolicy
         case homepageType
         case enabledFlags
