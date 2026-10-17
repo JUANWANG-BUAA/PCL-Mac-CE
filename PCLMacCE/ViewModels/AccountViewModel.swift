@@ -74,6 +74,8 @@ class AccountViewModel: ObservableObject {
     /// - Parameter account: 要移除的账号。
     public func remove(account: Account) {
         accounts.removeAll(where: { $0.id == account.id })
+        // 同步清理安全存储中的令牌，避免 Keychain 中残留已删除账号的凭据
+        account.removeSecrets(from: LauncherConfig.tokenStore)
         if currentAccount == nil {
             if let firstAccount = accounts.first {
                 switchAccount(to: firstAccount)

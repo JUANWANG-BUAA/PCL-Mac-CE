@@ -64,4 +64,14 @@ public extension Account {
             fatalError() // unreachable
         }
     }
+
+    /// 把令牌写入安全存储；无令牌的账号（离线账号）为空实现。
+    func persistSecrets(to store: AccountTokenStore) throws {}
+
+    /// 从安全存储恢复令牌；返回是否发生了明文→安全存储的迁移。
+    @discardableResult
+    func restoreSecrets(from store: AccountTokenStore) throws -> Bool { false }
+
+    /// 删除安全存储中的令牌（账号被移除时调用）。
+    func removeSecrets(from store: AccountTokenStore) {}
 }

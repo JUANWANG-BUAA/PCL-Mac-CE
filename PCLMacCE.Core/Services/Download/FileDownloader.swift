@@ -59,16 +59,20 @@ public class FileDownloader {
                     try await attemptDownload(file, from: candidate, progressHandler: progressHandler)
                     return
                 } catch {
-                    try? FileManager.default.removeItem(at: file.destination)
                     if error.isCancellationError { throw error }
+                    // 磁盘满、权限等本地错误：换源和重试都没有意义，直接失败
+                    if isNonRetryableLocalError(error) {
+                        throw error
+                    }
                     lastError = error
                     if shouldSkipCandidate(after: error) {
                         warn("\(candidate.url.lastPathComponent) 下载失败（\(error.localizedDescription)），尝试下一个候选")
                         break
                     }
                     if retryCount < maxRetryCount {
+                        let delay: Double = backoffSeconds(for: error, retryCount: retryCount)
                         warn("下载 \(candidate.url.lastPathComponent) 失败: \(error.localizedDescription)，重试 (\(retryCount + 1)/\(maxRetryCount))")
-                        try await Task.sleep(seconds: Double(retryCount + 1) * 0.5)
+                        try await Task.sleep(seconds: delay)
                     }
                 }
             }
@@ -78,7 +82,7 @@ public class FileDownloader {
         throw lastError ?? DownloadError.unknownError
     }
 
-    /// 对单个候选执行一次下载尝试（含校验与可执行权限设置）。
+    /// 对单个候选执行一次下载尝试（含断点续传、校验与可执行权限设置）。
     private func attemptDownload(
         _ file: DownloadItem,
         from candidate: DownloadCandidate,
@@ -86,20 +90,48 @@ public class FileDownloader {
     ) async throws {
         await progressHandler?(0)
 
+        let partURL: URL = file.destination.appendingPathExtension("download")
+        let sourceMarkerURL: URL = partURL.appendingPathExtension("source")
+        var resumeOffset: Int64 = 0
+        if let attributes = try? FileManager.default.attributesOfItem(atPath: partURL.path),
+           let existingBytes = attributes[.size] as? Int64, existingBytes > 0 {
+            let lastSource: String? = try? String(contentsOf: sourceMarkerURL, encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if lastSource == candidate.url.absoluteString {
+                resumeOffset = existingBytes
+                log("检测到未完成的分段文件，从 \(existingBytes) 字节处断点续传")
+            } else {
+                // 不同镜像的内容可能不一致，换源后旧分段不可信
+                try? FileManager.default.removeItem(at: partURL)
+            }
+        }
+        try candidate.url.absoluteString.write(to: sourceMarkerURL, atomically: true, encoding: .utf8)
+
         var request = URLRequest(url: candidate.url)
         request.setValue("PCL-Mac/\(Metadata.appVersion)", forHTTPHeaderField: "User-Agent")
+        if resumeOffset > 0 {
+            request.setValue("bytes=\(resumeOffset)-", forHTTPHeaderField: "Range")
+        }
         for (key, value) in candidate.headers ?? [:] {
             request.setValue(value, forHTTPHeaderField: key)
         }
 
         log("下载 \(candidate.url) → \(file.destination)")
         let task = session.downloadTask(with: request)
-        try await DownloadDelegate.shared.start(task, destination: file.destination, progressHandler: progressHandler)
+        try await DownloadDelegate.shared.start(
+            task,
+            destination: file.destination,
+            resumeOffset: resumeOffset,
+            progressHandler: progressHandler
+        )
+        try? FileManager.default.removeItem(at: sourceMarkerURL)
 
         // 校验
         if file.checksums != nil {
             guard try FileUtils.check(file) else {
-                try FileManager.default.removeItem(at: file.destination)
+                // 校验失败时连同分段文件一起清理，避免损坏的分段被再次续传
+                try? FileManager.default.removeItem(at: file.destination)
+                try? FileManager.default.removeItem(at: partURL)
                 throw DownloadError.checksumMismatch
             }
         }
@@ -112,8 +144,35 @@ public class FileDownloader {
     /// 校验失败与状态码错误通常与镜像源有关，重试同一候选无意义。
     private func shouldSkipCandidate(after error: Error) -> Bool {
         if case DownloadError.checksumMismatch = error { return true }
-        if let downloadError = error as? DownloadError, case .badStatusCode = downloadError { return true }
+        if case DownloadError.badStatusCode(let code) = error {
+            // 429 是限流：等待后重试同一候选通常可以恢复
+            return code != 429
+        }
         return false
+    }
+
+    /// 同一候选的重试退避间隔；限流使用更长的等待时间。
+    private func backoffSeconds(for error: Error, retryCount: Int) -> Double {
+        if case DownloadError.badStatusCode(429) = error {
+            return Double(retryCount + 1) * 3
+        }
+        return Double(retryCount + 1) * 0.5
+    }
+
+    /// 磁盘满、无权限等本地错误：任何重试都不会成功，应立即反馈给用户。
+    private func isNonRetryableLocalError(_ error: Error) -> Bool {
+        let nsError: NSError = error as NSError
+        guard nsError.domain == NSCocoaErrorDomain else { return false }
+        switch nsError.code {
+        case CocoaError.fileWriteNoPermission.rawValue,
+             CocoaError.fileReadNoPermission.rawValue,
+             CocoaError.fileNoSuchFile.rawValue,
+             CocoaError.fileWriteFileExists.rawValue,
+             640: // NSFileWriteVolumeFull（磁盘满）没有独立的 case
+            return true
+        default:
+            return false
+        }
     }
 
     /// 批量下载文件。
