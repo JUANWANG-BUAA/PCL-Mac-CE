@@ -24,24 +24,6 @@ class ResourceInstallViewModel: ObservableObject {
         self.project = project
     }
 
-    /// 解析依赖信息（仅保留必需且仍存在的项目）。
-    private func resolveDependencies(of version: ModrinthVersion) async throws -> [ProjectVersionModel.Dependency] {
-        var dependencies: [ProjectVersionModel.Dependency] = []
-        for dependency in version.dependencies {
-            guard let projectId: String = dependency.projectId,
-                  dependency.isRequired else {
-                continue
-            }
-            if let project = try await ModrinthAPIClient.shared.project(projectId) {
-                dependencies.append(.init(versionId: dependency.id, projectId: projectId, project: .init(project)))
-            } else {
-                warn("依赖 \(projectId) 在 Modrinth 上已不存在")
-                debug(version)
-            }
-        }
-        return dependencies
-    }
-
     /// 将一个版本映射为所有（加载器 × 游戏版本）键。
     private func versionKeys(gameVersions: [String], loaders: [ModLoader], selectedVersionType: MinecraftVersion.VersionType?) -> [VersionMapKey] {
         var keys: [VersionMapKey] = []
@@ -97,54 +79,87 @@ class ResourceInstallViewModel: ObservableObject {
 
     /// 按项目来源拉取版本列表，并展开为（加载器 × 游戏版本）粒度的版本模型。
     private func fetchVersions(selectedVersionType: MinecraftVersion.VersionType?) async throws -> [ProjectVersionModel] {
-        var results: [ProjectVersionModel] = []
-
         switch project.source {
         case .modrinth(let projectId):
             let versions: [ModrinthVersion] = try await ModrinthAPIClient.shared.versions(ofProject: projectId, revalidate: true)
-            for version in versions {
-                let dependencies: [ProjectVersionModel.Dependency] = try await resolveDependencies(of: version)
-                for key in versionKeys(
-                    gameVersions: version.gameVersions, loaders: version.loaders, selectedVersionType: selectedVersionType
-                ) {
-                    let primaryFile = (version.files.filter(\.primary).first ?? version.files.first)
-                        .map { ProjectVersionModel.File(name: $0.name, url: $0.url, sha1: $0.sha1) }
-                    results.append(.init(
-                        id: version.id,
-                        name: version.name,
-                        version: version.versionNumber,
-                        downloads: ProjectListItemModel.formatDownloads(version.downloads),
-                        datePublished: ProjectListItemModel.formatLastUpdate(version.datePublished),
-                        requiredDependencies: dependencies,
-                        type: version.type,
-                        primaryFile: primaryFile,
-                        gameVersion: key.version.id,
-                        loader: key.loader
-                    ))
+            // 依赖项目一次性批量解析：逐版本逐依赖的串行请求会让热门项目
+            // 的版本页发出上百个请求，是打开慢的主因
+            let dependencyIds: [String] = Array(Set(versions.flatMap { version in
+                version.dependencies.compactMap { $0.isRequired ? $0.projectId : nil }
+            }))
+            var dependencyProjects: [String: ModrinthProject] = [:]
+            if !dependencyIds.isEmpty {
+                for project in try await ModrinthAPIClient.shared.projects(dependencyIds) {
+                    dependencyProjects[project.id] = project
                 }
+            }
+            return versions.flatMap { version in
+                modrinthVersionModels(version, dependencyProjects: dependencyProjects, selectedVersionType: selectedVersionType)
             }
         case .curseforge(let modId):
-            guard !curseforgeClient.apiKeyIsEmpty else {
-                throw SimpleError("未配置 CurseForge API Key，无法获取文件列表。")
+            return try await curseforgeVersionModels(modId: modId, selectedVersionType: selectedVersionType)
+        }
+    }
+
+    /// 把一个 Modrinth 版本展开为（加载器 × 游戏版本）粒度的版本模型。
+    private func modrinthVersionModels(
+        _ version: ModrinthVersion,
+        dependencyProjects: [String: ModrinthProject],
+        selectedVersionType: MinecraftVersion.VersionType?
+    ) -> [ProjectVersionModel] {
+        let dependencies: [ProjectVersionModel.Dependency] = version.dependencies.compactMap { dependency in
+            guard dependency.isRequired, let depProjectId = dependency.projectId,
+                  let depProject = dependencyProjects[depProjectId] else {
+                return nil
             }
-            let files: [CurseForgeModFile] = try await curseforgeClient.files(modId: Int(modId))
-            for file in files where file.available {
-                for key in versionKeys(
-                    gameVersions: file.minecraftVersions, loaders: file.loaders, selectedVersionType: selectedVersionType
-                ) {
-                    results.append(.init(
-                        id: String(file.id),
-                        name: file.fileName,
-                        version: file.fileName,
-                        downloads: "",
-                        datePublished: file.fileDate.map(ProjectListItemModel.formatLastUpdate(_:)) ?? "未知",
-                        requiredDependencies: [], // CurseForge 的依赖在文件维度，v1 暂不解析
-                        type: file.releaseType == 2 ? .beta : (file.releaseType == 3 ? .alpha : .release),
-                        primaryFile: .init(name: file.fileName, url: file.downloadURL, sha1: file.checksums["sha1"]),
-                        gameVersion: key.version.id,
-                        loader: key.loader
-                    ))
-                }
+            return .init(versionId: dependency.id, projectId: depProjectId, project: .init(depProject))
+        }
+        let primaryFile = (version.files.filter(\.primary).first ?? version.files.first)
+            .map { ProjectVersionModel.File(name: $0.name, url: $0.url, sha1: $0.sha1) }
+        return versionKeys(
+            gameVersions: version.gameVersions, loaders: version.loaders, selectedVersionType: selectedVersionType
+        ).map { key in
+            .init(
+                id: version.id,
+                name: version.name,
+                version: version.versionNumber,
+                downloads: ProjectListItemModel.formatDownloads(version.downloads),
+                datePublished: ProjectListItemModel.formatLastUpdate(version.datePublished),
+                requiredDependencies: dependencies,
+                type: version.type,
+                primaryFile: primaryFile,
+                gameVersion: key.version.id,
+                loader: key.loader
+            )
+        }
+    }
+
+    /// 拉取 CurseForge 文件列表并展开为版本模型。
+    private func curseforgeVersionModels(
+        modId: Int32,
+        selectedVersionType: MinecraftVersion.VersionType?
+    ) async throws -> [ProjectVersionModel] {
+        guard !curseforgeClient.apiKeyIsEmpty else {
+            throw SimpleError("未配置 CurseForge API Key，无法获取文件列表。")
+        }
+        let files: [CurseForgeModFile] = try await curseforgeClient.files(modId: Int(modId))
+        var results: [ProjectVersionModel] = []
+        for file in files where file.available {
+            for key in versionKeys(
+                gameVersions: file.minecraftVersions, loaders: file.loaders, selectedVersionType: selectedVersionType
+            ) {
+                results.append(.init(
+                    id: String(file.id),
+                    name: file.fileName,
+                    version: file.fileName,
+                    downloads: "",
+                    datePublished: file.fileDate.map(ProjectListItemModel.formatLastUpdate(_:)) ?? "未知",
+                    requiredDependencies: [], // CurseForge 的依赖在文件维度，v1 暂不解析
+                    type: file.releaseType == 2 ? .beta : (file.releaseType == 3 ? .alpha : .release),
+                    primaryFile: .init(name: file.fileName, url: file.downloadURL, sha1: file.checksums["sha1"]),
+                    gameVersion: key.version.id,
+                    loader: key.loader
+                ))
             }
         }
         return results
