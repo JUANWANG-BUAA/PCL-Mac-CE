@@ -8,6 +8,44 @@ import Foundation
 import Core
 
 struct MyTaskTests {
+    @Test func cancelledSemaphoreWaiterDoesNotConsumeNextPermit() async throws {
+        let semaphore: AsyncSemaphore = .init(value: 1)
+        try await semaphore.wait()
+
+        let waiter: Task<Void, Error> = Task {
+            try await semaphore.wait()
+        }
+        try await Task.sleep(seconds: 0.02)
+        waiter.cancel()
+        do {
+            try await waiter.value
+            Issue.record("取消的信号量等待任务不应获得名额")
+        } catch is CancellationError { }
+
+        await semaphore.signal()
+        try await semaphore.wait()
+        await semaphore.signal()
+    }
+
+    @Test func cancellationRacingWithSignalReturnsGrantedPermit() async throws {
+        let semaphore: AsyncSemaphore = .init(value: 1)
+        try await semaphore.wait()
+
+        let waiter: Task<Void, Never> = Task {
+            do {
+                try await semaphore.wait()
+                await semaphore.signal()
+            } catch { }
+        }
+        try await Task.sleep(seconds: 0.02)
+        await semaphore.signal()
+        waiter.cancel()
+        await waiter.value
+
+        try await semaphore.wait()
+        await semaphore.signal()
+    }
+
     @Test func test() async throws {
         try await MyTask<TestModel>(name: "empty", model: .init()).start()
         _ = await #expect(throws: TaskError.invalidOrdinal(value: -1)) {

@@ -5,6 +5,13 @@
 
 import Foundation
 
+struct FileFingerprint: Equatable, Sendable {
+    let size: Int64
+    let modificationTime: Double
+    let deviceNumber: Int64?
+    let fileNumber: Int64?
+}
+
 /// 文件完整性校验结果缓存。
 ///
 /// 记录「上一次哈希校验通过时的文件大小与修改时间」；命中（size 与 mtime 均未变）时
@@ -17,6 +24,9 @@ public final class FileVerificationCache: @unchecked Sendable {
     private struct Entry: Codable {
         let size: Int64
         let mtime: Double
+        let deviceNumber: Int64?
+        let fileNumber: Int64?
+        let checksums: [String: String]?
     }
 
     private let lock: NSLock = .init()
@@ -48,35 +58,57 @@ public final class FileVerificationCache: @unchecked Sendable {
     }
 
     /// 该路径的当前状态是否与上次校验通过时一致；文件不存在返回 `false`。
-    public func isVerified(_ url: URL) -> Bool {
-        let path: String = url.path
-        let attributes: [FileAttributeKey: Any]
-        do {
-            attributes = try FileManager.default.attributesOfItem(atPath: path)
-        } catch {
+    public func isVerified(_ url: URL, checksums: [String: String]) -> Bool {
+        let path: String = url.standardizedFileURL.path
+        guard let fingerprint = fingerprint(for: url) else {
             return false
         }
-        guard let size = attributes[.size] as? Int64,
-              let mtime = attributes[.modificationDate] as? Date else {
-            return false
-        }
+        let expectedChecksums: [String: String] = Self.normalized(checksums)
         lock.lock()
         defer { lock.unlock() }
         guard let entry = entries[path] else { return false }
-        return entry.size == size && entry.mtime == mtime.timeIntervalSince1970
+        return entry.size == fingerprint.size
+            && entry.mtime == fingerprint.modificationTime
+            && entry.deviceNumber == fingerprint.deviceNumber
+            && entry.fileNumber == fingerprint.fileNumber
+            && entry.checksums == expectedChecksums
     }
 
-    /// 记录一次校验通过。
-    public func markVerified(_ url: URL) {
-        let path: String = url.path
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+    func fingerprint(for url: URL) -> FileFingerprint? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
               let size = attributes[.size] as? Int64,
-              let mtime = attributes[.modificationDate] as? Date else {
+              let modificationDate = attributes[.modificationDate] as? Date else {
+            return nil
+        }
+        return .init(
+            size: size,
+            modificationTime: modificationDate.timeIntervalSince1970,
+            deviceNumber: (attributes[.systemNumber] as? NSNumber)?.int64Value,
+            fileNumber: (attributes[.systemFileNumber] as? NSNumber)?.int64Value
+        )
+    }
+
+    /// 记录当前文件状态，供已完成外部校验的调用方使用。
+    public func markVerified(_ url: URL, checksums: [String: String]) {
+        guard let fingerprint = fingerprint(for: url) else { return }
+        markVerified(url, checksums: checksums, ifUnchangedSince: fingerprint)
+    }
+
+    /// 仅当哈希前后文件身份与元数据一致时，记录一次校验通过。
+    func markVerified(_ url: URL, checksums: [String: String], ifUnchangedSince fingerprint: FileFingerprint) {
+        let path: String = url.standardizedFileURL.path
+        guard self.fingerprint(for: url) == fingerprint else {
             return
         }
         lock.lock()
         defer { lock.unlock() }
-        entries[path] = .init(size: size, mtime: mtime.timeIntervalSince1970)
+        entries[path] = .init(
+            size: fingerprint.size,
+            mtime: fingerprint.modificationTime,
+            deviceNumber: fingerprint.deviceNumber,
+            fileNumber: fingerprint.fileNumber,
+            checksums: Self.normalized(checksums)
+        )
         dirty = true
     }
 
@@ -84,7 +116,7 @@ public final class FileVerificationCache: @unchecked Sendable {
     public func remove(_ url: URL) {
         lock.lock()
         defer { lock.unlock() }
-        if entries.removeValue(forKey: url.path) != nil {
+        if entries.removeValue(forKey: url.standardizedFileURL.path) != nil {
             dirty = true
         }
     }
@@ -100,6 +132,12 @@ public final class FileVerificationCache: @unchecked Sendable {
             dirty = false
         } catch {
             err("写入文件校验缓存失败：\(error.localizedDescription)")
+        }
+    }
+
+    private static func normalized(_ checksums: [String: String]) -> [String: String] {
+        checksums.reduce(into: [:]) { result, entry in
+            result[entry.key.lowercased()] = entry.value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         }
     }
 }

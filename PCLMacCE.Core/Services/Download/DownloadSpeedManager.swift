@@ -5,12 +5,13 @@
 
 import Foundation
 
-public class DownloadSpeedManager: ObservableObject {
+public final class DownloadSpeedManager: ObservableObject, @unchecked Sendable {
     public static let shared: DownloadSpeedManager = .init()
 
     @Published public private(set) var currentSpeed: Int64 = 0
     private var tickerTask: Task<Void, Error>?
-    @MainActor private var bytes: Int64 = 0
+    private let bytesLock: NSLock = .init()
+    private var bytes: Int64 = 0
 
     private init() {
         self.tickerTask = .init(priority: .background) {
@@ -23,12 +24,16 @@ public class DownloadSpeedManager: ObservableObject {
 
     @MainActor
     private func updateSpeed() {
-        currentSpeed = bytes
+        bytesLock.lock()
+        let latestBytes: Int64 = bytes
         bytes = 0
+        bytesLock.unlock()
+        currentSpeed = latestBytes
     }
 
-    @MainActor
     public func addBytes(_ bytes: Int64) {
+        bytesLock.lock()
         self.bytes += bytes
+        bytesLock.unlock()
     }
 }

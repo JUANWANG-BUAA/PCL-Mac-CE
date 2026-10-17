@@ -6,10 +6,18 @@
 import Foundation
 
 public class FileDownloader {
+    private struct BatchOptions {
+        let skipped: Int
+        let total: Int
+        let preferMirror: Bool?
+        let maxConcurrency: Int?
+        let progressHandler: (@MainActor (Double) -> Void)?
+    }
+
     public static let shared: FileDownloader = {
         let configuration = URLSessionConfiguration.default
         let session = URLSession(configuration: configuration, delegate: DownloadDelegate.shared, delegateQueue: DownloadDelegate.queue)
-        let downloader: FileDownloader = .init(session: session)
+        let downloader: FileDownloader = .init(session: session, delegate: .shared)
         downloader.verificationCache.load()
         return downloader
     }()
@@ -20,12 +28,19 @@ public class FileDownloader {
     )
 
     private let session: URLSession
+    private let delegate: DownloadDelegate
     private let sourceManager: DownloadSourceManager
     private let maxRetryCount: Int = 3
+    private static let destinationLocks: DownloadDestinationLockPool = .init()
 
-    public init(session: URLSession, sourceManager: DownloadSourceManager = .shared) {
+    public init(
+        session: URLSession,
+        sourceManager: DownloadSourceManager = .shared,
+        delegate: DownloadDelegate = .shared
+    ) {
         self.session = session
         self.sourceManager = sourceManager
+        self.delegate = delegate
     }
 
     /// 下载单个文件。
@@ -40,10 +55,33 @@ public class FileDownloader {
         progressHandler: (@MainActor (Double) -> Void)? = nil,
         checkDestination: Bool = true
     ) async throws {
-        // 缓存条目在整次下载（含全部重试）结束后统一落盘，避免批量下载时逐文件写 JSON
-        defer { verificationCache.flush() }
+        do {
+            try await withDestinationLock(file.destination) {
+                try await downloadUnlocked(
+                    file,
+                    preferMirror: preferMirror,
+                    progressHandler: progressHandler,
+                    checkDestination: checkDestination
+                )
+            }
+        } catch {
+            await flushVerificationCache()
+            throw error
+        }
+        await flushVerificationCache()
+    }
+
+    private func downloadUnlocked(
+        _ file: DownloadItem,
+        preferMirror: Bool?,
+        progressHandler: (@MainActor (Double) -> Void)?,
+        checkDestination: Bool
+    ) async throws {
+        try Task.checkCancellation()
         if checkDestination && FileManager.default.fileExists(atPath: file.destination.path) {
-            if try FileUtils.checkCached(file, using: verificationCache) {
+            let isValid: Bool = try await checkCachedOffMainActor(file)
+            try Task.checkCancellation()
+            if isValid {
                 debug("文件 \(file.destination.lastPathComponent) 已存在且校验通过，跳过下载")
                 await progressHandler?(1)
                 return
@@ -64,11 +102,21 @@ public class FileDownloader {
         var lastError: Error?
         for candidate in candidates {
             for retryCount in 0...maxRetryCount {
+                try Task.checkCancellation()
                 do {
                     try await attemptDownload(file, from: candidate, progressHandler: progressHandler)
                     return
                 } catch {
                     if error.isCancellationError { throw error }
+                    if case DownloadError.resumeRejected = error {
+                        try? FileManager.default.removeItem(at: file.destination.appendingPathExtension("download"))
+                        try? FileManager.default.removeItem(
+                            at: file.destination.appendingPathExtension("download").appendingPathExtension("source")
+                        )
+                        lastError = error
+                        if retryCount < maxRetryCount { continue }
+                        break
+                    }
                     // 磁盘满、权限等本地错误：换源和重试都没有意义，直接失败
                     if isNonRetryableLocalError(error) {
                         throw error
@@ -98,15 +146,18 @@ public class FileDownloader {
         progressHandler: (@MainActor (Double) -> Void)?
     ) async throws {
         await progressHandler?(0)
+        try Task.checkCancellation()
 
         let partURL: URL = file.destination.appendingPathExtension("download")
         let sourceMarkerURL: URL = partURL.appendingPathExtension("source")
+        let candidateURL: String = candidate.url.absoluteString
         var resumeOffset: Int64 = 0
+        let savedMetadata: DownloadPartMetadata? = (try? Data(contentsOf: sourceMarkerURL)).flatMap {
+            try? JSONDecoder().decode(DownloadPartMetadata.self, from: $0)
+        }
         if let attributes = try? FileManager.default.attributesOfItem(atPath: partURL.path),
            let existingBytes = attributes[.size] as? Int64, existingBytes > 0 {
-            let lastSource: String? = try? String(contentsOf: sourceMarkerURL, encoding: .utf8)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if lastSource == candidate.url.absoluteString {
+            if savedMetadata?.source == candidateURL {
                 resumeOffset = existingBytes
                 log("检测到未完成的分段文件，从 \(existingBytes) 字节处断点续传")
             } else {
@@ -114,30 +165,44 @@ public class FileDownloader {
                 try? FileManager.default.removeItem(at: partURL)
             }
         }
-        try candidate.url.absoluteString.write(to: sourceMarkerURL, atomically: true, encoding: .utf8)
+        let partMetadata: DownloadPartMetadata = .init(
+            source: candidateURL,
+            entityTag: resumeOffset > 0 ? savedMetadata?.entityTag : nil,
+            lastModified: resumeOffset > 0 ? savedMetadata?.lastModified : nil
+        )
+        try JSONEncoder().encode(partMetadata).write(to: sourceMarkerURL, options: .atomic)
 
         var request = URLRequest(url: candidate.url)
         request.setValue("PCL-Mac/\(Metadata.appVersion)", forHTTPHeaderField: "User-Agent")
+        request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
         if resumeOffset > 0 {
             request.setValue("bytes=\(resumeOffset)-", forHTTPHeaderField: "Range")
+            if let entityTag = partMetadata.entityTag, !entityTag.hasPrefix("W/") {
+                request.setValue(entityTag, forHTTPHeaderField: "If-Range")
+            } else if let lastModified = partMetadata.lastModified {
+                request.setValue(lastModified, forHTTPHeaderField: "If-Range")
+            }
         }
         for (key, value) in candidate.headers ?? [:] {
             request.setValue(value, forHTTPHeaderField: key)
         }
 
         log("下载 \(candidate.url) → \(file.destination)")
-        let task = session.downloadTask(with: request)
-        try await DownloadDelegate.shared.start(
+        let task = session.dataTask(with: request)
+        try await delegate.start(
             task,
             destination: file.destination,
+            sourceMarkerURL: sourceMarkerURL,
+            sourceURL: candidateURL,
             resumeOffset: resumeOffset,
             progressHandler: progressHandler
         )
         try? FileManager.default.removeItem(at: sourceMarkerURL)
+        try Task.checkCancellation()
 
         // 校验
-        if file.checksums != nil {
-            guard try FileUtils.checkCached(file, using: verificationCache) else {
+        if let checksums = file.checksums, !checksums.isEmpty {
+            guard try await checkCachedOffMainActor(file) else {
                 // 校验失败时连同分段文件一起清理，避免损坏的分段被再次续传
                 try? FileManager.default.removeItem(at: file.destination)
                 try? FileManager.default.removeItem(at: partURL)
@@ -153,11 +218,39 @@ public class FileDownloader {
     /// 校验失败与状态码错误通常与镜像源有关，重试同一候选无意义。
     private func shouldSkipCandidate(after error: Error) -> Bool {
         if case DownloadError.checksumMismatch = error { return true }
+        if case DownloadError.invalidContentRange = error { return true }
         if case DownloadError.badStatusCode(let code) = error {
             // 429 是限流：等待后重试同一候选通常可以恢复
             return code != 429
         }
         return false
+    }
+
+    private func checkCachedOffMainActor(_ file: DownloadItem) async throws -> Bool {
+        let cache: FileVerificationCache = verificationCache
+        return try await runOnUtilityExecutor {
+            try FileUtils.checkCached(file, using: cache)
+        }
+    }
+
+    private func runOnUtilityExecutor<Value: Sendable>(
+        _ operation: @escaping @Sendable () throws -> Value
+    ) async throws -> Value {
+        let task: Task<Value, Error> = Task.detached(priority: .utility, operation: operation)
+        return try await withTaskCancellationHandler {
+            let value: Value = try await task.value
+            try Task.checkCancellation()
+            return value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func flushVerificationCache() async {
+        let cache: FileVerificationCache = verificationCache
+        await Task.detached(priority: .utility) {
+            cache.flush()
+        }.value
     }
 
     /// 同一候选的重试退避间隔；限流使用更长的等待时间。
@@ -196,45 +289,64 @@ public class FileDownloader {
         maxConcurrency: Int? = nil,
         progressHandler: (@MainActor (Double) -> Void)? = nil
     ) async throws {
-        // 批量结束后统一写回校验缓存（单文件下载入口已有各自的 defer flush）
-        defer { verificationCache.flush() }
         let total = files.count
-        var skipped = 0
-
-        var items: [DownloadItem] = []
-        items.reserveCapacity(files.count)
-
-        for file in files {
-            if FileManager.default.fileExists(atPath: file.destination.path) {
-                if try FileUtils.checkCached(file, using: verificationCache) {
-                    skipped += 1
-                    continue
-                }
-                try FileManager.default.removeItem(at: file.destination)
-            }
-            items.append(file)
+        let items: [DownloadItem]
+        let skipped: Int
+        do {
+            (items, skipped) = try await prepareBatch(files)
+        } catch {
+            await flushVerificationCache()
+            throw error
         }
+
         if items.isEmpty {
             await progressHandler?(1.0)
+            await flushVerificationCache()
             return
         }
 
+        do {
+            try await downloadPreparedItems(items, options: .init(
+                skipped: skipped,
+                total: total,
+                preferMirror: preferMirror,
+                maxConcurrency: maxConcurrency,
+                progressHandler: progressHandler
+            ))
+        } catch {
+            await flushVerificationCache()
+            throw error
+        }
+        await flushVerificationCache()
+    }
+
+    private func downloadPreparedItems(
+        _ items: [DownloadItem],
+        options: BatchOptions
+    ) async throws {
         let progressHandler = await ConcurrentProgressHandler(
-            initial: Double(skipped) / Double(total),
-            totalHandler: progressHandler ?? { _ in }
+            initial: Double(options.skipped) / Double(options.total),
+            totalHandler: options.progressHandler ?? { _ in }
         )
-        let multiplier = 1.0 / Double(total)
+        let multiplier = 1.0 / Double(options.total)
         await progressHandler.startCalculate()
 
         do {
-            let concurrency = max(1, maxConcurrency ?? sourceManager.effectiveConcurrency)
+            let concurrency = min(64, max(1, options.maxConcurrency ?? sourceManager.effectiveConcurrency))
             try await withThrowingTaskGroup(of: Void.self) { group in
                 var remaining = items.makeIterator()
                 for _ in 0..<min(concurrency, items.count) {
                     guard let item = remaining.next() else { break }
                     group.addTask {
                         let handler = await progressHandler.handler(withMultiplier: multiplier)
-                        try await self.download(item, preferMirror: preferMirror, progressHandler: handler, checkDestination: false)
+                        try await self.withDestinationLock(item.destination) {
+                            try await self.downloadUnlocked(
+                                item,
+                                preferMirror: options.preferMirror,
+                                progressHandler: handler,
+                                checkDestination: true
+                            )
+                        }
                     }
                 }
 
@@ -243,7 +355,14 @@ public class FileDownloader {
                     if let item = remaining.next() {
                         group.addTask {
                             let handler = await progressHandler.handler(withMultiplier: multiplier)
-                            try await self.download(item, preferMirror: preferMirror, progressHandler: handler, checkDestination: false)
+                            try await self.withDestinationLock(item.destination) {
+                                try await self.downloadUnlocked(
+                                    item,
+                                    preferMirror: options.preferMirror,
+                                    progressHandler: handler,
+                                    checkDestination: true
+                                )
+                            }
                         }
                     }
                 }
@@ -282,6 +401,84 @@ public class FileDownloader {
                     warn("清理过期下载分段失败：\(error.localizedDescription)")
                 }
             }
+        }
+    }
+
+    private func withDestinationLock(_ destination: URL, operation: () async throws -> Void) async throws {
+        let key: String = destination.standardizedFileURL.path
+        try await Self.destinationLocks.acquire(key)
+        do {
+            try await operation()
+            await Self.destinationLocks.release(key)
+        } catch {
+            await Self.destinationLocks.release(key)
+            throw error
+        }
+    }
+
+    private func prepareBatch(_ files: [DownloadItem]) async throws -> ([DownloadItem], Int) {
+        let cache: FileVerificationCache = verificationCache
+        return try await runOnUtilityExecutor {
+            var distinctItems: [DownloadItem] = []
+            distinctItems.reserveCapacity(files.count)
+            var byDestination: [String: DownloadItem] = [:]
+            var skippedCount = 0
+
+            for file in files {
+                try Task.checkCancellation()
+                let destination: String = file.destination.standardizedFileURL.path
+                if let previous = byDestination[destination] {
+                    guard previous == file else { throw DownloadError.destinationConflict }
+                    skippedCount += 1
+                    continue
+                }
+                byDestination[destination] = file
+                if FileManager.default.fileExists(atPath: destination),
+                   try FileUtils.checkCached(file, using: cache) {
+                    skippedCount += 1
+                    continue
+                }
+                distinctItems.append(file)
+            }
+            return (distinctItems, skippedCount)
+        }
+    }
+}
+
+/// 串行化相同目标路径的校验、删除、续传和最终替换，避免并发安装互相覆盖。
+private actor DownloadDestinationLockPool {
+    private struct Entry {
+        let semaphore: AsyncSemaphore
+        var users: Int
+    }
+
+    private var entries: [String: Entry] = [:]
+
+    func acquire(_ key: String) async throws {
+        var entry: Entry = entries[key] ?? .init(semaphore: .init(value: 1), users: 0)
+        entry.users += 1
+        entries[key] = entry
+        do {
+            try await entry.semaphore.wait()
+        } catch {
+            removeUser(for: key)
+            throw error
+        }
+    }
+
+    func release(_ key: String) async {
+        guard let entry = entries[key] else { return }
+        await entry.semaphore.signal()
+        removeUser(for: key)
+    }
+
+    private func removeUser(for key: String) {
+        guard var entry = entries[key] else { return }
+        entry.users -= 1
+        if entry.users == 0 {
+            entries.removeValue(forKey: key)
+        } else {
+            entries[key] = entry
         }
     }
 }

@@ -9,6 +9,9 @@ public enum DownloadError: LocalizedError, Equatable {
     case fileExists
     case checksumMismatch
     case badStatusCode(code: Int)
+    case invalidContentRange
+    case resumeRejected
+    case destinationConflict
     case unknownError
 
     public var errorDescription: String? {
@@ -19,6 +22,12 @@ public enum DownloadError: LocalizedError, Equatable {
             "文件校验未通过。"
         case .badStatusCode(let code):
             "错误的响应码：\(code)。"
+        case .invalidContentRange:
+            "服务器返回了无效的分段响应。"
+        case .resumeRejected:
+            "服务器拒绝续传，正在从头重试。"
+        case .destinationConflict:
+            "多个下载项指向同一目标文件，但校验信息不一致。"
         case .unknownError:
             "发生未知错误。"
         }

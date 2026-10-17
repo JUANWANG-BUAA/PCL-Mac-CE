@@ -7,6 +7,7 @@ import Testing
 import Foundation
 import Core
 import SwiftyJSON
+import CryptoKit
 
 struct DownloadTests {
     @Test func singleFileDownloadTest() async throws {
@@ -88,4 +89,137 @@ struct DownloadTests {
 
         #expect(MirrorDownloadSource.shared.candidate(for: URL(string: "https://libraries.minecraft.net/")!)?.url == bmclapiMavenRoot)
     }
+
+    @Test func resumesFromPersistedPartAfterInterruptedResponse() async throws {
+        let directory: URL = FileManager.default.temporaryDirectory
+            .appending(path: "download-resume-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let expected: Data = Data("abcdefghij".utf8)
+        InterruptingDownloadURLProtocol.reset()
+        let sourceFile: URL = directory.appending(path: "expected.bin")
+        try expected.write(to: sourceFile)
+        let destination: URL = directory.appending(path: "downloaded.bin")
+        let url: URL = try #require(URL(string: "https://example.test/downloaded.bin"))
+        let partURL: URL = destination.appendingPathExtension("download")
+        try Data("abcd".utf8).write(to: partURL)
+        let markerURL: URL = partURL.appendingPathExtension("source")
+        let marker: ResumeMetadataFixture = .init(source: url.absoluteString, entityTag: "\"v1\"", lastModified: nil)
+        try JSONEncoder().encode(marker).write(to: markerURL)
+
+        let (downloader, session) = makeProtocolDownloader()
+        defer { session.invalidateAndCancel() }
+
+        let item: DownloadItem = .init(
+            url: url,
+            destination: destination,
+            sha1: try FileUtils.sha1(of: sourceFile)
+        )
+        try await downloader.download(item)
+
+        #expect(try Data(contentsOf: destination) == expected)
+        #expect(InterruptingDownloadURLProtocol.receivedRanges == ["bytes=4-", "bytes=9-"])
+        #expect(InterruptingDownloadURLProtocol.receivedIfRanges == ["\"v1\"", "\"v1\""])
+    }
+
+    private func makeProtocolDownloader() -> (FileDownloader, URLSession) {
+        let configuration: URLSessionConfiguration = .ephemeral
+        configuration.protocolClasses = [InterruptingDownloadURLProtocol.self]
+        let delegateQueue: OperationQueue = .init()
+        delegateQueue.maxConcurrentOperationCount = 1
+        let delegate: DownloadDelegate = .init(delegateQueue: delegateQueue)
+        let session: URLSession = .init(
+            configuration: configuration,
+            delegate: delegate,
+            delegateQueue: delegateQueue
+        )
+        let downloader: FileDownloader = .init(
+            session: session,
+            sourceManager: .init(policy: .officialFirst, curseforgeApiKey: nil),
+            delegate: delegate
+        )
+        return (downloader, session)
+    }
 }
+
+// Swift requires these URLProtocol overrides to be class methods.
+// swiftlint:disable static_over_final_class
+private final class InterruptingDownloadURLProtocol: URLProtocol {
+    private static let lock: NSLock = .init()
+    private static var requestRanges: [String?] = []
+    private static var ifRanges: [String?] = []
+    private static var responseCount: Int = 0
+
+    static func reset() {
+        lock.lock()
+        requestRanges = []
+        ifRanges = []
+        responseCount = 0
+        lock.unlock()
+    }
+
+    static var receivedRanges: [String?] {
+        lock.lock()
+        defer { lock.unlock() }
+        return requestRanges
+    }
+
+    static var receivedIfRanges: [String?] {
+        lock.lock()
+        defer { lock.unlock() }
+        return ifRanges
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "example.test"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        let range: String? = request.value(forHTTPHeaderField: "Range")
+        let start: Int = range?.replacingOccurrences(of: "bytes=", with: "")
+            .split(separator: "-").first.flatMap { Int($0) } ?? 0
+        Self.lock.lock()
+        Self.requestRanges.append(range)
+        Self.ifRanges.append(request.value(forHTTPHeaderField: "If-Range"))
+        Self.responseCount += 1
+        let responseIndex: Int = Self.responseCount
+        Self.lock.unlock()
+
+        let body: Data = responseIndex == 1 ? Data("efghi".utf8) : Data("j".utf8)
+        let end: Int = responseIndex == 1 ? 8 : 9
+        let statusCode: Int = 206
+        let headers: [String: String] = [
+            "Content-Length": String(body.count),
+            "Content-Range": "bytes \(start)-\(end)/10",
+            "ETag": "\"v1\""
+        ]
+        guard let responseURL = request.url,
+              let response = HTTPURLResponse(
+            url: responseURL,
+            statusCode: statusCode,
+            httpVersion: "HTTP/1.1",
+            headerFields: headers
+        ) else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() { }
+}
+
+private struct ResumeMetadataFixture: Codable {
+    let source: String
+    let entityTag: String?
+    let lastModified: String?
+}
+// swiftlint:enable static_over_final_class

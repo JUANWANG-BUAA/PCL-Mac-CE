@@ -5,7 +5,7 @@
 
 import Foundation
 
-public struct DownloadItem: Hashable {
+public struct DownloadItem: Hashable, Sendable {
     public let urls: [URL]
     public let destination: URL
     public let checksums: [String: String]?
