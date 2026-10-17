@@ -41,6 +41,7 @@ public class CurseForgeAPIClient {
     }
 
     /// 搜索 CurseForge 项目。Minecraft 的 gameId 固定为 432。
+    /// - Returns: 搜索结果与总条数（总条数来自响应头，缺失时为 `nil`）。
     public func search(
         type: ResourceType,
         _ query: String?,
@@ -48,7 +49,7 @@ public class CurseForgeAPIClient {
         loader: ModLoader? = nil,
         pageIndex: Int = 0,
         pageSize: Int = 40
-    ) async throws -> [CurseForgeMod] {
+    ) async throws -> (mods: [CurseForgeMod], totalCount: Int?) {
         try await semaphore.wait()
         defer { Task { await semaphore.signal() } }
         var params: [String: String?] = [
@@ -75,8 +76,16 @@ public class CurseForgeAPIClient {
         guard (200..<300).contains(response.statusCode) else {
             throw SimpleError("CurseForge 搜索失败（HTTP \(response.statusCode)）。")
         }
-        return try response.decode(Response<[CurseForgeMod]>.self).data
+        let mods: [CurseForgeMod] = try response.decode(Response<[CurseForgeMod]>.self).data
+        // 总条数来自响应头；不同网关的头名不一致，两个都尝试，缺失时由调用方启发式估计
+        let totalCount: Int? = ["x-total-count", "pagination-total-count"]
+            .lazy
+            .compactMap { response.headers[$0] }
+            .first { !$0.isEmpty }
+            .flatMap { Int($0) }
+        return (mods, totalCount)
     }
+
     /// CurseForge 的 modLoaderType 参数值。
     private static func modLoaderType(of loader: ModLoader) -> Int {
         switch loader {

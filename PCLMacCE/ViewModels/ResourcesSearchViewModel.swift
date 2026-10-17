@@ -54,12 +54,16 @@ class ResourcesSearchViewModel: ObservableObject {
             guard !curseforgeClient.apiKeyIsEmpty else {
                 throw SimpleError("未配置 CurseForge API Key，无法搜索 CurseForge。")
             }
-            let mods: [CurseForgeMod] = try await curseforgeClient.search(
+            let result: (mods: [CurseForgeMod], totalCount: Int?) = try await curseforgeClient.search(
                 type: type, query, forVersion: gameVersion, pageIndex: pageIndex
             )
-            // CurseForge 不返回总页数：满页时假定还有下一页
-            totalPages = mods.count >= 40 ? pageIndex + 2 : pageIndex + 1
-            results = mods.map { ProjectListItemModel($0, fallbackType: type) }
+            if let totalCount = result.totalCount {
+                totalPages = max(1, Int(ceil(Double(totalCount) / 40.0)))
+            } else {
+                // 响应未提供总条数：满页时假定还有下一页
+                totalPages = result.mods.count >= 40 ? pageIndex + 2 : pageIndex + 1
+            }
+            results = result.mods.map { ProjectListItemModel($0, fallbackType: type) }
         }
 
         try Task.checkCancellation()
