@@ -244,7 +244,13 @@ public class HTTPClient {
         }
     }
 
-    private init() {}
+    private init() {
+        // API 响应以 JSON 为主（版本清单、项目/版本列表等，单个可达数百 KB），
+        // 系统默认 URLCache 容量偏小；扩大后配合各调用的 revalidate 协商
+        // 可显著减少重复请求。下载走独立的 downloadTask，不经过 URLCache。
+        URLCache.shared.memoryCapacity = 8 * 1024 * 1024
+        URLCache.shared.diskCapacity = 128 * 1024 * 1024
+    }
 }
 
 public enum RequestError: LocalizedError {
