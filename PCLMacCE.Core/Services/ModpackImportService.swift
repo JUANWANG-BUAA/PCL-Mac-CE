@@ -229,7 +229,7 @@ public class ModpackImportService {
         public var errorDescription: String? {
             switch self {
             case .missingCurseforgeClient:
-                "内部错误：正在加载 CurseForge 整合包，但没有传入 CurseForgeAPIClient"
+                "这个 CurseForge 整合包需要解析文件信息，请先在「设置 → 下载」中配置 CurseForge API Key。"
             case .failedToCreateDirectory(let underlying):
                 "创建临时目录失败：\(underlying.localizedDescription)"
             case .extractFailed(let underlying):

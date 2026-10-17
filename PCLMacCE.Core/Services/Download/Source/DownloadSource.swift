@@ -33,7 +33,10 @@ public protocol DownloadSource {
 public struct OfficialDownloadSource: DownloadSource {
     public static let shared: OfficialDownloadSource = .init()
 
+    /// 固定 Key（兼容旧初始化方式）；`curseforgeApiKeyProvider` 优先。
     public var curseforgeApiKey: String?
+    /// 动态 Key 读取：用户运行时修改 Key 后立即生效，无需重启。
+    public var curseforgeApiKeyProvider: (@Sendable () -> String?)?
 
     public func versionManifestURL() -> URL? {
         APIEndpoints.MojangMeta.versionManifest
@@ -49,7 +52,8 @@ public struct OfficialDownloadSource: DownloadSource {
 
     public func candidate(for url: URL) -> DownloadCandidate? {
         var headers: [String: String]?
-        if url.matches(hosts: "edge.forgecdn.net"), let key = curseforgeApiKey {
+        if url.matches(hosts: "edge.forgecdn.net"),
+           let key = curseforgeApiKeyProvider?() ?? curseforgeApiKey, !key.isEmpty {
             headers = ["x-api-key": key]
         }
         return DownloadCandidate(url: url, headers: headers)

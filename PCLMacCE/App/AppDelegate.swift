@@ -88,8 +88,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         debug("系统信息：macOS \(ProcessInfo.processInfo.operatingSystemVersionString) \(Architecture.systemArchitecture())")
 
         _ = Secrets.shared
+        CurseForgeAPIClient.apiKeyProvider = { Secrets.shared.curseforgeApiKey ?? "" }
 
         DownloadSourceManager.shared = .init(policy: LauncherConfig.shared.downloadSourcePolicy, curseforgeApiKey: Secrets.shared.curseforgeApiKey)
+        // CDN 下载请求动态读取密钥，设置页更换 Key 后立即生效
+        DownloadSourceManager.shared.officialSource.curseforgeApiKeyProvider = { Secrets.shared.curseforgeApiKey }
         DownloadSourceManager.shared.preferredConcurrency = LauncherConfig.shared.downloadConcurrency
 
         FlagsManager.shared = .init(enabledFlags: LauncherConfig.shared.enabledFlags)

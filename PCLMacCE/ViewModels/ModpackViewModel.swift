@@ -16,9 +16,9 @@ class ModpackViewModel: ObservableObject {
 
     @MainActor
     public func importModpack(at url: URL, repository: MinecraftRepository) async {
-        // Modrinth / 普通压缩包不依赖 CurseForge，不能被缺失的 API Key 阻断。
-        let curseforgeClient = Secrets.shared.curseforgeApiKey.map { CurseForgeAPIClient(apiKey: $0) }
-        let service = ModpackImportService(curseforgeClient: curseforgeClient, modpackURL: url)
+        // Modrinth / 普通压缩包不依赖 CurseForge；CF 客户端始终创建，缺 Key 时
+        // 只在真正需要解析 CF 元数据时由客户端给出明确提示
+        let service = ModpackImportService(curseforgeClient: .init(), modpackURL: url)
         var taskScheduled = false
         defer { if !taskScheduled { service.cleanup() } }
         do {
