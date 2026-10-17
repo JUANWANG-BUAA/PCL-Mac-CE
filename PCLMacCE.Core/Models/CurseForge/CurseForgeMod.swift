@@ -140,9 +140,25 @@ public struct CurseForgeModFile: Codable {
         return gameVersions.compactMap { ModLoader(rawValue: $0.lowercased()) }
     }
 
+    /// 已知的非游戏版本 token（加载器或渲染器名），用于从 gameVersions 中剔除。
+    /// CurseForge 的 gameVersions 是混合数组：游戏版本与加载器/渲染器标签混在一起。
+    private static let nonGameVersionTokens: Set<String> = [
+        "forge", "fabric", "neoforge", "quilt", "liteloader", "rift",
+        "iris", "optifine", "optifabric", "canvas", "sodium", "oculus",
+        "shaders", "client", "server", "data pack", "datapack", "mc"
+    ]
+
     /// 从 gameVersions 中过滤出的游戏版本。
+    /// 只保留看起来像 Minecraft 版本号的项，避免把 Iris / OptiFine 等标签
+    /// 当成游戏版本生成伪版本分组。
     public var minecraftVersions: [String] {
-        return gameVersions.filter { ModLoader(rawValue: $0.lowercased()) == nil }
+        return gameVersions.filter { token in
+            let lower = token.lowercased()
+            guard !Self.nonGameVersionTokens.contains(lower) else { return false }
+            guard ModLoader(rawValue: lower) == nil else { return false }
+            // 正式版（1.20.1 / 26.1）与快照（23w13a / 1.20-pre1 / 26.1-snapshot-1）
+            return token.first?.isNumber == true
+        }
     }
 
     public var checksums: [String: String] {

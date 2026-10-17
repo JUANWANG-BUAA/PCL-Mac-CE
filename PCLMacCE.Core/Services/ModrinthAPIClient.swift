@@ -19,6 +19,8 @@ public class ModrinthAPIClient {
     ///   - type: 项目类型（`ResourceType`）。
     ///   - query: 搜索关键词。
     ///   - gameVersion: 过滤游戏版本。
+    ///   - loader: 过滤 Mod 加载器（仅对 Mod 与整合包生效）。
+    ///   - sort: 排序方式。
     ///   - pageIndex: 页码，从 0 开始。
     ///   - limit: 返回结果数量上限。
     /// - Returns: 包含搜索结果和分页信息的 `SearchResponse`。
@@ -26,12 +28,18 @@ public class ModrinthAPIClient {
         type: ResourceType,
         _ query: String?,
         forVersion gameVersion: String?,
+        loader: ModLoader? = nil,
+        sort: ResourceSearchSort = .relevance,
         pageIndex: Int = 0,
         limit: Int = 40
     ) async throws -> SearchResponse {
         var facets: [[String]] = [["project_type:\(type)"]]
         if let gameVersion {
             facets.append(["versions:\(gameVersion)"])
+        }
+        // 加载器只在 Mod / 整合包维度有意义；资源包与光影没有加载器分类
+        if let loader, type == .mod || type == .modpack {
+            facets.append(["categories:\(loader.rawValue)"])
         }
         let facetsString: String = String(data: try JSONSerialization.data(withJSONObject: facets), encoding: .utf8)!
 
@@ -40,6 +48,7 @@ public class ModrinthAPIClient {
             params: [
                 "query": query == "" ? nil : query,
                 "facets": facetsString,
+                "index": sort.modrinthIndex,
                 "limit": String(describing: limit),
                 "offset": String(describing: pageIndex * limit)
             ]
